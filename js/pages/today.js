@@ -58,7 +58,7 @@
   }
   function sphereBars(day) {
     const TX = UI.TX();
-    return `<div class="sbars5">${NS.SPHERES.map((s) => { const r = day.spheres[s]; return `<button class="sb5" type="button" data-sph="${s}" aria-label="${esc(TX.SPH[s].name + ': ' + r.pts + '/10, ' + lvName(r.level))}">${icon(SPH_ICON[s])}<span>${esc(TX.SPH[s].name)}</span>${UI.pbar(r)}${UI.ptsBadge(r, true)}</button>`; }).join('')}</div>`;
+    return `<div class="sbars5">${NS.SPHERES.map((s) => { const r = day.spheres[s]; return `<button class="sb5" type="button" data-sph="${s}" aria-label="${esc(TX.SPH[s].name + ': ' + r.pts + '/10, ' + lvName(r.level))}">${icon(SPH_ICON[s])}<span>${esc(TX.SPH[s].name)}</span>${UI.pbar(r)}${UI.ptsBadge(r, true)}<span class="sb5-q" aria-hidden="true">${icon('help')}</span></button>`; }).join('')}</div>`;
   }
   function dayline(day, tz, best, evs, isToday) {
     const d0 = day.start.getTime(), span = 86400000;
@@ -220,7 +220,7 @@
       <div class="card"><h3 style="margin-bottom:4px">${t('why', 'Почему так')}</h3>${reasonList(list, tz, 8)}</div>
       <a class="btn" href="#ask?topic=${s}&d=${ymd(day)}">${icon('ask')} ${t('askAbout', 'Спросить ИИ об этом')}</a>
     </div>`;
-    UI.sheet(html, { title: TX.SPH[s].name, eyebrow: UI.fmtDate(day.y, day.mo, day.d, { weekday: 'long' }) });
+    UI.popup(html, { title: TX.SPH[s].name, eyebrow: UI.fmtDate(day.y, day.mo, day.d, { weekday: 'long' }) }); // поверх карточки дня: закрыл — вернулся к ней
   }
 
   // ---------- страница ----------

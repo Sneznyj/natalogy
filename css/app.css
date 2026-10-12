@@ -282,6 +282,15 @@ hr.soft{border:0;border-top:1px solid var(--line-soft);margin:4px 0}
 @media (min-width:980px){.sheet-head{top:-24px;padding-top:10px}}
 .sheet-head h2{flex:1}
 .sheet-nav{display:flex;gap:4px}
+/* окно поверх окна (сфера дня над карточкой дня): на телефоне — снизу, на компьютере — по центру */
+.pop-scrim{z-index:84;background:rgba(30,18,50,.34)}
+.pop{position:fixed;z-index:86;left:0;right:0;bottom:0;max-height:86vh;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:24px 24px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.3);padding:12px 16px calc(22px + env(safe-area-inset-bottom,0px));animation:up .24s cubic-bezier(.2,.8,.2,1) both;overscroll-behavior:contain}
+.pop-head{top:-12px}
+@keyframes popIn{from{transform:translate(-50%,-47%) scale(.98);opacity:.2}to{transform:translate(-50%,-50%);opacity:1}}
+@media (min-width:700px){
+  .pop{top:50%;left:50%;right:auto;bottom:auto;width:min(560px,calc(100vw - 64px));max-height:calc(100vh - 80px);border-radius:24px;transform:translate(-50%,-50%);animation:popIn .22s cubic-bezier(.2,.8,.2,1) both;padding:20px 22px;box-shadow:0 30px 70px -20px rgba(30,18,50,.55)}
+  .pop-head{top:-20px;padding-top:6px}
+}
 .toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:95;background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:14px;font-size:14px;box-shadow:var(--shadow-lg);max-width:calc(100vw - 32px)}
 
 /* аккордеон: подробности свёрнуты */
@@ -434,10 +443,13 @@ details > summary.more::-webkit-details-marker{display:none}
 .dp-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center}
 .dp-head h3{font:600 24px/1.1 var(--f-display)}
 .sbars5{display:grid;gap:4px}
-.sb5{appearance:none;border:0;background:transparent;display:grid;grid-template-columns:22px 92px minmax(0,1fr) 28px;gap:8px;align-items:center;padding:5px 6px;border-radius:10px;cursor:pointer;font:600 13px var(--f-ui);text-align:left;color:var(--ink)}
+.sb5{appearance:none;border:0;background:transparent;display:grid;grid-template-columns:22px 92px minmax(0,1fr) 28px 18px;gap:8px;align-items:center;padding:5px 6px;border-radius:10px;cursor:pointer;font:600 13px var(--f-ui);text-align:left;color:var(--ink)}
 .sb5:hover{background:var(--lav-soft)}
 .sb5 .ico{width:16px;height:16px;color:var(--lav-strong)}
 .sb5 .pts{justify-self:end;font-size:13.5px}
+.sb5 .sb5-q{display:grid;place-items:center}
+.sb5 .sb5-q .ico{width:17px;height:17px;color:var(--faint);transition:color .15s}
+.sb5:hover .sb5-q .ico,.sb5:focus-visible .sb5-q .ico{color:var(--lav-strong)}
 /* неделя карточками */
 .week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
 @media (max-width:1100px){.week{grid-template-columns:repeat(4,minmax(0,1fr))}}
@@ -520,6 +532,7 @@ details > summary.more::-webkit-details-marker{display:none}
 .tb-in{appearance:none;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font:600 15px/1 var(--f-mono);padding:9px 10px;border-radius:10px;min-height:40px;letter-spacing:.02em;cursor:ns-resize}
 .tb-in:focus{outline:none;border-color:var(--lav);box-shadow:var(--glow);cursor:text}
 .tb-in.bad{border-color:var(--rose);box-shadow:0 0 0 3px var(--rose-soft)}
+.tb-in.drag{border-color:var(--lav-strong);background:var(--lav-soft);user-select:none} body.tb-dragging,body.tb-dragging *{cursor:ns-resize!important;user-select:none}
 .tb-date{width:154px;padding-right:42px} .tb-time{width:116px}
 .tb-cal{position:absolute;right:3px;top:3px;bottom:3px;width:34px;border:0;border-radius:8px;background:var(--lav-soft);color:var(--lav-strong);cursor:pointer;display:grid;place-items:center}
 .tb-cal:hover{background:var(--lav);color:#fff}

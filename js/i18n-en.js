@@ -118,7 +118,7 @@ Object.assign(window.NI18N.en, {
   todayS: 'today', dlist: 'List of days', 'dsl.a': 'Scroll through days', 'dl.week': 'Week from {d}', 'dl.loading': 'Calculating days…',
   'cal.pick': 'Pick a date', 'cal.prevM': 'Previous month', 'cal.nextM': 'Next month', 'cal.month': 'Month', 'cal.year': 'Year', 'cal.typeHint': 'You can just type digits: 18061998',
   'tb.u.s': 'sec', 'tb.u.mi': 'min', 'tb.u.h': 'hour', 'tb.u.d': 'day', 'tb.u.mo': 'mon', 'tb.u.y': 'year',
-  'tb.dateT': 'Type digits in a row: 18061998. Mouse wheel or ↑↓ over a number scrolls it', 'tb.timeT': 'Hours:minutes:seconds. Type in a row: 093215. Wheel or ↑↓ over a number scrolls it', 'tb.cal': 'Open calendar',
+  'tb.dateT': 'Hold the mouse over a number and drag up or down to scroll it (like the wheel). Click to type digits: 18061998', 'tb.timeT': 'Hold the mouse over hours, minutes or seconds and drag: up — forward, down — back. Click to type: 093215', 'tb.cal': 'Open calendar',
   'tb.stepA': 'Step', 'tb.back': 'Back', 'tb.fwd': 'Forward', 'tb.playT2': 'Run time with the chosen step', 'tb.years': 'Years', 'tb.yearsA': 'Shift by years', 'tb.mins': 'Minutes', 'tb.minsA': 'Minutes', 'tb.secs': 'Seconds', 'tb.secsA': 'Seconds', 'tb.yShort': 'y',
   'ph.date': 'DD.MM.YYYY', 'ph.time': 'HH:MM', 'dyn.softer': 'easier', 'dyn.harder': 'more tense', 'dyn.softer2': 'easier day (more support)', 'dyn.harder2': 'more tense day',
 });

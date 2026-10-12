@@ -43,7 +43,39 @@
     if (root.NWheel) root.NWheel.bindTips(el);
     return el.querySelector('.sheet-body');
   }
-  function closeSheet() { $$('[data-sheet]').forEach((x) => x.remove()); document.body.style.overflow = ''; hideRich(); }
+  function closeSheet() { $$('[data-sheet],[data-pop]').forEach((x) => x.remove()); document.body.style.overflow = ''; hideRich(); }
+  /**
+   * Окно поверх окна: открывается над карточкой дня (или любой шторкой) и не закрывает её — закрыл (крестик, Esc, мимо окна)
+   * и вернулся туда же. Пока оно открыто, Esc и ←/→ не доходят до окна под ним. Возвращает тело окна.
+   */
+  function popup(html, opts) {
+    opts = opts || {};
+    closePopup();
+    $$('.nw-tip').forEach((x) => { x.hidden = true; }); hideRich();
+    const opener = document.activeElement;
+    const scrim = document.createElement('div'); scrim.className = 'scrim pop-scrim'; scrim.dataset.pop = '1';
+    const el = document.createElement('div'); el.className = 'pop'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.dataset.pop = '1';
+    el.innerHTML = `<div class="sheet-head pop-head"><div style="flex:1;display:grid;gap:4px">${opts.eyebrow ? `<span class="eyebrow">${esc(opts.eyebrow)}</span>` : ''}<h2>${esc(opts.title || '')}</h2></div><button class="iconbtn bd" type="button" data-pclose aria-label="${esc(t('close', 'Закрыть'))}">${icon('close')}</button></div><div class="pop-body">${html}</div>`;
+    document.body.append(scrim, el);
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => {
+      if (!document.body.contains(el)) { document.removeEventListener('keydown', onKey, true); return; }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); close(); } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.stopImmediatePropagation();
+    };
+    const close = () => {
+      scrim.remove(); el.remove(); document.removeEventListener('keydown', onKey, true); hideRich();
+      if (!$('[data-sheet]')) document.body.style.overflow = '';
+      if (opener && opener.focus && document.body.contains(opener)) opener.focus({ preventScroll: true });
+    };
+    el._close = close;
+    document.addEventListener('keydown', onKey, true); // на погружении — раньше обработчиков окна под ним
+    scrim.addEventListener('click', close);
+    el.querySelector('[data-pclose]').addEventListener('click', close);
+    setTimeout(() => { const c = el.querySelector('[data-pclose]'); if (c && document.body.contains(c)) c.focus({ preventScroll: true }); }, 60);
+    if (root.NWheel) root.NWheel.bindTips(el);
+    return el.querySelector('.pop-body');
+  }
+  function closePopup() { $$('.pop[data-pop]').forEach((x) => (x._close ? x._close() : x.remove())); $$('[data-pop]').forEach((x) => x.remove()); }
   /** Окно по центру (на телефоне — снизу). opts.prev/next — стрелки «соседний день» в шапке; ←/→ на клавиатуре. */
   function modal(html, opts) {
     opts = opts || {};
@@ -230,8 +262,8 @@
     const html = `<div class="timebar" id="${id}" role="group" aria-label="${esc(t('tb.aria', 'Дата и время'))}">
       <div class="tb-main">
         <div class="tb-dt">
-          <span class="tb-fld"><input class="tb-in tb-date" data-tbd inputmode="numeric" autocomplete="off" spellcheck="false" value="${fmtDMY(p)}" aria-label="${esc(t('tb.date', 'Дата'))}" title="${esc(t('tb.dateT', 'Печатай цифры подряд: 18061998. Колёсико мыши или ↑↓ над числом — листать его'))}"><button type="button" class="tb-cal" data-tbcal aria-label="${esc(t('tb.cal', 'Открыть календарь'))}">${icon('calendar', 'sm')}</button></span>
-          <input class="tb-in tb-time" data-tbt inputmode="numeric" autocomplete="off" spellcheck="false" value="${fmtHMS(p)}" aria-label="${esc(t('tb.time', 'Время'))}" title="${esc(t('tb.timeT', 'Часы:минуты:секунды. Печатай подряд: 093215. Колёсико или ↑↓ над числом — листать'))}">
+          <span class="tb-fld"><input class="tb-in tb-date" data-tbd inputmode="numeric" autocomplete="off" spellcheck="false" value="${fmtDMY(p)}" aria-label="${esc(t('tb.date', 'Дата'))}" title="${esc(t('tb.dateT', 'Зажми мышь над числом и тяни вверх или вниз — листать его (как колёсиком). Щелчок — печатать цифры подряд: 18061998'))}"><button type="button" class="tb-cal" data-tbcal aria-label="${esc(t('tb.cal', 'Открыть календарь'))}">${icon('calendar', 'sm')}</button></span>
+          <input class="tb-in tb-time" data-tbt inputmode="numeric" autocomplete="off" spellcheck="false" value="${fmtHMS(p)}" aria-label="${esc(t('tb.time', 'Время'))}" title="${esc(t('tb.timeT', 'Зажми мышь над часами, минутами или секундами и тяни: вверх — вперёд, вниз — назад. Щелчок — печатать подряд: 093215'))}">
         </div>
         <div class="tb-step" role="group" aria-label="${esc(t('tb.stepA', 'Шаг перемотки'))}">
           <button type="button" class="tb-arrow" data-tbstep="-1" aria-label="${esc(t('tb.back', 'Назад'))}">${icon('left', 'sm')}</button>
@@ -312,6 +344,28 @@
           const u = segUnder(inp, inp === di ? SEG_D : SEG_T, e.clientX);
           set(addUnit(cur, u, e.deltaY < 0 ? 1 : -1, tz), false, true);
         }, { passive: false });
+        // зажать мышь над числом и тянуть: вверх — вперёд, вниз — назад (как колёсико), шаг — каждые 6 px;
+        // просто щелчок без движения — поле в фокусе, можно печатать цифрами. Уже в фокусе — обычный курсор для ввода.
+        inp.addEventListener('pointerdown', (e) => {
+          if (e.pointerType !== 'mouse' || e.button !== 0 || document.activeElement === inp) return;
+          e.preventDefault();
+          const u = segUnder(inp, inp === di ? SEG_D : SEG_T, e.clientX), d0 = cur, y0 = e.clientY;
+          let moved = false, applied = 0;
+          try { inp.setPointerCapture(e.pointerId); } catch (er) { /* */ }
+          const move = (ev) => {
+            const dy = y0 - ev.clientY;
+            if (!moved && Math.abs(dy) < 4) return;
+            if (!moved) { moved = true; inp.classList.add('drag'); document.body.classList.add('tb-dragging'); }
+            const n = Math.trunc(dy / 6);
+            if (n !== applied) { applied = n; set(addUnit(d0, u, n, tz), false, true); } // от точки захвата — без накопления ошибок (31-е и месяцы)
+          };
+          const up = () => {
+            inp.removeEventListener('pointermove', move); inp.removeEventListener('pointerup', up); inp.removeEventListener('pointercancel', up);
+            inp.classList.remove('drag'); document.body.classList.remove('tb-dragging');
+            if (!moved) inp.focus();
+          };
+          inp.addEventListener('pointermove', move); inp.addEventListener('pointerup', up); inp.addEventListener('pointercancel', up);
+        });
       });
       const cal = box.querySelector('[data-tbcal]');
       cal.addEventListener('click', () => {
@@ -580,5 +634,5 @@
   /** Тема: светлая ↔ тёмная (кнопка в шапке). */
   function isDark() { const th = Store.settings().theme; return th === 'dark' || (th !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); }
 
-  root.NUI = { lang, t, TX, $, $$, esc, icon, toast, sheet, closeSheet, modal, richTip, hideRich, dots, ptsBadge, ringPts, pbar, acc, partsIn, fromParts, addUnit, timebar, hscroll, calPop, closeCal, parseDate, parseTime, autoDate, autoTime, bindTimeInput, dateFieldHTML, fmtDate, fmtTime, fmtDay, fmtDMY, fmtHMS, todayIn, bindDateInput, bindCity, personForm, chartOf, here, initials, lvClass, lvCls, moonSVG, reduceMotion, pad, daysIn, isDark };
+  root.NUI = { lang, t, TX, $, $$, esc, icon, toast, sheet, closeSheet, modal, popup, closePopup, richTip, hideRich, dots, ptsBadge, ringPts, pbar, acc, partsIn, fromParts, addUnit, timebar, hscroll, calPop, closeCal, parseDate, parseTime, autoDate, autoTime, bindTimeInput, dateFieldHTML, fmtDate, fmtTime, fmtDay, fmtDMY, fmtHMS, todayIn, bindDateInput, bindCity, personForm, chartOf, here, initials, lvClass, lvCls, moonSVG, reduceMotion, pad, daysIn, isDark };
 })(window);
