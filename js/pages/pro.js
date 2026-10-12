@@ -350,7 +350,7 @@
         spec.shiftA = null; remount();
       });
       const cs = cf.querySelector('[data-csave]');
-      if (cs) cs.addEventListener('click', () => { const id = root.NStore.upsertPerson(Object.assign({}, spec.custom)); spec.a = id; spec.custom = null; UI.toast(t('pro.customSaved', 'Сохранено в «Люди»')); remount(); });
+      if (cs) cs.addEventListener('click', () => { if (root.NAccount && !root.NAccount.gateAdd()) return; const id = root.NStore.upsertPerson(Object.assign({}, spec.custom)); spec.a = id; spec.custom = null; UI.toast(t('pro.customSaved', 'Сохранено в «Люди»')); remount(); });
     }
     // что показывать — своё у каждой панели
     const v = spec.view;

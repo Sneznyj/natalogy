@@ -31,7 +31,7 @@
     closeSheet();
     $$('.nw-tip').forEach((x) => { x.hidden = true; });
     const scrim = document.createElement('div'); scrim.className = 'scrim'; scrim.dataset.sheet = '1';
-    const el = document.createElement('div'); el.className = 'sheet'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.dataset.sheet = '1';
+    const el = document.createElement('div'); el.className = 'sheet' + (opts.cls ? ' ' + opts.cls : ''); el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.dataset.sheet = '1';
     el.innerHTML = `<div class="sheet-head"><div style="flex:1;display:grid;gap:4px">${opts.eyebrow ? `<span class="eyebrow">${esc(opts.eyebrow)}</span>` : ''}<h2>${esc(opts.title || '')}</h2></div><button class="iconbtn" type="button" data-close aria-label="${esc(t('close', 'Закрыть'))}">${icon('close')}</button></div><div class="sheet-body">${html}</div>`;
     document.body.append(scrim, el);
     document.body.style.overflow = 'hidden';

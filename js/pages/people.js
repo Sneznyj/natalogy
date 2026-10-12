@@ -34,6 +34,7 @@
   }
 
   function editPerson(p, after) {
+    if (!p && root.NAccount && !root.NAccount.gateAdd()) return; // без входа — одна карточка
     const f = UI.personForm(p || {}, { cancel: true, submit: p ? t('f.save', 'Сохранить') : t('people.add', 'Добавить человека') });
     const body = UI.sheet(f.html, { title: p ? t('people.edit', 'Изменить данные') : t('people.new', 'Новый человек') });
     f.bind(body, (np) => { const id = root.NStore.upsertPerson(np); UI.closeSheet(); UI.toast(t('people.saved', 'Сохранено')); after && after(id); }, () => UI.closeSheet());
@@ -60,6 +61,7 @@
     const S = root.NStore.settings(), TX = UI.TX();
     const here = UI.here();
     el.innerHTML = `<div class="sec-head"><span class="eyebrow">${t('set.eyebrow', 'Настройки')}</span><h1>${t('set.title', 'Под себя')}</h1></div>
+      <div id="acctCard"></div>
       <div class="card stack">
         <div class="field"><span class="lbl">${t('set.lang', 'Язык')}</span><div class="seg"><button data-lang="ru" aria-pressed="${UI.lang() === 'ru'}">Русский</button><button data-lang="en" aria-pressed="${UI.lang() === 'en'}">English</button></div></div>
         <div class="field"><span class="lbl">${t('set.theme', 'Тема')}</span><div class="seg"><button data-th="system" aria-pressed="${S.theme === 'system'}">${t('set.auto', 'Как в системе')}</button><button data-th="light" aria-pressed="${S.theme === 'light'}">${t('set.light', 'Светлая')}</button><button data-th="dark" aria-pressed="${S.theme === 'dark'}">${t('set.dark', 'Тёмная')}</button></div></div>
@@ -68,11 +70,12 @@
         <div class="field"><label for="hs2">${t('set.hs', 'Система домов')}</label><select class="select" id="hs2">${Object.entries(TX.houseSystems || { placidus: 'Placidus' }).map(([k, v]) => `<option value="${k}" ${S.houseSystem === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
       </div>
       <div class="card stack"><h3>${icon('shield')} ${t('set.data', 'Данные и приватность')}</h3>
-        <p class="small muted">${t('set.dataP', 'Карты и настройки хранятся только в этом браузере. На сервер уходит только вопрос к ИИ — с расчётами, без имени и города.')}</p>
+        <p class="small muted">${root.NAccount && root.NAccount.loggedIn() ? t('set.dataPacc', 'Карты и настройки хранятся в этом браузере и в вашем аккаунте (на сервере — в зашифрованном виде). К ИИ уходит только вопрос с расчётами, без имени и города.') : t('set.dataP', 'Карты и настройки хранятся только в этом браузере. На сервер уходит только вопрос к ИИ — с расчётами, без имени и города.')}</p>
         <label class="check"><input type="checkbox" id="aic" ${S.aiConsent ? 'checked' : ''}> ${t('set.ai', 'Разрешаю отправлять расчёты карты ИИ-сервису для ответов')}</label>
         <div class="row"><button class="btn sm" data-exp>${icon('download')} ${t('set.export', 'Скопировать резервную копию')}</button><button class="btn sm" data-imp>${icon('upload')} ${t('set.import', 'Восстановить из копии')}</button><button class="btn sm" data-wipe>${icon('trash')} ${t('set.wipe', 'Удалить все данные')}</button></div>
         <div class="row tiny"><a href="privacy.html">${t('privacy', 'Конфиденциальность')}</a> · <a href="terms.html">${t('terms', 'Условия')}</a> · <span class="muted">${esc(root.NCONFIG.brand)} ${esc(root.NCONFIG.version)}</span></div>
       </div>`;
+    if (root.NAccount) root.NAccount.settingsCard(el.querySelector('#acctCard'));
     el.querySelectorAll('[data-lang]').forEach((b) => b.addEventListener('click', () => { root.NStore.set('lang', b.dataset.lang); location.reload(); }));
     el.querySelectorAll('[data-fz]').forEach((b) => b.addEventListener('click', () => { root.NStore.set('textSize', b.dataset.fz); root.NApp.applySize(); settings(el); }));
     el.querySelectorAll('[data-th]').forEach((b) => b.addEventListener('click', () => { root.NStore.set('theme', b.dataset.th); root.NApp.applyTheme(); settings(el); }));
@@ -82,9 +85,10 @@
     el.querySelector('[data-exp]').addEventListener('click', async () => { const txt = root.NStore.exportJSON(); try { await navigator.clipboard.writeText(txt); UI.toast(t('set.copied', 'Копия в буфере обмена — сохрани её в заметки')); } catch (e) { UI.sheet(`<textarea class="input" rows="10" readonly>${esc(txt)}</textarea>`, { title: t('set.exportT', 'Резервная копия') }); } });
     el.querySelector('[data-imp]').addEventListener('click', () => {
       const body = UI.sheet(`<div class="stack"><p class="small muted">${t('set.impP', 'Вставь текст резервной копии:')}</p><textarea class="input" rows="8" id="impt"></textarea><button class="btn primary" data-go>${t('set.importGo', 'Восстановить')}</button></div>`, { title: t('set.import', 'Восстановить из копии') });
-      body.querySelector('[data-go]').addEventListener('click', () => { try { const n = root.NStore.importJSON(body.querySelector('#impt').value); UI.closeSheet(); UI.toast(t('set.impOk', 'Добавлено карт: {n}', { n })); } catch (e) { UI.toast(t('set.impErr', 'Это не похоже на резервную копию')); } });
+      body.querySelector('[data-go]').addEventListener('click', () => { try { const d = JSON.parse(body.querySelector('#impt').value || '{}'); const lim = (root.NCONFIG.account || {}).guestLimit || 1; if (root.NAccount && !root.NAccount.loggedIn() && root.NCONFIG.account && root.NCONFIG.account.api && d && Array.isArray(d.people) && new Set(root.NStore.people().map((x) => x.id).concat(d.people.map((x) => x.id))).size > lim) { UI.closeSheet(); root.NAccount.open({ reason: 'more' }); return; } const n = root.NStore.importJSON(body.querySelector('#impt').value); UI.closeSheet(); UI.toast(t('set.impOk', 'Добавлено карт: {n}', { n })); } catch (e) { UI.toast(t('set.impErr', 'Это не похоже на резервную копию')); } });
     });
     el.querySelector('[data-wipe]').addEventListener('click', () => {
+      if (root.NAccount && root.NAccount.loggedIn()) { root.NAccount.logout(); return; }
       const body = UI.sheet(`<div class="stack"><p>${t('set.wipeQ', 'Удалить все карты и настройки с этого устройства? Это нельзя отменить.')}</p><div class="row"><button class="btn" data-no>${t('cancel', 'Отмена')}</button><button class="btn dark" data-yes>${t('delete', 'Удалить')}</button></div></div>`, { title: t('set.wipe', 'Удалить все данные') });
       body.querySelector('[data-no]').addEventListener('click', UI.closeSheet);
       body.querySelector('[data-yes]').addEventListener('click', () => { root.NStore.wipe(); UI.closeSheet(); location.hash = '#onboard'; });

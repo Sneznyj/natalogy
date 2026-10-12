@@ -1,14 +1,19 @@
 /* Хранилище в браузере: люди (данные рождения), настройки, сохранённые карты.
-   Всё лежит только на устройстве. Чтение и запись обёрнуты в try/catch: в приватном режиме хранилище может быть недоступно. */
+   Без входа всё лежит только на устройстве; со входом js/account.js копирует это в облако аккаунта (syncDoc/applyDoc).
+   У каждой карточки — время правки (updated), у удалённых — отметка в deleted: так при слиянии устройств ничего не воскресает.
+   Чтение и запись обёрнуты в try/catch: в приватном режиме хранилище может быть недоступно. */
 (function (root) {
   'use strict';
   const KEY = 'natalogy:v1';
   let mem = null;
-  const empty = () => ({ people: [], activeId: null, settings: { lang: null, theme: 'system', textSize: 'l', houseSystem: 'placidus', here: null, aiConsent: false, mode: 'simple', orbs: 1 }, saved: [], ask: { day: '', used: 0 }, deviceId: null });
+  const empty = () => ({ people: [], activeId: null, settings: { lang: null, theme: 'system', textSize: 'l', houseSystem: 'placidus', here: null, aiConsent: false, mode: 'simple', orbs: 1 }, saved: [], ask: { day: '', used: 0 }, deviceId: null, deleted: {}, settingsAt: 0 });
+  // настройки, которые едут вместе с аккаунтом на другие устройства
+  const SYNC_SETTINGS = ['lang', 'theme', 'textSize', 'houseSystem', 'here', 'aiConsent', 'mode', 'orbs', 'horoSign'];
   function load() {
     if (mem) return mem;
     try { const raw = localStorage.getItem(KEY); mem = raw ? Object.assign(empty(), JSON.parse(raw)) : empty(); } catch (e) { mem = empty(); }
     mem.settings = Object.assign(empty().settings, mem.settings || {});
+    if (!mem.deleted || typeof mem.deleted !== 'object') mem.deleted = {};
     if (!mem.deviceId) mem.deviceId = rid() + rid();
     return mem;
   }
@@ -27,6 +32,7 @@
     upsertPerson(p) {
       const s = load();
       if (!p.id) p.id = 'p' + rid();
+      p.updated = Date.now();
       const i = s.people.findIndex((x) => x.id === p.id);
       if (i >= 0) s.people[i] = Object.assign({}, s.people[i], p); else s.people.push(Object.assign({ created: Date.now() }, p));
       if (!s.activeId) s.activeId = p.id;
@@ -37,14 +43,16 @@
       const s = load();
       s.people = s.people.filter((p) => p.id !== id);
       if (s.activeId === id) s.activeId = s.people[0] ? s.people[0].id : null;
+      for (const c of s.saved) if (c.a === id || c.b === id) s.deleted[c.id] = Date.now();
       s.saved = s.saved.filter((c) => !(c.a === id || c.b === id));
+      s.deleted[id] = Date.now();
       save(); emit('people');
     },
     settings() { return load().settings; },
-    set(k, v) { load().settings[k] = v; save(); emit('settings:' + k); },
+    set(k, v) { const s = load(); s.settings[k] = v; if (SYNC_SETTINGS.includes(k)) s.settingsAt = Date.now(); save(); emit('settings:' + k); },
     saved() { return load().saved; },
     saveChart(c) { const s = load(); c.id = c.id || 'c' + rid(); c.at = Date.now(); s.saved = [c].concat(s.saved.filter((x) => x.id !== c.id)).slice(0, 200); save(); emit('saved'); return c.id; },
-    removeChart(id) { const s = load(); s.saved = s.saved.filter((x) => x.id !== id); save(); emit('saved'); },
+    removeChart(id) { const s = load(); s.saved = s.saved.filter((x) => x.id !== id); s.deleted[id] = Date.now(); save(); emit('saved'); },
     askUsed(day) { const a = load().ask; return a.day === day ? a.used : 0; },
     askInc(day) { const s = load(); if (s.ask.day !== day) s.ask = { day, used: 0 }; s.ask.used++; save(); },
     deviceId() { return load().deviceId; },
@@ -60,6 +68,24 @@
       return d.people.length;
     },
     wipe() { mem = empty(); save(); emit('people'); },
+    /** Снимок для облака аккаунта. */
+    syncDoc() {
+      const s = load(), set = {};
+      for (const k of SYNC_SETTINGS) if (s.settings[k] !== undefined) set[k] = s.settings[k];
+      return { app: 'natalogy', v: 1, people: s.people, saved: s.saved, deleted: s.deleted, settings: set, settingsAt: s.settingsAt || 0, activeId: s.activeId };
+    },
+    /** Применить слитый снимок (после входа или с другого устройства). Без записи в историю правок. */
+    applyDoc(d) {
+      const s = load();
+      s.people = Array.isArray(d.people) ? d.people : s.people;
+      s.saved = Array.isArray(d.saved) ? d.saved : s.saved;
+      s.deleted = d.deleted && typeof d.deleted === 'object' ? d.deleted : s.deleted;
+      if (d.settings && (d.settingsAt || 0) > (s.settingsAt || 0)) { Object.assign(s.settings, d.settings); s.settingsAt = d.settingsAt; }
+      s.activeId = s.people.some((p) => p.id === s.activeId) ? s.activeId : (s.people.some((p) => p.id === d.activeId) ? d.activeId : (s.people[0] || {}).id || null);
+      save(); emit('sync');
+    },
+    /** Убрать все карточки с устройства (выход из аккаунта): настройки остаются. */
+    clearPeople() { const s = load(); s.people = []; s.saved = []; s.deleted = {}; s.activeId = null; save(); emit('people'); },
   };
   root.NStore = S;
 })(window);

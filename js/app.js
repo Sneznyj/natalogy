@@ -1,14 +1,18 @@
-/* Каркас приложения: шапка, навигация, маршруты (#today, #calendar, #chart, #pair, #ask, #pro, #people, #settings, #onboard), тема. */
+/* Каркас приложения: шапка, навигация, маршруты (#horoscope, #today, #calendar, #chart, #pair, #ask, #numerology, #sky, #pro, #rectify, #people, #settings, #onboard), тема. */
 (function (root) {
   'use strict';
   const UI = root.NUI;
   const { t, esc, icon } = UI;
+  // меню: гороскоп — первым и выделен (самый частый запрос); m — видно в нижней панели телефона, остальное — в «Ещё»
   const NAV = () => [
-    ['today', t('nav.today', 'Сегодня'), 'today'],
-    ['calendar', t('nav.calendar', 'Календарь'), 'calendar'],
-    ['chart', t('nav.chart', 'Карта'), 'chart'],
-    ['pair', t('nav.pair', 'Пара'), 'pair'],
-    ['ask', t('nav.ask', 'Спросить'), 'ask'],
+    ['horoscope', t('nav.horo', 'Гороскоп'), 'horo', 'hot m'],
+    ['today', t('nav.today', 'Сегодня'), 'today', 'm'],
+    ['calendar', t('nav.calendar', 'Календарь'), 'calendar', 'm'],
+    ['chart', t('nav.chart', 'Карта'), 'chart', 'm'],
+    ['pair', t('nav.pair', 'Пара'), 'pair', ''],
+    ['ask', t('nav.ask', 'Спросить'), 'ask', ''],
+    ['numerology', t('nav.num', 'Нумерология'), 'numbers', ''],
+    ['sky', t('nav.sky', 'Небо и Луна'), 'sky', ''],
   ];
   const EXTRA = () => [['rectify', t('nav.rect', 'Ректификация'), 'crown', true], ['pro', t('nav.pro', 'Профи'), 'pro'], ['people', t('nav.people', 'Люди'), 'users'], ['settings', t('nav.settings', 'Настройки'), 'settings']];
 
@@ -44,14 +48,17 @@
       <header class="top"><div class="top-in">
         <a class="brand" href="#today"><span class="brand-mark" aria-hidden="true"></span>${esc(root.NCONFIG.brand)}</a>
         ${p ? `<button class="who" type="button" data-who aria-label="${t('who', 'Чья карта')}"><span class="av">${esc(UI.initials(p.name))}</span><b>${esc(p.name)}</b>${icon('down', 'sm')}</button>` : ''}
+        <span class="acct-slot" data-acct-slot></span>
         <button class="iconbtn fz-tg" type="button" data-fz-tg><span aria-hidden="true">A<small>A</small></span></button>
         <button class="iconbtn theme-tg" type="button" data-theme-tg aria-label="${t('theme.toggle', 'Сменить тему')}" title="${t('theme.toggle', 'Сменить тему')}">${icon(UI.isDark() ? 'sun' : 'moon')}</button>
-        <a class="iconbtn" href="#settings" aria-label="${t('nav.settings', 'Настройки')}">${icon('settings')}</a>
+        <a class="iconbtn set-lnk" href="#settings" aria-label="${t('nav.settings', 'Настройки')}">${icon('settings')}</a>
       </div></header>
-      <nav class="nav" aria-label="${t('nav', 'Разделы')}"><div class="nav-in">${NAV().map(([k, n, ic]) => `<a href="#${k}" data-nav="${k}">${icon(ic)}<span>${esc(n)}</span></a>`).join('')}${EXTRA().map(([k, n, ic, vip]) => `<a href="#${k}" data-nav="${k}" class="nav-extra${vip ? ' nav-vip' : ''}">${icon(ic)}<span>${esc(n)}</span>${vip ? '<b class="vip-badge">VIP</b>' : ''}</a>`).join('')}</div></nav>
+      <nav class="nav" aria-label="${t('nav', 'Разделы')}"><div class="nav-in">${NAV().map(([k, n, ic, cls]) => `<a href="#${k}" data-nav="${k}" class="${cls.split(' ').filter(Boolean).map((c) => 'nav-' + c).join(' ')}">${icon(ic)}<span>${esc(n)}</span>${cls.includes('hot') ? `<b class="hot-badge" aria-hidden="true">★</b>` : ''}</a>`).join('')}${EXTRA().map(([k, n, ic, vip]) => `<a href="#${k}" data-nav="${k}" class="nav-extra${vip ? ' nav-vip' : ''}">${icon(ic)}<span>${esc(n)}</span>${vip ? '<b class="vip-badge">VIP</b>' : ''}</a>`).join('')}<button class="nav-more" type="button" data-more>${icon('more')}<span>${t('nav.more', 'Ещё')}</span></button></div></nav>
       <main class="main" id="main" tabindex="-1"></main></div>`;
     const who = app.querySelector('[data-who]');
     if (who) who.addEventListener('click', openWho);
+    const more = app.querySelector('[data-more]');
+    if (more) more.addEventListener('click', openMore);
     const tg = app.querySelector('[data-theme-tg]');
     if (tg) tg.addEventListener('click', () => { root.NStore.set('theme', UI.isDark() ? 'light' : 'dark'); applyTheme(); tg.innerHTML = icon(UI.isDark() ? 'sun' : 'moon'); });
     const fz = app.querySelector('[data-fz-tg]');
@@ -63,6 +70,7 @@
       window.dispatchEvent(new Event('resize'));
     });
     applySize();
+    if (root.NAccount) root.NAccount.paintHeader();
   }
 
   function openWho() {
@@ -74,19 +82,28 @@
     body.querySelectorAll('a').forEach((a) => a.addEventListener('click', UI.closeSheet));
   }
 
+  /** «Ещё» на телефоне: все разделы, которых нет в нижней панели. */
+  function openMore() {
+    const items = NAV().filter(([, , , c]) => !c.includes('m')).map(([k, n, ic]) => [k, n, ic, false]).concat(EXTRA());
+    const body = UI.sheet(`<div class="more-grid">${items.map(([k, n, ic, vip]) => `<a class="more-it${vip ? ' vip' : ''}" href="#${k}"><span class="ic">${icon(ic)}</span><b>${esc(n)}</b>${vip ? '<span class="vip-badge">VIP</span>' : ''}</a>`).join('')}</div>`, { title: t('nav.more', 'Ещё') });
+    body.querySelectorAll('a').forEach((a) => a.addEventListener('click', UI.closeSheet));
+  }
+
   let lastShellFor = null;
   async function route(force) {
     const { name, params } = parseHash();
     const hasPeople = root.NStore.people().length > 0;
     let page = name || (hasPeople ? 'today' : 'onboard');
     // ссылка с витрины прямо в раздел: без карты — сперва анкета, потом туда, куда шли
-    if (!hasPeople && page !== 'onboard' && page !== 'settings') { params.next = location.hash.replace(/^#/, ''); page = 'onboard'; }
+    const OPEN = (k) => k === 'onboard' || k === 'settings' || !!(root.NPages[k] && root.NPages[k].open);
+    if (!hasPeople && !OPEN(page)) { params.next = location.hash.replace(/^#/, ''); page = 'onboard'; }
     if (hasPeople && page === 'onboard' && params.next) { location.replace('#' + params.next); return; }
     const P = root.NPages[page] || root.NPages.today;
     const sig = (root.NStore.active() || {}).id + '|' + UI.lang();
     if (P.bare) { document.getElementById('app').innerHTML = '<main class="main" id="main" style="padding-bottom:40px"></main>'; lastShellFor = null; }
     else if (force || lastShellFor !== sig || !document.querySelector('.shell')) { shell(); lastShellFor = sig; }
     document.querySelectorAll('[data-nav]').forEach((a) => { if (a.dataset.nav === page) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    const mb = document.querySelector('[data-more]'); if (mb) { if (NAV().concat(EXTRA()).some(([k, , , c]) => k === page && !(typeof c === 'string' && c.includes('m')))) mb.setAttribute('aria-current', 'page'); else mb.removeAttribute('aria-current'); }
     const main = document.getElementById('main');
     main.dataset.page = page;
     const v = document.createElement('div'); v.className = 'view';
@@ -105,6 +122,7 @@
     window.addEventListener('hashchange', () => route());
     root.NStore.on((w) => { if (w === 'active') lastShellFor = null; });
     route(true);
+    if (root.NAccount) root.NAccount.boot();
     if ('serviceWorker' in navigator && location.protocol === 'https:' && !root.NCONFIG.noSW) navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 

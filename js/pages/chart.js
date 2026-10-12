@@ -110,7 +110,7 @@
         drawRect();
         return;
       }
-      const asp = aspList.slice(0, 14).map((a) => `<div class="pos" style="grid-template-columns:62px minmax(0,1fr) auto;cursor:default"><span class="g" style="color:${a.nature === 'soft' ? 'var(--w-soft)' : a.nature === 'hard' ? 'var(--w-hard)' : 'var(--w-conj)'}">${pg(a.a)}${W.ASP_G[a.type]}${VS}${pg(a.b)}</span><span class="small">${esc((TX.P[a.a] || {}).name || a.a)} — ${esc((TX.P[a.b] || {}).name || a.b)} · ${esc(TX.ASP[a.type] ? TX.ASP[a.type].name : a.type)}</span><span class="dg">${a.orb.toFixed(1)}°${a.applying != null ? (a.applying ? ' ↗' : ' ↘') : ''}</span></div>`).join('');
+      const asp = aspList.slice(0, 14).map((a) => `<div class="pos" style="grid-template-columns:62px minmax(0,1fr) auto;cursor:default"><span class="g" style="font-weight:700;color:${a.nature === 'soft' ? 'var(--at-soft)' : a.nature === 'hard' ? 'var(--at-hard)' : 'var(--at-conj)'}">${pg(a.a)}${W.ASP_G[a.type]}${VS}${pg(a.b)}</span><span class="small">${esc((TX.P[a.a] || {}).name || a.a)} — ${esc((TX.P[a.b] || {}).name || a.b)} · ${esc(TX.ASP[a.type] ? TX.ASP[a.type].name : a.type)}</span><span class="dg">${a.orb.toFixed(1)}°${a.applying != null ? (a.applying ? ' ↗' : ' ↘') : ''}</span></div>`).join('');
       pos.innerHTML = rows + `<details${st.mode === 'transit' ? ' open' : ''}><summary class="more" style="cursor:pointer">${st.mode === 'transit' ? t('pos.aspTr', 'Аспекты транзитов к карте ({n})', { n: aspList.length }) : t('pos.asp', 'Аспекты ({n})', { n: aspList.length })}</summary><div class="poslist" style="margin-top:6px">${asp || `<p class="muted small">${t('pos.noAsp', 'Точных аспектов нет')}</p>`}</div></details>
         ${st.mode === 'natal' ? elemBars(natal) : ''}`;
       bindPlanets(el, p, natal);

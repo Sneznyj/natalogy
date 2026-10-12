@@ -2,7 +2,7 @@
 window.NCONFIG = {
   brand: 'Natalogy',              // рабочее название — меняется здесь и в manifest.webmanifest
   brandRu: 'Наталогия',
-  version: '0.2.1',
+  version: '0.3.0',
   // Адрес ИИ-помощника (Cloudflare Worker из server/ai-worker). Пусто — отвечает встроенный помощник по правилам, без интернета.
   aiEndpoint: '',
   freeAskPerDay: 5,               // показ в интерфейсе; настоящий лимит держит сервер
@@ -20,6 +20,9 @@ window.NCONFIG = {
   // Ректификация — VIP-раздел в меню. locked: true — показывать «Доступно в VIP» вместо инструмента; url — куда вести за VIP; note — строка под заголовком
   rectVip: { locked: false, url: '', note: 'Сейчас доступ открыт на время теста.' },
   pro: { paid: false, priceMonth: '$7.99', priceYear: '$49' }, // платная подписка — после выхода Венеры из тени (15.12.2026)
+  // Аккаунты (необязательный вход): сервер server/account-worker. guestLimit — сколько карточек можно сохранить без входа.
+  // Пусто в api — кнопки «Войти» нет, всё только на устройстве.
+  account: { api: 'https://natalogy-account.sneznyjpavel.workers.dev', guestLimit: 1 },
   contact: '',
   searchIndex: false,             // false — сайт закрыт от поисковиков (noindex), открывают только по ссылке. true — когда будет публичный запуск
   siteUrl: 'https://sneznyj.github.io/natalogy/',

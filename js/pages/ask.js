@@ -10,6 +10,18 @@
   const md = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/^- /gm, '• ');
   const ymd = (d) => `${d.y}-${d.mo}-${d.d}`;
 
+  /** «Думает»: маленькая астролябия крутится, под ней меняются фразы — что сейчас «смотрит» помощник. */
+  const THINK = () => [t('think.1', 'Смотрю твою карту…'), t('think.2', 'Сверяю транзиты на эти дни…'), t('think.3', 'Считаю баллы по сферам…'), t('think.4', 'Собираю ответ…')];
+  function thinkingHTML() {
+    return `<div class="think" role="status"><svg class="think-orb" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="16" fill="none" stroke="var(--line-strong)" stroke-width="1.4"/><circle cx="20" cy="20" r="9" fill="none" stroke="var(--line)" stroke-dasharray="2 3"/><g class="think-spin"><circle cx="20" cy="4" r="3" fill="var(--lav-strong)"/><circle cx="36" cy="20" r="2" fill="var(--amber-fill)"/></g><g class="think-spin2"><circle cx="20" cy="11" r="2" fill="var(--rose, #E59AAE)"/></g></svg><span class="think-txt">${esc(THINK()[0])}</span><span class="typing"><i></i><i></i><i></i></span></div>`;
+  }
+  function animateThinking(box) {
+    const lines = THINK(); let i = 0;
+    const tx = box.querySelector('.think-txt');
+    const id = setInterval(() => { i = Math.min(lines.length - 1, i + 1); if (tx) { tx.classList.remove('think-fade'); void tx.offsetWidth; tx.classList.add('think-fade'); tx.textContent = lines[i]; } }, 1100);
+    return () => clearInterval(id);
+  }
+
   function qcards(p, days, partner) {
     const TX = UI.TX(), d0 = days[0];
     const bestL = NS.bestBy(days.slice(0, 30), 'act:launch', 1)[0], bestDate = NS.bestBy(days.slice(0, 30), 'act:date', 1)[0];
@@ -108,17 +120,23 @@
       if (cfg.aiEndpoint && left() <= 0) { push('ai', md(t('ai.limit', 'На сегодня вопросы закончились. Завтра лимит обновится.'))); busy = false; return; }
       push('user', esc(text)); history.push({ role: 'user', content: text });
       q.value = ''; q.style.height = 'auto';
-      const wait = push('ai', '<span class="typing"><i></i><i></i><i></i></span>');
+      const wait = push('ai', thinkingHTML());
+      wait.classList.add('thinking-msg');
+      const stopThink = animateThinking(wait);
+      // ответ приходит не мгновенно: 3–5 секунд «думает» (если сервер дольше — ждём сервер)
+      const minWait = new Promise((ok) => setTimeout(ok, 3000 + Math.round(Math.random() * 2000)));
       try {
         const opts = { history: history.slice(0, -1).map((m) => ({ role: m.role, content: m.content })), partner: /партн|пар[аеуы]|вместе|муж|жен|partner|couple/i.test(text) ? partner : null };
         if (params.d) { const [y, mo, d] = params.d.split('-').map(Number); opts.date = { y, mo, d }; }
-        const r = await root.NAI.ask(text, p, opts);
+        const [r] = await Promise.all([root.NAI.ask(text, p, opts), minWait]);
+        stopThink(); wait.classList.remove('thinking-msg'); wait.classList.add('msg-in');
         wait.innerHTML = md(r.answer) + vizHTML(text, days) + (r.local ? `<span class="src">${t('ai.localSrc', 'встроенный помощник · по расчётам приложения')}</span>` : '');
+        wait.scrollIntoView({ block: 'nearest', behavior: UI.reduceMotion() ? 'auto' : 'smooth' });
         root.NWheel.bindTips(wait);
         history.push({ role: 'assistant', content: r.answer, q: text });
         if (!r.local && !r.limit) root.NStore.askInc(dayKey);
         const qq = el.querySelector('#quota'); if (qq && cfg.aiEndpoint) qq.textContent = t('ask.left', 'Сегодня осталось вопросов: {n}', { n: r.left != null ? r.left : left() });
-      } catch (e) { wait.textContent = t('ai.err', 'Не получилось ответить. Попробуйте ещё раз.'); }
+      } catch (e) { await minWait; stopThink(); wait.classList.remove('thinking-msg'); wait.textContent = t('ai.err', 'Не получилось ответить. Попробуйте ещё раз.'); }
       busy = false;
     };
     form.addEventListener('submit', (e) => { e.preventDefault(); send(q.value); });

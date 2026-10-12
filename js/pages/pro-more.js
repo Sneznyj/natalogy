@@ -4,6 +4,10 @@
   const UI = root.NUI, AC = root.AstroCore, PRO = root.ProAstro;
   const { t, esc, icon } = UI;
   const DAY = 86400000;
+  // характер аспекта для цвета в таблицах: мягкий / напряжённый / соединение / минорный
+  const ASP_MINOR = ['quincunx', 'semisextile', 'semisquare', 'sesquisquare', 'quintile', 'biquintile'];
+  const ASP_SOFT = ['trine', 'sextile', 'quintile', 'biquintile', 'semisextile'];
+  const aspCls = (x) => x.type === 'conj' ? 'asp-conj' : ASP_MINOR.includes(x.type) ? 'asp-minor' : (x.nature ? x.nature === 'soft' : ASP_SOFT.includes(x.type)) ? 'asp-soft' : 'asp-hard';
   const iso = (d) => d.toISOString().slice(0, 10);
   const dmy = (d, tz) => UI.fmtDay(d, tz || UI.here().tz, { year: 'numeric' });
 
@@ -30,7 +34,7 @@
         ${dig.map((d) => `<tr><td><span class="g">${G[d.id]}</span> ${esc(ctx.pName(d.id))}${d.retro ? ' R' : ''}</td><td>${esc(TX.S[d.sign].name)}</td><td class="g">${G[d.ruler]}</td><td class="g">${d.exaltation ? G[d.exaltation] : '—'}</td><td class="g">${G[d.triplicity]}</td><td class="g">${G[d.term]}</td><td class="g">${G[d.face]}</td><td class="num"><b style="color:${d.score > 0 ? 'var(--ok)' : d.score < 0 ? 'var(--bad)' : 'inherit'}">${d.score > 0 ? '+' : ''}${d.score}</b>${d.peregrine ? ' ' + t('peregrine', 'пер.') : ''}</td></tr>`).join('')}</tbody></table></div></div>
       ${hs ? `<div class="card stack"><h3>${t('t.houses', 'Сила домов')}</h3><div class="sbars">${hs.list.map((h) => `<div class="sbar"><span>${h.house} ${t('house.l', 'дом')} · ${esc(TX.S[h.sign].name)}</span><div class="bar"><i style="width:${Math.max(4, Math.min(100, h.score * 8))}%"></i></div><b class="num">${h.score}</b></div>`).join('')}</div></div>` : ''}
       <div class="grid2">
-        <div class="card stack"><h3>${t('t.asp', 'Все аспекты')}</h3><div class="tbl-wrap"><table class="tbl" style="min-width:0"><tbody>${asp.map((x) => `<tr><td><span class="g">${G[x.a]} ${AG[x.type]} ${G[x.b]}</span> ${esc(ctx.pName(x.a))} — ${esc(ctx.pName(x.b))}</td><td class="mono">${x.orb.toFixed(2)}°</td><td class="tiny">${x.applying == null ? '' : x.applying ? t('applyingS', 'сход.') : t('separatingS', 'расх.')}</td></tr>`).join('')}</tbody></table></div></div>
+        <div class="card stack"><h3>${t('t.asp', 'Все аспекты')}</h3><div class="tbl-wrap"><table class="tbl" style="min-width:0"><tbody>${asp.map((x) => `<tr class="asp-row ${aspCls(x)}"><td><span class="g">${G[x.a]} <span class="ag">${AG[x.type]}</span> ${G[x.b]}</span> ${esc(ctx.pName(x.a))} — ${esc(ctx.pName(x.b))}</td><td class="mono">${x.orb.toFixed(2)}°</td><td class="tiny">${x.applying == null ? '' : x.applying ? t('applyingS', 'сход.') : t('separatingS', 'расх.')}</td></tr>`).join('')}</tbody></table></div></div>
         <div class="card stack"><h3>${t('t.stars', 'Неподвижные звёзды')}</h3>${stars.length ? `<div class="tbl-wrap"><table class="tbl" style="min-width:0"><tbody>${stars.map((s) => `<tr><td>${esc(s.name)}</td><td><span class="g">${G[s.planet]}</span> ${esc(ctx.pName(s.planet))}</td><td class="mono">${s.orb.toFixed(2)}°</td></tr>`).join('')}</tbody></table></div>` : `<p class="muted small">${t('t.noStars', 'Тесных соединений со звёздами нет')}</p>`}</div>
       </div>`;
   }
@@ -99,7 +103,7 @@
       for (const yy of [need, need + 360]) if (yy >= y0 && yy <= y1) sym.push({ directed: dId, natal: nId, type: ({ 0: 'conj', 60: 'sextile', 90: 'square', 120: 'trine', 180: 'opp' })[ang], date: new Date(c.date.getTime() + yy * 365.2422 * DAY) });
     } }
     sym.sort((a, b) => a.date - b.date);
-    const rows = (list) => list.map((e) => `<tr class="${Math.abs(e.date - now) < 183 * DAY ? 'cur' : ''}"><td class="mono">${dmy(e.date)}</td><td><span class="g">${G[e.directed]} ${AG[e.type]} ${G[e.natal]}</span> ${esc(ctx.pName(e.directed))} (${t('dirS', 'дир.')}) — ${esc(ctx.pName(e.natal))}</td></tr>`).join('');
+    const rows = (list) => list.map((e) => `<tr class="asp-row ${aspCls(e)} ${Math.abs(e.date - now) < 183 * DAY ? 'cur' : ''}"><td class="mono">${dmy(e.date)}</td><td><span class="g">${G[e.directed]} <span class="ag">${AG[e.type]}</span> ${G[e.natal]}</span> ${esc(ctx.pName(e.directed))} (${t('dirS', 'дир.')}) — ${esc(ctx.pName(e.natal))}</td></tr>`).join('');
     body.innerHTML = `<div class="grid2"><div class="card stack"><h3>${t('d.arc', 'Солнечная дуга')}</h3><p class="tiny muted">${t('d.arcNow', 'Дуга сейчас: {a}°. Подсвечены дирекции ±полгода от сегодня.', { a: arc.arcNow.toFixed(2) })}</p><div class="tbl-wrap"><table class="tbl" style="min-width:0"><tbody>${rows(arc.events) || `<tr><td>${t('none', 'нет')}</td></tr>`}</tbody></table></div></div>
       <div class="card stack"><h3>${t('d.deg', 'Символические: 1° = 1 год')}</h3><p class="tiny muted">${t('d.degHint', 'Каждая точка сдвигается ровно на градус в год.')}</p><div class="tbl-wrap"><table class="tbl" style="min-width:0"><tbody>${rows(sym) || `<tr><td>${t('none', 'нет')}</td></tr>`}</tbody></table></div></div></div>
       <a class="btn" href="#pro?tab=chart&type=directions">${icon('chart')} ${t('d.wheel', 'Показать на колесе')}</a>`;

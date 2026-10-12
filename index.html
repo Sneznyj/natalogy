@@ -9,9 +9,12 @@
 <meta property="og:title" content="Natalogy — твоя карта как инструкция к себе">
 <meta property="og:description" content="Нажми кнопку — и увидишь баллы своих дней: любовь, деньги, работа, запуски. Без астрологических терминов.">
 <meta property="og:type" content="website">
+<meta property="og:image" content="https://sneznyj.github.io/natalogy/assets/brand/og-1200x630.jpg">
 <meta name="theme-color" content="#FDFAF5">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/icons/favicon.ico" sizes="any">
+<link rel="icon" href="assets/icons/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="assets/icons/favicon-48.png" type="image/png" sizes="48x48">
 <link rel="apple-touch-icon" href="assets/icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,7 +31,21 @@
 .lnav a.lk{color:var(--muted);text-decoration:none;font:600 14px var(--f-ui)}
 .lnav a.lk:hover{color:var(--lav-strong)}
 .lnav .sp{flex:1}
-@media (max-width:860px){.lnav a.lk{display:none}}
+@media (max-width:860px){.lnav a.lk{display:none}.lnav a.lk.lk-hot{display:inline}}
+.lnav a.lk-hot{color:var(--lav-strong);font-weight:800}
+@media (max-width:560px){.lnav .login-lk{display:none}.lnav .langsw{display:none}}
+.horo-band .signs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-top:18px}
+@media (max-width:900px){.horo-band .signs{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:520px){.horo-band .signs{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}}
+.horo-band .sg{display:grid;justify-items:center;gap:4px;padding:14px 6px 12px;border-radius:18px;border:1px solid var(--line);background:var(--surface);text-decoration:none;color:var(--ink);box-shadow:var(--shadow);transition:transform .15s,border-color .15s}
+.horo-band .sg:hover{transform:translateY(-3px);border-color:var(--lav)}
+.horo-band .sg .g{font:400 32px/1 var(--f-glyph);color:var(--lav-strong)}
+.horo-band .sg b{font:700 14.5px/1.1 var(--f-ui)}
+.horo-band .sg small{font:500 11.5px var(--f-mono);color:var(--muted)}
+.horo-band .sg .pt{display:inline-flex;align-items:baseline;gap:2px;font:800 16px var(--f-ui);margin-top:2px}
+.horo-band .sg .pt small{font:600 11px var(--f-ui)}
+.horo-band .sg.me{background:linear-gradient(150deg,#9479D6,#5B3A9E);color:#fff;border-color:transparent}
+.horo-band .sg.me .g{color:#FFE2A8} .horo-band .sg.me small{color:rgba(255,255,255,.8)} .horo-band .sg.me .pt{color:#fff}
 @media (max-width:420px){.lnav .brand{font-size:20px}.lnav .lw{gap:10px}}
 .langsw{appearance:none;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 11px;font:700 12px var(--f-ui);cursor:pointer}
 .hero .lw{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:34px;align-items:center;padding-block:54px 64px}
@@ -96,11 +113,13 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
 <header class="lnav"><div class="lw">
   <a class="brand" href="./"><span class="brand-mark" aria-hidden="true"></span>Natalogy</a>
   <span class="sp"></span>
+  <a class="lk lk-hot" href="app.html#horoscope" data-i="nav.horo">★ Гороскоп</a>
   <a class="lk" href="app.html#calendar" data-i="nav.cal">Календарь</a>
   <a class="lk" href="app.html#chart" data-i="nav.chart">Моя карта</a>
   <a class="lk" href="#pro" data-i="nav.pro">Для профи</a>
   <a class="lk" href="#price" data-i="nav.price">Цены</a>
   <button class="langsw" type="button" id="langsw">EN</button>
+  <a class="btn sm login-lk" href="app.html#login" id="loginLk" data-i="cta.login">Войти</a>
   <a class="btn primary sm" href="app.html#today" id="openLk" data-i="cta.open">Открыть кабинет</a>
 </div></header>
 
@@ -112,7 +131,7 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
       <p class="sub" data-i="hero.sub">Нажми кнопку — и увидишь баллы своих дней от 1 до 10: когда легче с любовью, деньгами, работой и запусками. Без астрологических терминов.</p>
       <div class="cta"><a class="btn primary" href="app.html#calendar" data-i="cta.cal">Мой календарь</a><a class="btn" href="#demo" data-i="cta.demo">Попробовать без регистрации</a></div>
       <div class="welcome" id="welcome"><span class="av" id="wAv">?</span><span id="wTxt"></span><span class="spacer"></span><a class="btn sm primary" href="app.html#today" data-i="w.today">Мой день</a><a class="btn sm" href="app.html#calendar" data-i="w.cal">Календарь</a></div>
-      <p class="note"><svg class="ico sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"/><path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg><span data-i="hero.note">Данные остаются на твоём устройстве. Бесплатно в бета-версии.</span></p>
+      <p class="note"><svg class="ico sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"/><path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg><span data-i="hero.note">Без регистрации: данные остаются на устройстве. Захочешь — войди через Google, Яндекс, VK, Telegram или почту, и карточки сохранятся в аккаунте. Бесплатно в бета-версии.</span></p>
     </div>
     <div class="sky"><div class="wheel-card"><div class="sky-cap"><span class="tag acc" data-i="sky.now">Небо прямо сейчас</span><span id="skyTime" class="mono"></span></div><div class="wheel-box" id="skyWheel"></div>
       <div class="sky-cap"><span class="hint-click" data-i="sky.hint">Наведи на планету — подсказка</span><a class="more" href="app.html#chart?mode=sky" data-i="sky.open">Листать время</a></div></div></div>
@@ -120,6 +139,13 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
 </section>
 
 <main>
+  <section class="sec lw horo-band" id="horoscope">
+    <span class="eyebrow" data-i="horo.eyebrow">Гороскоп</span>
+    <h2 data-i="horo.h2" data-html>Гороскоп на сегодня — <em>для каждого знака</em></h2>
+    <p class="lead" data-i="horo.lead">Цифра — общий балл дня от 1 до 10. Нажми на свой знак: день, завтра, неделя, месяц и год, лучшие часы и что происходит на небе.</p>
+    <div class="signs" id="horoSigns"></div>
+  </section>
+
   <section class="sec lw" id="how">
     <span class="eyebrow" data-i="how.eyebrow">Как это работает</span>
     <h2 data-i="how.h2" data-html>Меньше тумана. <em>Больше ясности</em> о себе.</h2>
@@ -182,7 +208,7 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
       <details><summary data-i="q1">Это гадание?</summary><p data-i="a1">Нет. Это инструмент самопознания и планирования: астрология как язык циклов. Мы не предсказываем судьбу, болезни или события — показываем, какие дни лучше подходят для разных дел.</p></details>
       <details><summary data-i="q6">Что значат баллы от 1 до 10?</summary><p data-i="a6">Это сумма влияний дня на сферу: транзиты к твоей карте, Луна, ретроградные планеты и затмения. 9–10 — отлично, 7–8 — хорошо, 5–6 — ровно, 3–4 — осторожно, 1–2 — сложно. Наведи на день в календаре — увидишь, из чего сложились баллы.</p></details>
       <details><summary data-i="q2">Что если я не знаю время рождения?</summary><p data-i="a2">Можно без него: календарь и большая часть карты будут работать. Не посчитаются дома, Асцендент и часть подсказок. А в «Моей карте» можно перебрать время стрелками и посмотреть, как меняется карта.</p></details>
-      <details><summary data-i="q3">Где хранятся мои данные?</summary><p data-i="a3">Только на твоём устройстве. На сервер уходит лишь вопрос к ИИ — с рассчитанными положениями планет, без имени и города, и только после твоего согласия.</p></details>
+      <details><summary data-i="q3">Где хранятся мои данные?</summary><p data-i="a3">Без входа — только на твоём устройстве. Если войдёшь в аккаунт, карточки копируются на сервер в зашифрованном виде и появляются на других устройствах. На сервер уходит лишь вопрос к ИИ — с рассчитанными положениями планет, без имени и города, и только после твоего согласия.</p></details>
       <details><summary data-i="q4">Насколько точные расчёты?</summary><p data-i="a4">Позиции планет совпадают со Swiss Ephemeris — стандартом профессиональных программ — до угловых секунд. Дома — Плацидус (можно сменить на Кох, Порфирий, равнодомную и по знакам).</p></details>
       <details><summary data-i="q5">Будет ли приложение для iPhone и Android?</summary><p data-i="a5">Да. Уже сейчас сайт можно установить на телефон как приложение: «Поделиться» → «На экран Домой».</p></details>
     </div>
@@ -190,7 +216,7 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
 </main>
 <footer class="foot"><div class="lw cols">
   <div><a class="brand" href="./" style="color:var(--ink)"><span class="brand-mark" aria-hidden="true"></span>Natalogy</a><p style="margin-top:10px" data-i="foot.note">Для самопознания. Не медицинский, юридический или финансовый совет.</p><p style="margin-top:8px">© 2026 Natalogy · <a href="privacy.html" data-i="privacy">Конфиденциальность</a> · <a href="terms.html" data-i="terms">Условия</a></p></div>
-  <div><span class="label" data-i="foot.lk">Кабинет</span><ul><li><a href="app.html#today" data-i="l.today">Сегодня</a></li><li><a href="app.html#calendar" data-i="l.cal">Календарь</a></li><li><a href="app.html#calendar?v=week" data-i="l.week">Неделя по часам</a></li><li><a href="app.html#chart" data-i="l.chart">Моя карта</a></li><li><a href="app.html#pair" data-i="l.pair">Совместимость</a></li><li><a href="app.html#ask" data-i="l.ask">Спросить ИИ</a></li></ul></div>
+  <div><span class="label" data-i="foot.lk">Кабинет</span><ul><li><a href="app.html#horoscope" data-i="l.horo">Гороскоп</a></li><li><a href="app.html#numerology" data-i="l.num">Нумерология</a></li><li><a href="app.html#sky" data-i="l.sky">Небо и Луна</a></li><li><a href="app.html#today" data-i="l.today">Сегодня</a></li><li><a href="app.html#calendar" data-i="l.cal">Календарь</a></li><li><a href="app.html#calendar?v=week" data-i="l.week">Неделя по часам</a></li><li><a href="app.html#chart" data-i="l.chart">Моя карта</a></li><li><a href="app.html#pair" data-i="l.pair">Совместимость</a></li><li><a href="app.html#ask" data-i="l.ask">Спросить ИИ</a></li></ul></div>
   <div><span class="label" data-i="foot.pro">Профи</span><ul><li><a href="app.html#pro?type=transit" data-i="l.tr">Транзиты</a></li><li><a href="app.html#pro?type=solar" data-i="l.sol">Соляр</a></li><li><a href="app.html#pro?type=directions" data-i="l.dir">Дирекции</a></li><li><a href="app.html#pro?tab=firdaria" data-i="l.fird">Фирдарии</a></li><li><a href="app.html#pro?tab=acg" data-i="l.acg">Астрокартография</a></li><li><a href="app.html#people" data-i="l.people">Мои люди</a></li></ul></div>
 </div></footer>
 
@@ -206,6 +232,7 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
 <script src="js/i18n-en.js"></script>
 <script src="js/wheel.js"></script>
 <script src="js/score.js"></script>
+<script src="js/horoscope.js"></script>
 <script src="js/geo.js"></script>
 <script src="js/ui.js"></script>
 <script>
@@ -213,8 +240,9 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
   'use strict';
   const UI = window.NUI, AC = window.AstroCore, NS = window.NScore;
   const EN = {
+    'nav.horo': '★ Horoscope', 'cta.login': 'Sign in', 'horo.eyebrow': 'Horoscope', 'horo.h2': 'Today’s horoscope — <em>for every sign</em>', 'horo.lead': 'The number is the day’s overall score from 1 to 10. Tap your sign: today, tomorrow, week, month and year, best hours and what’s happening in the sky.', 'l.horo': 'Horoscope', 'l.num': 'Numerology', 'l.sky': 'Sky & Moon',
     'nav.cal': 'Calendar', 'nav.chart': 'My chart', 'nav.pro': 'For pros', 'nav.price': 'Pricing', 'cta.open': 'Open the app', 'hero.eyebrow': 'Personal astrology calendar', 'hero.h1': 'Your chart is not a verdict. It’s <em>a guide to yourself</em>.',
-    'hero.sub': 'Press a button and see your days scored from 1 to 10: when love, money, work and launches come easier. No astrology jargon.', 'cta.cal': 'My calendar', 'cta.demo': 'Try it without signing up', 'hero.note': 'Your data stays on your device. Free during the beta.', 'sky.now': 'The sky right now', 'sky.hint': 'Hover a planet for a hint', 'sky.open': 'Scroll through time',
+    'hero.sub': 'Press a button and see your days scored from 1 to 10: when love, money, work and launches come easier. No astrology jargon.', 'cta.cal': 'My calendar', 'cta.demo': 'Try it without signing up', 'hero.note': 'No sign-up needed: your data stays on your device. If you like, sign in with Google, Yandex, VK, Telegram or email to keep your charts in an account. Free during the beta.', 'sky.now': 'The sky right now', 'sky.hint': 'Hover a planet for a hint', 'sky.open': 'Scroll through time',
     'w.today': 'My day', 'w.cal': 'Calendar', open: 'Open',
     'how.eyebrow': 'How it works', 'how.h2': 'Less fog. <em>More clarity</em> about yourself.', 'how.lead': 'The app calculates your chart and the planets’ movement day by day, then translates it into plain language: what will come easily today and where it’s better to wait. Each card below opens a section of the app.',
     'f1.t': 'Today', 'f1.p': 'Seven life areas scored 1–10, events by the hour, the Moon and the best hours to start.', 'f2.t': 'Calendar', 'f2.p': 'Month and week with scores: pick an activity — a date, a contract, a purchase — and see the best days at once.',
@@ -231,7 +259,7 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
     'plan.pro': 'Pro · soon', 'plan.proP': 'Free during the beta', 'plan.proS': 'The subscription arrives in December. Terms and auto-renewal on a separate page; cancel in one click.', 'pp.1': 'All pro tools', 'pp.2': 'More AI questions', 'pp.3': 'Year forecast: solar return, directions, firdaria', 'pp.4': 'Astrocartography with cities', 'plan.goPro': 'Open pro mode',
     'faq.eyebrow': 'Questions', 'faq.h2': 'FAQ', q1: 'Is this fortune telling?', a1: 'No. It’s a tool for self-reflection and planning: astrology as a language of cycles. We don’t predict fate, illness or events — we show which days suit different things better.',
     q6: 'What do the 1–10 scores mean?', a6: 'They add up the day’s influences on an area: transits to your chart, the Moon, retrograde planets and eclipses. 9–10 great, 7–8 good, 5–6 steady, 3–4 careful, 1–2 hard. Hover a day in the calendar to see what made the score.',
-    q2: 'What if I don’t know my birth time?', a2: 'That’s fine: the calendar and most of the chart still work. Houses, the Ascendant and some tips won’t be calculated. In “My chart” you can step through times and watch the chart change.', q3: 'Where is my data stored?', a3: 'Only on your device. Only a question to the AI goes to the server — with calculated planet positions, without your name or city, and only after you agree.',
+    q2: 'What if I don’t know my birth time?', a2: 'That’s fine: the calendar and most of the chart still work. Houses, the Ascendant and some tips won’t be calculated. In “My chart” you can step through times and watch the chart change.', q3: 'Where is my data stored?', a3: 'Without signing in — only on your device. If you sign in, your charts are copied to the server encrypted and appear on your other devices. Only a question to the AI goes to the server — with calculated planet positions, without your name or city, and only after you agree.',
     q4: 'How accurate are the calculations?', a4: 'Planet positions match Swiss Ephemeris — the standard of professional software — to arc seconds. Houses: Placidus (switchable to Koch, Porphyry, Equal and Whole sign).', q5: 'Will there be iPhone and Android apps?', a5: 'Yes. You can already install the site on your phone as an app: Share → Add to Home Screen.',
     privacy: 'Privacy', terms: 'Terms', 'foot.note': 'For self-reflection. Not medical, legal or financial advice.', 'foot.lk': 'App', 'foot.pro': 'Pro',
     'l.today': 'Today', 'l.cal': 'Calendar', 'l.week': 'Week by the hour', 'l.chart': 'My chart', 'l.pair': 'Compatibility', 'l.ask': 'Ask the AI', 'l.tr': 'Transits', 'l.sol': 'Solar return', 'l.dir': 'Directions', 'l.fird': 'Firdaria', 'l.acg': 'Astrocartography', 'l.people': 'My people',
@@ -267,7 +295,19 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
   document.getElementById('miniSph').innerHTML = Object.entries(demoPts).map(([k, p]) => `<div><span>${TX.SPH[k].name}</span>${UI.pbar({ pts: p, level: lvOf(p) })}${UI.ptsBadge({ pts: p, level: lvOf(p) }, true)}</div>`).join('');
   const seq = [6, 7, 9, 8, 5, 4, 6, 7, 8, 6, 2, 3, 5, 9, 7, 6, 5, 4, 8, 9, 7, 6, 3, 5, 8, 6, 7, 9];
   document.getElementById('miniCal').innerHTML = seq.map((p) => `<i class="f-${UI.lvCls(lvOf(p))}">${p}</i>`).join('');
-  const TOOLS = [['☉', 'Натал', 'Natal', 'pro?type=natal'], ['♃', 'Транзиты', 'Transits', 'pro?type=transit'], ['☉', 'Соляр', 'Solar return', 'pro?type=solar'], ['☽', 'Лунар', 'Lunar return', 'pro?type=lunar'], ['♄', 'Дирекции', 'Directions', 'pro?type=directions'], ['☽', 'Прогрессии', 'Progressions', 'pro?type=progressions'], ['☿', 'Хорар', 'Horary', 'pro?type=horary'], ['♀', 'Синастрия', 'Synastry', 'pro?type=synastry'], ['♀', 'Композит', 'Composite', 'pro?type=composite'], ['♄', 'Фирдарии', 'Firdaria', 'pro?tab=firdaria'], ['♂', 'Астрокартография', 'Astrocartography', 'pro?tab=acg'], ['♇', 'Транзиты по неделям', 'Transits by week', 'pro?tab=dynamics'], ['☊', 'Диспозиторы и таблицы', 'Dispositors & tables', 'pro?tab=tables'], ['☽', 'Луна без курса', 'Void of course Moon', 'pro?tab=moon'], ['♅', 'Ретроградные периоды', 'Retrograde periods', 'pro?tab=retro'], ['△', 'Две карты рядом', 'Two charts side by side', 'pro?tab=split'], ['☉', 'Ректификация · VIP', 'Rectification · VIP', 'rectify']];
+  const TOOLS = [['★', 'Гороскоп по знаку', 'Horoscope by sign', 'horoscope'], ['9', 'Нумерология', 'Numerology', 'numerology'], ['☽', 'Лунный календарь и события неба', 'Moon calendar & sky events', 'sky'], ['☉', 'Натал', 'Natal', 'pro?type=natal'], ['♃', 'Транзиты', 'Transits', 'pro?type=transit'], ['☉', 'Соляр', 'Solar return', 'pro?type=solar'], ['☽', 'Лунар', 'Lunar return', 'pro?type=lunar'], ['♄', 'Дирекции', 'Directions', 'pro?type=directions'], ['☽', 'Прогрессии', 'Progressions', 'pro?type=progressions'], ['☿', 'Хорар', 'Horary', 'pro?type=horary'], ['♀', 'Синастрия', 'Synastry', 'pro?type=synastry'], ['♀', 'Композит', 'Composite', 'pro?type=composite'], ['♄', 'Фирдарии', 'Firdaria', 'pro?tab=firdaria'], ['♂', 'Астрокартография', 'Astrocartography', 'pro?tab=acg'], ['♇', 'Транзиты по неделям', 'Transits by week', 'pro?tab=dynamics'], ['☊', 'Диспозиторы и таблицы', 'Dispositors & tables', 'pro?tab=tables'], ['☽', 'Луна без курса', 'Void of course Moon', 'pro?tab=moon'], ['♅', 'Ретроградные периоды', 'Retrograde periods', 'pro?tab=retro'], ['△', 'Две карты рядом', 'Two charts side by side', 'pro?tab=split'], ['☉', 'Ректификация · VIP', 'Rectification · VIP', 'rectify']];
+  // гороскоп на сегодня: общий балл дня для каждого знака (свой знак выделен), нажатие — раздел «Гороскоп»
+  try {
+    const H = window.NHoro, here = UI.here(), today = UI.todayIn(here.tz);
+    const st = NS.dayStarts(today.y, today.mo, today.d, 1, here.tz)[0].start;
+    let voc = []; try { voc = AC.voidOfCourse(new Date(+st - 864e5), new Date(+st + 2 * 864e5)); } catch (e) { voc = []; }
+    const me = window.NStore.active(); let mySign = null; try { mySign = me ? AC.signOf(UI.chartOf(me).byId.sun.lon) : null; } catch (e) { mySign = null; }
+    const DATES = ['21.03–19.04', '20.04–20.05', '21.05–20.06', '21.06–22.07', '23.07–22.08', '23.08–22.09', '23.09–22.10', '23.10–21.11', '22.11–21.12', '22.12–19.01', '20.01–18.02', '19.02–20.03'];
+    const TX = UI.TX();
+    document.getElementById('horoSigns').innerHTML = AC.SIGNS.map((s, i) => { const r = H.scoreDay(i, st, { voc }).r.overall; return `<a class="sg${s === mySign ? ' me' : ''}" href="app.html#horoscope?sign=${s}"><span class="g">${window.NWheel.SIGN_G[i]}︎</span><b>${TX.S[s].name}</b><small>${DATES[i]}</small><span class="pt pts ${UI.lvCls(r.level)}">${r.pts}<small>/10</small></span></a>`; }).join('');
+  } catch (e) { console.error(e); }
+  // уже вошёл в аккаунт — кнопка «Войти» не нужна
+  try { if (JSON.parse(localStorage.getItem('natalogy:acct') || '{}').token) document.getElementById('loginLk').hidden = true; } catch (e) { /* пусто */ }
   document.getElementById('tools').innerHTML = TOOLS.map(([g, r, e, h]) => `<a href="app.html#${h}"><b>${g}︎</b>${lang === 'en' ? e : r}</a>`).join('');
   // демо
   const dd = document.getElementById('dd');
