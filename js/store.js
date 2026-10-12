@@ -4,7 +4,7 @@
   'use strict';
   const KEY = 'natalogy:v1';
   let mem = null;
-  const empty = () => ({ people: [], activeId: null, settings: { lang: null, theme: 'system', houseSystem: 'placidus', here: null, aiConsent: false, mode: 'simple', orbs: 1 }, saved: [], ask: { day: '', used: 0 }, deviceId: null });
+  const empty = () => ({ people: [], activeId: null, settings: { lang: null, theme: 'system', textSize: 'l', houseSystem: 'placidus', here: null, aiConsent: false, mode: 'simple', orbs: 1 }, saved: [], ask: { day: '', used: 0 }, deviceId: null });
   function load() {
     if (mem) return mem;
     try { const raw = localStorage.getItem(KEY); mem = raw ? Object.assign(empty(), JSON.parse(raw)) : empty(); } catch (e) { mem = empty(); }

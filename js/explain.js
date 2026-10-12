@@ -46,7 +46,7 @@
     if (e.orb != null) when.push([t('orb', 'орбис'), `${e.orb.toFixed(2)}°${e.applying != null ? (e.applying ? ' ↗' : ' ↘') : ''}`]);
     const html = `<div class="stack s18 trx">
       <div class="trx-head"><span class="trx-g ${tn}">${g}</span><div class="stack s6" style="min-width:0"><b class="trx-t">${esc(phrase(e.T, e.N, e.type))}</b><span class="small muted">${esc(cap(an))} · ${pg(e.T)} ${esc(tp.name)} → ${pg(e.N)} ${esc(np.name)}</span>
-        ${when.length ? `<div class="tags">${when.map(([k, v]) => `<span class="tag plain">${esc(k)}: <b class="mono" style="font-size:12px">${esc(v)}</b></span>`).join('')}</div>` : ''}</div></div>
+        ${when.length ? `<div class="tags">${when.map(([k, v]) => `<span class="tag plain">${esc(k)}: <b class="mono" style="font-size:calc(12px*var(--fz))">${esc(v)}</b></span>`).join('')}</div>` : ''}</div></div>
       <div class="trx-sum ${tn}"><span class="label">${t('trx.sum', 'Что это значит')}</span><p><b>${esc(cap(combo))}</b>${np.area ? ` — ${esc(t('trx.inTheme', 'в теме «{a}»', { a: np.area }))}` : ''}.</p><div class="todo">${esc(gend(X.advice[tn === 'conj' ? 'conj' : tn]))}</div></div>
       <div class="grid2">
         <div class="card soft stack s6"><span class="label">${pg(e.T)} ${esc(tp.name)}</span><p class="small">${esc(X.planet[e.T] || '')}</p></div>

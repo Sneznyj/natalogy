@@ -18,9 +18,9 @@
     body.innerHTML = `
       <div class="grid2">
         <div class="card stack"><h3>${t('t.disp', 'Цепочки диспозиторов')}</h3><p class="tiny muted">${t('t.dispHint', 'Кто кем управляет: планета → управитель её знака. Современные управители.')}</p>
-          <div class="stack" style="gap:6px">${disp.chains.map((ch) => `<div style="font:400 16px var(--f-glyph)">${chain(ch)}</div>`).join('')}</div>
+          <div class="stack" style="gap:6px">${disp.chains.map((ch) => `<div style="font:400 calc(16px*var(--fz)) var(--f-glyph)">${chain(ch)}</div>`).join('')}</div>
           <p class="small">${disp.final ? t('t.final', 'Конечный диспозитор: {p} — главная планета карты', { p: ctx.pName(disp.final) }) : t('t.noFinal', 'Единого конечного диспозитора нет')}${disp.loops.length ? ' · ' + t('t.loops', 'петли: {l}', { l: disp.loops.map((l) => l.map((x) => G[x]).join('↔')).join(', ') }) : ''}${disp.self.length ? ' · ' + t('t.self', 'в своём знаке: {l}', { l: disp.self.map((x) => G[x]).join(' ') }) : ''}</p>
-          <details><summary class="small">${t('t.trad', 'По традиционным управителям')}</summary><div class="stack" style="gap:6px;margin-top:8px">${dt.chains.map((ch) => `<div style="font:400 16px var(--f-glyph)">${chain(ch)}</div>`).join('')}</div></details></div>
+          <details><summary class="small">${t('t.trad', 'По традиционным управителям')}</summary><div class="stack" style="gap:6px;margin-top:8px">${dt.chains.map((ch) => `<div style="font:400 calc(16px*var(--fz)) var(--f-glyph)">${chain(ch)}</div>`).join('')}</div></details></div>
         <div class="card stack"><h3>${t('t.shape', 'Фигуры и форма карты')}</h3>
           <p class="small">${t('t.jones', 'Форма по Джонсу')}: <b>${esc((TX.shapes || {})[shape.shape] || shape.shape)}</b></p>
           ${pats.length ? `<div class="items">${pats.map((x) => `<div class="item"><span class="gl">✶</span><div><h4>${esc(TX.patterns[x.type] || x.type)}</h4><p>${x.planets.map((id) => G[id] + ' ' + ctx.pName(id)).join(', ')}${x.apex ? ' · ' + t('apex', 'вершина') + ': ' + ctx.pName(x.apex) : ''}</p></div></div>`).join('')}</div>` : `<p class="muted small">${t('t.noPat', 'Больших фигур нет')}</p>`}

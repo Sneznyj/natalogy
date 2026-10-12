@@ -1,6 +1,8 @@
-/* «Моя карта»: колесо как в Sotis/Chronos (белый круг, градусы, значки аспектов) с перемоткой дней и часов,
-   три режима — натал, натал + транзиты, небо на момент; справа — положения планет; ниже — главное о себе
-   и подробные разборы, свёрнутые в аккордеоны. */
+/* «Моя карта»: колесо как в Sotis/Chronos (белый круг, градусы, значки аспектов) — крупное, почти на всю область
+   (страница шире обычной, колесо по высоте экрана и стоит на месте при прокрутке). Колесо крутится мышью: зажать круг
+   и вести по кругу или колёсико над кругом — время идёт выбранным шагом (UI.wheelScrub).
+   Три режима — натал, натал + транзиты, небо на момент; справа — машина времени, динамика, транзиты и положения;
+   ниже — главное о себе и подробные разборы, свёрнутые в аккордеоны. */
 (function (root) {
   'use strict';
   const UI = root.NUI, AC = root.AstroCore, W = root.NWheel;
@@ -41,6 +43,7 @@
     if (!p) { location.hash = '#onboard'; return; }
     if (params.mode && ['natal', 'transit', 'sky'].includes(params.mode)) st.mode = params.mode;
     const TX = UI.TX(), here = UI.here();
+    const hover = !!(window.matchMedia && window.matchMedia('(hover: hover)').matches);
     const place = p.place ? (UI.lang() === 'en' ? p.place.nameEn || p.place.name : p.place.name) : '';
     el.innerHTML = `
       <div class="sec-head"><span class="eyebrow">${t('chart.eyebrow', 'Натальная карта')}</span><h1>${esc(p.name)}</h1>
@@ -52,11 +55,16 @@
         <div class="wheel-card">
           <div id="wInfo" class="row sb small" style="gap:8px"></div>
           <div class="wheel-box" id="wBox"></div>
-          <div id="tbSlot"></div>
-          <div id="rectSlot"></div>
-          <div class="wheel-legend"><span><i style="background:var(--w-soft)"></i>${t('wl.soft', 'гармония (трин, секстиль)')}</span><span><i style="background:var(--w-hard)"></i>${t('wl.hard', 'напряжение (квадрат, оппозиция)')}</span><span><i style="background:var(--w-conj)"></i>${t('wl.conj', 'соединение')}</span><span class="hint-click">${icon('info', 'xs')} ${window.matchMedia && window.matchMedia('(hover: hover)').matches ? t('wl.tap', 'наведи или нажми на планету') : t('wl.tapTouch', 'нажми на планету — подробности')}</span></div>
+          <div class="wheel-legend"><span><i style="background:var(--w-soft)"></i>${t('wl.soft', 'гармония (трин, секстиль)')}</span><span><i style="background:var(--w-hard)"></i>${t('wl.hard', 'напряжение (квадрат, оппозиция)')}</span><span><i style="background:var(--w-conj)"></i>${t('wl.conj', 'соединение')}</span><span class="hint-click">${icon('info', 'xs')} ${hover ? t('wl.tap', 'наведи или нажми на планету') : t('wl.tapTouch', 'нажми на планету — подробности')}</span></div>
         </div>
-        <aside class="card stack" id="posBox"></aside>
+        <div class="chart-side">
+          <section class="tb-card" aria-labelledby="tbLabel">
+            <div class="tb-card-h"><span class="label" id="tbLabel"></span>${hover ? `<span class="hint-click">${icon('refresh', 'xs')} ${t('chart.spinHint', 'Колесо можно крутить: зажми круг мышью и веди по кругу или крути колёсико над ним')}</span>` : ''}</div>
+            <div id="tbSlot"></div>
+            <div id="rectSlot"></div>
+          </section>
+          <aside class="card stack" id="posBox"></aside>
+        </div>
       </div>
       <div id="portrait" class="stack s18"></div>
       <p class="tiny muted">${t('chart.note', 'Карта — не приговор, а инструкция к себе. Тексты — ориентир для самопознания, а не предсказание судьбы.')}</p>`;
@@ -125,6 +133,8 @@
     };
     const mountBar = () => {
       const slot = el.querySelector('#tbSlot'); if (tb && tb.stop) tb.stop();
+      const lab = el.querySelector('#tbLabel');
+      if (lab) lab.textContent = st.mode === 'natal' ? t('chart.tbNatal', 'Время рождения — сдвинь, чтобы проверить') : st.mode === 'sky' ? t('chart.tbSky', 'Небо на дату и время') : t('chart.tbTr', 'Транзиты на дату и время');
       if (st.mode === 'natal') {
         const bar = UI.timebar({ date: st.over[p.id] || birthDate(p), tz: p.place.tz, nowLabel: t('tb.reset', 'Как в профиле'), reset: () => birthDate(p), play: false, dayRange: 30 });
         slot.innerHTML = bar.html;
@@ -139,6 +149,8 @@
     el.addEventListener('natalogy:jump', (e) => jumpTo(e.detail));
     el.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { st.mode = b.dataset.mode; el.querySelectorAll('[data-mode]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); setHint(); mountBar(); drawWheel(); if (st.mode === 'natal') drawPortrait(el, p, natalFor(p)); }));
     setHint(); mountBar(); drawWheel();
+    // крутить колесо мышью: время идёт тем шагом, что выбран в машине времени
+    UI.wheelScrub(el.querySelector('#wBox'), () => tb);
     if (st.mode !== 'natal') drawPortrait(el, p, natalFor(p));
   }
 
@@ -237,7 +249,7 @@
       const inPts = natal.points.filter((x) => !['fortune', 'lilith'].includes(x.id)).concat(natal.houses ? [{ id: 'asc', lon: natal.houses.asc }, { id: 'mc', lon: natal.houses.mc }] : []);
       const asp = AC.aspectsBetween(inPts, [b], { orbMult: 0.6 }).filter((a) => MAJOR.includes(a.type)).sort((a, c) => a.orb - c.orb);
       const h = natal.houses ? AC.houseOf(b.lon, natal.houses.cusps) : null;
-      UI.sheet(`<div class="stack s18"><div class="row"><span class="g" style="font-size:34px;color:var(--w-planet2)">${pg(id)}</span><div><b>${esc(T.P[id].name)} ${esc(T.S[b.sign].in)}</b><p class="small muted">${fmtLon(b.lon)} ${sg(b.lon)}${b.retro ? ' · ' + t('retro', 'ретроградный') : ''}${h ? ' · ' + t('pl.inYourHouse', 'в твоём {n} доме', { n: h }) : ''}</p></div></div>
+      UI.sheet(`<div class="stack s18"><div class="row"><span class="g" style="font-size:calc(34px*var(--fz));color:var(--w-planet2)">${pg(id)}</span><div><b>${esc(T.P[id].name)} ${esc(T.S[b.sign].in)}</b><p class="small muted">${fmtLon(b.lon)} ${sg(b.lon)}${b.retro ? ' · ' + t('retro', 'ретроградный') : ''}${h ? ' · ' + t('pl.inYourHouse', 'в твоём {n} доме', { n: h }) : ''}</p></div></div>
         ${h ? `<div class="card soft small">${esc(t('pl.trHouse', 'Пока {p} идёт по твоему {n} дому, его темы — {a}.', { p: T.P[id].name, n: h, a: T.H[h].area }))}</div>` : ''}
         <div class="stack s6"><span class="label">${t('pl.trAsp', 'Аспекты к твоей карте')}</span>${asp.length ? asp.map((a) => { const e = { kind: 'transit', T: id, N: a.a, type: a.type, v: root.NScore.nature(id, a.type) }; const x = T.evText(e, UI.here().tz); return `<div class="ev" style="grid-template-columns:62px minmax(0,1fr)"><span class="gly ${e.v > 0 ? 'ok' : 'bad'}">${pg(id)}${W.ASP_G[a.type]}${VS}${pg(a.a)}</span><div><b>${esc(x.title)}</b><p>${esc(x.text)} ${t('orb', 'орбис')} ${a.orb.toFixed(1)}°</p></div></div>`; }).join('') : `<p class="muted small">${t('pos.noAsp', 'Точных аспектов нет')}</p>`}</div></div>`, { title: T.P[id].name, eyebrow: t('transit', 'транзит') });
       return;
@@ -250,7 +262,7 @@
     else text = `${T.P[id].area[0].toUpperCase() + T.P[id].area.slice(1)} — ${T.S[sign].style}.`;
     const asp = natal.aspects.filter((a) => (a.a === id || a.b === id) && MAJOR.includes(a.type)).sort((a, c) => a.orb - c.orb);
     const pairText = (a, c, soft) => { const x = T.pairs && T.pairs[[a, c].sort().join('|')]; return x ? (soft ? x.s : x.h) : (T.pairGeneric ? T.pairGeneric(a, c, soft) : ''); };
-    UI.sheet(`<div class="stack s18"><div class="row"><span class="g" style="font-size:34px;color:var(--lav-strong)">${pg(id)}</span><div><b>${esc(T.P[id].name)} ${esc(T.S[sign].in)}${b.house ? ' · ' + t('pl.house', '{n} дом', { n: b.house }) : ''}</b><p class="small muted">${fmtLon(b.lon)} ${sg(b.lon)}${b.retro ? ' · ' + t('retro', 'ретроградный') : ''}${b.dignity && T.dignity ? ' · ' + esc(T.dignity[b.dignity].split(' — ')[0]) : ''}</p></div></div>
+    UI.sheet(`<div class="stack s18"><div class="row"><span class="g" style="font-size:calc(34px*var(--fz));color:var(--lav-strong)">${pg(id)}</span><div><b>${esc(T.P[id].name)} ${esc(T.S[sign].in)}${b.house ? ' · ' + t('pl.house', '{n} дом', { n: b.house }) : ''}</b><p class="small muted">${fmtLon(b.lon)} ${sg(b.lon)}${b.retro ? ' · ' + t('retro', 'ретроградный') : ''}${b.dignity && T.dignity ? ' · ' + esc(T.dignity[b.dignity].split(' — ')[0]) : ''}</p></div></div>
       <div class="card soft stack s6"><span class="label">${esc(T.P[id].short || '')}</span><p>${esc(T.gend(text, p.gender))}</p>${b.house ? `<p class="small muted">${esc(t('pl.houseTxt', 'В {n} доме: {w}.', { n: b.house, w: T.H[b.house].where }))}</p>` : ''}</div>
       ${asp.length ? `<div class="stack s6"><span class="label">${t('pl.asp', 'Связи с другими планетами')}</span>${asp.map((a) => { const o = a.a === id ? a.b : a.a; const soft = a.nature === 'soft' || (a.type === 'conj' && ['venus', 'jupiter', 'sun', 'moon', 'mercury'].includes(o)); return `<div class="ev" style="grid-template-columns:62px minmax(0,1fr)"><span class="gly ${a.type === 'conj' ? 'acc' : soft ? 'ok' : 'bad'}">${pg(id)}${W.ASP_G[a.type]}${VS}${pg(o)}</span><div><b>${esc(T.P[id].name)} ${W.ASP_G[a.type]}${VS} ${esc((T.P[o] || {}).name || o)}</b><p>${esc(T.gend(pairText(id, o, soft) || '', p.gender))}</p><div class="ctx">${esc(T.ASP[a.type] ? T.ASP[a.type].name : a.type)}, ${t('orb', 'орбис')} ${a.orb.toFixed(1)}°</div></div></div>`; }).join('')}</div>` : ''}
       <a class="btn" href="#ask?topic=natal">${icon('ask')} ${t('chart.ask', 'Спросить о карте')}</a></div>`, { title: T.P[id].name, eyebrow: p.name });
@@ -266,7 +278,7 @@
     const itemsHTML = (items) => `<div class="items">${items.map((i) => `<div class="item ${i.tone || ''}"><span class="gl">${esc(i.glyph || '•')}</span><div><h4>${esc(i.title)}</h4><p>${esc(i.text)}</p>${i.why ? `<div class="why">${esc(i.why)}</div>` : ''}</div></div>`).join('')}</div>`;
     box.innerHTML = `
       <section class="card pad-lg stack s18"><div class="row sb"><h2>${t('chart.main', 'Главное о тебе')}</h2><span class="tag gold">${t('chart.big3', 'Солнце · Луна · Асцендент')}</span></div>
-        <div class="grid3">${big.items.map((i) => `<div class="b3" style="grid-template-columns:52px minmax(0,1fr)"><span class="gl">${i.glyph === 'AC' ? '<span style="font:800 14px var(--f-ui)">AC</span>' : esc(i.glyph)}<small>${esc(i.sign)}</small></span><div class="stack s6"><span class="label">${esc(i.label)}</span><b>${esc(i.title)}</b><p>${esc(i.text)}</p><div class="todo">${esc(i.todo)}</div></div></div>`).join('')}</div></section>
+        <div class="grid3">${big.items.map((i) => `<div class="b3" style="grid-template-columns:52px minmax(0,1fr)"><span class="gl">${i.glyph === 'AC' ? '<span style="font:800 calc(14px*var(--fz)) var(--f-ui)">AC</span>' : esc(i.glyph)}<small>${esc(i.sign)}</small></span><div class="stack s6"><span class="label">${esc(i.label)}</span><b>${esc(i.title)}</b><p>${esc(i.text)}</p><div class="todo">${esc(i.todo)}</div></div></div>`).join('')}</div></section>
       <div class="stack" style="gap:10px">
         <div class="row sb"><h2>${t('chart.more', 'Подробные разборы')}</h2><span class="hint-click">${icon('info', 'xs')} ${t('chart.moreHint', 'нажми на раздел, чтобы раскрыть')}</span></div>
         ${big.items.length ? UI.acc({ title: t('chart.growth', 'Над чем работать'), sub: big.items.map((i) => i.label).join(' · '), icon: '☉︎', body: `<div class="items">${big.items.map((i) => `<div class="item minus"><span class="gl">${i.glyph === 'AC' ? 'AC' : esc(i.glyph)}</span><div><h4>${esc(i.label)}</h4><p>${esc(i.minus)}</p><div class="why">${esc(i.why)}</div></div></div>`).join('')}</div>` }) : ''}

@@ -32,7 +32,7 @@
     const strong = NS.SPHERES.map((s) => ({ s, b: NS.bestBy(next, s, 1)[0] }));
     const big = [['sun', natal.byId.sun], ['moon', natal.byId.moon]].concat(natal.byId.asc ? [['asc', natal.byId.asc]] : []);
     return `<div class="card stack"><div class="row sb"><span class="label">${t('ask.now', 'Твой день сейчас')}</span><a class="more" href="#today">${t('open', 'Открыть')}</a></div>
-        <div class="dp-head">${UI.ringPts(d0.overall, 64)}<div class="stack s6"><b style="font:600 22px/1.1 var(--f-display)">${esc(TX.dayTitle(d0))}</b><span class="small muted">${esc(TX.headline(d0))}</span></div></div>${mini}</div>
+        <div class="dp-head">${UI.ringPts(d0.overall, 64)}<div class="stack s6"><b style="font:600 calc(22px*var(--fz))/1.1 var(--f-display)">${esc(TX.dayTitle(d0))}</b><span class="small muted">${esc(TX.headline(d0))}</span></div></div>${mini}</div>
       <div class="card stack"><span class="label">${t('ask.strong', 'Сильные дни на 2 недели')}</span>
         ${strong.map(({ s, b }) => `<a class="pos" style="grid-template-columns:22px minmax(0,1fr) auto auto;text-decoration:none;color:inherit" href="#calendar?s=${s}&d=${ymd(b.day)}"><span style="color:var(--lav-strong)">${icon(root.NDay.SPH_ICON[s], 'sm')}</span><span class="small">${esc(TX.SPH[s].name)}</span><span class="dg">${esc(TX.monthDay(b.day.d, b.day.mo))}</span>${UI.ptsBadge(b.r, true)}</a>`).join('')}</div>
       <div class="card stack"><div class="row sb"><span class="label">${t('ask.chart', 'Коротко о карте')}</span><a class="more" href="#chart">${t('open', 'Открыть')}</a></div>

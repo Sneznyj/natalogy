@@ -42,7 +42,7 @@
   function people(el) {
     const list = root.NStore.people(), act = root.NStore.active();
     el.innerHTML = `<div class="sec-head"><span class="eyebrow">${t('people.eyebrow', 'Мои люди')}</span><h1>${t('people.title', 'Чьи карты смотрим')}</h1><p>${t('people.p', 'Добавь себя, партнёра, детей, друзей и коллег — для каждого свой календарь и совместимость.')}</p></div>
-      <div class="card"><div class="items">${list.map((p) => `<div class="item"><span class="gl" style="background:var(--night);color:#FFD8A6;font:600 15px var(--f-ui)">${esc(UI.initials(p.name))}</span><div class="row sb"><div><h4>${esc(p.name)}${act && act.id === p.id ? ` <span class="lv lv-1">${t('people.active', 'сейчас')}</span>` : ''}</h4><p class="small">${esc(UI.fmtDate(p.y, p.mo, p.d))}${p.timeKnown !== false ? ', ' + UI.pad(p.h) + ':' + UI.pad(p.mi) : ''} · ${esc(p.place ? p.place.name : '')}</p></div>
+      <div class="card"><div class="items">${list.map((p) => `<div class="item"><span class="gl" style="background:var(--night);color:#FFD8A6;font:600 calc(15px*var(--fz)) var(--f-ui)">${esc(UI.initials(p.name))}</span><div class="row sb"><div><h4>${esc(p.name)}${act && act.id === p.id ? ` <span class="lv lv-1">${t('people.active', 'сейчас')}</span>` : ''}</h4><p class="small">${esc(UI.fmtDate(p.y, p.mo, p.d))}${p.timeKnown !== false ? ', ' + UI.pad(p.h) + ':' + UI.pad(p.mi) : ''} · ${esc(p.place ? p.place.name : '')}</p></div>
         <div class="row">${act && act.id === p.id ? '' : `<button class="btn sm" data-act="${p.id}">${t('people.choose', 'Выбрать')}</button>`}<button class="iconbtn" data-edit="${p.id}" aria-label="${t('edit', 'Изменить')}">${icon('edit')}</button><button class="iconbtn" data-del="${p.id}" aria-label="${t('delete', 'Удалить')}">${icon('trash')}</button></div></div></div>`).join('')}</div></div>
       <button class="btn primary" data-add>${icon('plus')} ${t('people.add', 'Добавить человека')}</button>`;
     el.querySelector('[data-add]').addEventListener('click', () => editPerson(null, () => people(el)));
@@ -63,6 +63,7 @@
       <div class="card stack">
         <div class="field"><span class="lbl">${t('set.lang', 'Язык')}</span><div class="seg"><button data-lang="ru" aria-pressed="${UI.lang() === 'ru'}">Русский</button><button data-lang="en" aria-pressed="${UI.lang() === 'en'}">English</button></div></div>
         <div class="field"><span class="lbl">${t('set.theme', 'Тема')}</span><div class="seg"><button data-th="system" aria-pressed="${S.theme === 'system'}">${t('set.auto', 'Как в системе')}</button><button data-th="light" aria-pressed="${S.theme === 'light'}">${t('set.light', 'Светлая')}</button><button data-th="dark" aria-pressed="${S.theme === 'dark'}">${t('set.dark', 'Тёмная')}</button></div></div>
+        <div class="field"><span class="lbl">${t('set.fz', 'Размер текста')}</span><div class="seg fz-seg">${[['m', t('fz.m', 'Обычный')], ['l', t('fz.l', 'Крупный')], ['xl', t('fz.xl', 'Очень крупный')]].map(([k, n]) => `<button data-fz="${k}" aria-pressed="${(S.textSize || 'l') === k}">${n}</button>`).join('')}</div><span class="hint">${t('set.fzHint', 'Можно менять и кнопкой «Aa» в шапке.')}</span></div>
         <div class="field ac"><label for="here">${t('set.here', 'Где я сейчас')}</label><input class="input" id="here" autocomplete="off"><span class="hint">${t('set.hereHint', 'От этого зависят границы суток, Луна без курса и лучшие часы. Сейчас: {tz}', { tz: here.tz })}</span></div>
         <div class="field"><label for="hs2">${t('set.hs', 'Система домов')}</label><select class="select" id="hs2">${Object.entries(TX.houseSystems || { placidus: 'Placidus' }).map(([k, v]) => `<option value="${k}" ${S.houseSystem === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
       </div>
@@ -73,6 +74,7 @@
         <div class="row tiny"><a href="privacy.html">${t('privacy', 'Конфиденциальность')}</a> · <a href="terms.html">${t('terms', 'Условия')}</a> · <span class="muted">${esc(root.NCONFIG.brand)} ${esc(root.NCONFIG.version)}</span></div>
       </div>`;
     el.querySelectorAll('[data-lang]').forEach((b) => b.addEventListener('click', () => { root.NStore.set('lang', b.dataset.lang); location.reload(); }));
+    el.querySelectorAll('[data-fz]').forEach((b) => b.addEventListener('click', () => { root.NStore.set('textSize', b.dataset.fz); root.NApp.applySize(); settings(el); }));
     el.querySelectorAll('[data-th]').forEach((b) => b.addEventListener('click', () => { root.NStore.set('theme', b.dataset.th); root.NApp.applyTheme(); settings(el); }));
     UI.bindCity(el.querySelector('.ac'), (c) => { if (c) { root.NStore.set('here', c); UI.toast(t('set.hereSaved', 'Теперь считаю для: {c}', { c: c.name })); } }, S.here || null);
     el.querySelector('#hs2').addEventListener('change', (e) => root.NStore.set('houseSystem', e.target.value));

@@ -175,7 +175,8 @@
       drawWheel(dt);
       const bar = UI.timebar({ date: dt, tz: p.place.tz, play: false, dayRange: 1, nowLabel: t('rect.toPeak', 'К выбранному'), reset: () => dt });
       const tb = slot.querySelector('[data-rtb]'); tb.innerHTML = bar.html;
-      bar.bind(tb, (d) => drawWheel(d));
+      const api = bar.bind(tb, (d) => drawWheel(d));
+      UI.wheelScrub(slot.querySelector('[data-rwheel]'), () => api);
       slot.querySelector('[data-rapply]').addEventListener('click', () => {
         root.NStore.upsertPerson(Object.assign({}, root.NStore.person(p.id), { h: ex.h, mi: ex.mi, timeKnown: true }));
         UI.toast(t('rect.applied', 'Время {t} сохранено в профиль', { t: hm(min) }));

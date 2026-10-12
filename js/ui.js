@@ -248,8 +248,8 @@
   /**
    * Машина времени для любого колеса: дату и время можно напечатать цифрами (с секундами), открыть календарь,
    * листать колёсиком мыши или ↑↓ число под курсором, шагать ‹ › на секунду/минуту/час/день/месяц/год (зажать — быстро),
-   * ползунки лет, дней, часов, минут и секунд; «Сейчас», «Пуск».
-   * timebar({date, tz, nowLabel, reset, play, dayRange, years, unit}) → {html, bind(root, onChange(date))}
+   * ползунки лет, дней, часов, минут и секунд со стрелками ‹ › по краям (зажать — быстро); «Сейчас», «Пуск».
+   * timebar({date, tz, nowLabel, reset, play, dayRange, years, unit}) → {html, bind(root, onChange(date)) → {set, go, step, get, unit, unitName, stop}}
    */
   function timebar(o) {
     const id = 'tb' + Math.random().toString(36).slice(2, 7);
@@ -258,7 +258,7 @@
     const dayRange = o.dayRange || 365, yearRange = o.yearRange || 60;
     const UNITS = [['s', t('tb.u.s', 'сек')], ['mi', t('tb.u.mi', 'мин')], ['h', t('tb.u.h', 'час')], ['d', t('tb.u.d', 'день')], ['mo', t('tb.u.mo', 'мес')], ['y', t('tb.u.y', 'год')]];
     const unit0 = o.unit || (o.play !== false ? 'h' : 'mi');
-    const sl = (k, label, min, max, val, out, aria) => `<label><span>${label}</span><input type="range" data-tbs="${k}" min="${min}" max="${max}" step="1" value="${val}" aria-label="${esc(aria)}"><output data-tbo="${k}">${out}</output></label>`;
+    const sl = (k, label, min, max, val, out, aria) => `<div class="tb-srow"><span>${label}</span><button type="button" class="tb-sa" data-tbsa="${k}" data-k="-1" aria-label="${esc(aria + ' — ' + t('tb.less', 'назад'))}" title="${esc(t('tb.saT', 'Назад на 1 (зажми — быстро)'))}">${icon('left', 'xs')}</button><input type="range" data-tbs="${k}" min="${min}" max="${max}" step="1" value="${val}" aria-label="${esc(aria)}"><button type="button" class="tb-sa" data-tbsa="${k}" data-k="1" aria-label="${esc(aria + ' — ' + t('tb.more', 'вперёд'))}" title="${esc(t('tb.saT2', 'Вперёд на 1 (зажми — быстро)'))}">${icon('right', 'xs')}</button><output data-tbo="${k}">${out}</output></div>`;
     const html = `<div class="timebar" id="${id}" role="group" aria-label="${esc(t('tb.aria', 'Дата и время'))}">
       <div class="tb-main">
         <div class="tb-dt">
@@ -375,19 +375,9 @@
       });
       // шаг: единица и стрелки (зажать — повтор с ускорением)
       box.querySelectorAll('[data-tbu]').forEach((b) => b.addEventListener('click', () => { unit = b.dataset.tbu; box.querySelectorAll('[data-tbu]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); }));
-      box.querySelectorAll('[data-tbstep]').forEach((b) => {
-        const k = +b.dataset.tbstep;
-        let hold = null, rep = null, n = 0;
-        const step = (smooth) => set(addUnit(cur, unit, k, tz), false, smooth);
-        const end = () => { clearTimeout(hold); clearInterval(rep); hold = rep = null; };
-        b.addEventListener('pointerdown', (e) => {
-          if (e.button !== 0) return;
-          e.preventDefault(); step(true); n = 0;
-          hold = setTimeout(() => { rep = setInterval(() => { n++; step(true); if (n === 12 || n === 40) { clearInterval(rep); rep = setInterval(() => step(true), n === 12 ? 60 : 30); } }, 110); }, 380);
-        });
-        ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, end));
-        b.addEventListener('click', (e) => { if (e.detail === 0) step(false); }); // клавиатура
-      });
+      box.querySelectorAll('[data-tbstep]').forEach((b) => { const k = +b.dataset.tbstep; holdRepeat(b, (smooth) => set(addUnit(cur, unit, k, tz), false, smooth)); });
+      // стрелки у ползунков: ±1 год / день / час / минута / секунда
+      box.querySelectorAll('[data-tbsa]').forEach((b) => { const k = +b.dataset.k, u = b.dataset.tbsa; holdRepeat(b, (smooth) => set(addUnit(cur, u, k, tz), false, smooth)); });
       // ползунки
       if (S('d')) {
         const fromSliders = (k) => {
@@ -412,8 +402,102 @@
         timer = setInterval(() => { if (!document.body.contains(box)) return stop(); set(addUnit(cur, unit, 1, tz), false, true); }, 200);
       });
       showSliders();
-      return { set: (d) => { anchor = partsIn(d, tz); set(d, true); }, get: () => cur, stop };
+      const unitName = () => (UNITS.find(([k]) => k === unit) || [0, ''])[1];
+      return {
+        set: (d) => { anchor = partsIn(d, tz); set(d, true); }, // тихо: только показать
+        go: (d) => set(d, false, true), // показать и перерисовать в ближайший кадр (колесо крутят мышью)
+        step: (k, u) => set(addUnit(cur, u || unit, k, tz), false, true),
+        get: () => cur, unit: () => unit, unitName, tz, stop,
+      };
     } };
+  }
+
+  /** Кнопка-стрелка: нажатие — шаг, зажать — повтор с ускорением; Enter/пробел — шаг. fn(smooth) */
+  function holdRepeat(b, fn) {
+    let hold = null, rep = null, n = 0;
+    const end = () => { clearTimeout(hold); clearInterval(rep); hold = rep = null; };
+    b.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault(); fn(true); n = 0;
+      hold = setTimeout(() => { rep = setInterval(() => { n++; fn(true); if (n === 12 || n === 40) { clearInterval(rep); rep = setInterval(() => fn(true), n === 12 ? 60 : 30); } }, 110); }, 380);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, end));
+    b.addEventListener('click', (e) => { if (e.detail === 0) fn(false); }); // клавиатура
+  }
+
+  /**
+   * Крутить колесо карты мышью: зажать круг и вести по кругу — время идёт (против часовой — вперёд, как движутся планеты),
+   * каждые 6° — один шаг выбранной единицы (как минутные деления на циферблате: «мин» — оборот = час, «час» — оборот = 60 часов);
+   * колёсико мыши над кругом — по шагу (вверх — вперёд). Мимо круга колёсико листает страницу как обычно.
+   * host — элемент, внутри которого рисуется svg.nw (может перерисовываться); getApi() → API машины времени (timebar.bind).
+   */
+  const SCRUB_DEG = 6;
+  let scrubBadge = null, scrubHideT = 0;
+  function scrubShow(svg, api, dir) {
+    if (!scrubBadge) { scrubBadge = document.createElement('div'); scrubBadge.className = 'scrub-badge'; scrubBadge.setAttribute('aria-hidden', 'true'); document.body.appendChild(scrubBadge); }
+    const q = partsIn(api.get(), api.tz);
+    scrubBadge.innerHTML = `<b>${fmtDMY(q)} ${fmtHMS(q)}</b><span>${dir > 0 ? '⟲ ' + esc(t('tb.fwdW', 'вперёд')) : '⟳ ' + esc(t('tb.backW', 'назад'))} · ${esc(t('tb.stepIs', 'шаг: {u}', { u: api.unitName() }))}</span>`;
+    const r = svg.getBoundingClientRect();
+    scrubBadge.hidden = false;
+    // в левом верхнем углу рисунка — там пусто (круг вписан), карта под значком не прячется
+    scrubBadge.style.left = Math.max(8, r.left + 6) + 'px';
+    scrubBadge.style.top = Math.max(70, r.top + 6) + 'px';
+    clearTimeout(scrubHideT); scrubHideT = setTimeout(() => { if (scrubBadge) scrubBadge.hidden = true; }, 1100);
+  }
+  function wheelScrub(host, getApi) {
+    if (!host || host._scrub) return; host._scrub = true;
+    host.classList.add('scrub');
+    const geo = () => {
+      const svg = host.querySelector('svg.nw'); if (!svg) return null;
+      const r = svg.getBoundingClientRect(), vb = svg.viewBox && svg.viewBox.baseVal;
+      if (!r.width || !vb || !vb.width) return null;
+      const k = r.width / vb.width;
+      return { svg, cx: r.left + (360 - vb.x) * k, cy: r.top + (360 - vb.y) * k, r: 342 * k }; // центр колеса — (360, 360) в координатах рисунка
+    };
+    const inside = (g, x, y) => Math.hypot(x - g.cx, y - g.cy) <= g.r;
+    let dragging = false, blockClick = false;
+    host.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch' || e.button !== 0) return; // на телефоне палец листает страницу — там ползунки и стрелки
+      const g = geo(), api = getApi(); if (!g || !api || !inside(g, e.clientX, e.clientY)) return;
+      e.preventDefault();
+      const d0 = api.get(), u = api.unit(), x0 = e.clientX, y0 = e.clientY;
+      let gc = g, prev = Math.atan2(-(y0 - g.cy), x0 - g.cx), acc = 0, applied = 0;
+      dragging = false;
+      try { host.setPointerCapture(e.pointerId); } catch (er) { /* */ }
+      const move = (ev) => {
+        // колесо могло сдвинуться (перерисовка справа меняет высоту страницы) — центр берём заново, скачок угла не считаем
+        const ng = geo() || gc, shifted = Math.abs(ng.cx - gc.cx) > 1 || Math.abs(ng.cy - gc.cy) > 1; gc = ng;
+        const a = Math.atan2(-(ev.clientY - gc.cy), ev.clientX - gc.cx);
+        let da = shifted ? 0 : a - prev; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
+        prev = a;
+        if (Math.hypot(ev.clientX - gc.cx, ev.clientY - gc.cy) < gc.r * 0.08) return; // у самого центра угол скачет
+        acc += da;
+        if (!dragging) { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 5) return; dragging = true; document.body.classList.add('scrubbing'); }
+        const n = Math.round(acc * 180 / Math.PI / SCRUB_DEG); // до ближайшего деления — туда и обратно по тому же пути приходим в ту же точку
+        if (n !== applied) { const dir = n - applied; applied = n; api.go(addUnit(d0, u, n, api.tz)); scrubShow(host.querySelector('svg.nw') || gc.svg, api, dir); }
+      };
+      const up = () => {
+        host.removeEventListener('pointermove', move); host.removeEventListener('pointerup', up); host.removeEventListener('pointercancel', up);
+        document.body.classList.remove('scrubbing');
+        if (dragging) { blockClick = true; setTimeout(() => { blockClick = false; }, 0); }
+        dragging = false;
+      };
+      host.addEventListener('pointermove', move); host.addEventListener('pointerup', up); host.addEventListener('pointercancel', up);
+    });
+    // после поворота щелчок не открывает планету под курсором
+    host.addEventListener('click', (e) => { if (blockClick) { e.stopPropagation(); e.preventDefault(); blockClick = false; } }, true);
+    let wacc = 0;
+    host.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
+      const g = geo(), api = getApi(); if (!g || !api || !inside(g, e.clientX, e.clientY)) return;
+      e.preventDefault();
+      const dy = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
+      let k = 0;
+      if (Math.abs(dy) >= 50) { k = dy < 0 ? 1 : -1; wacc = 0; } // щелчок колёсика мыши — один шаг
+      else { wacc += dy; if (Math.abs(wacc) >= 50) { k = wacc < 0 ? 1 : -1; wacc = 0; } } // тачпад — копим мелкие сдвиги
+      if (!k) return;
+      api.step(k); scrubShow(g.svg, api, k);
+    }, { passive: false });
   }
 
   // ---------- горизонтальная лента со стрелками: тянуть мышью, колёсико листает вбок ----------
@@ -634,5 +718,5 @@
   /** Тема: светлая ↔ тёмная (кнопка в шапке). */
   function isDark() { const th = Store.settings().theme; return th === 'dark' || (th !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); }
 
-  root.NUI = { lang, t, TX, $, $$, esc, icon, toast, sheet, closeSheet, modal, popup, closePopup, richTip, hideRich, dots, ptsBadge, ringPts, pbar, acc, partsIn, fromParts, addUnit, timebar, hscroll, calPop, closeCal, parseDate, parseTime, autoDate, autoTime, bindTimeInput, dateFieldHTML, fmtDate, fmtTime, fmtDay, fmtDMY, fmtHMS, todayIn, bindDateInput, bindCity, personForm, chartOf, here, initials, lvClass, lvCls, moonSVG, reduceMotion, pad, daysIn, isDark };
+  root.NUI = { lang, t, TX, $, $$, esc, icon, toast, sheet, closeSheet, modal, popup, closePopup, richTip, hideRich, dots, ptsBadge, ringPts, pbar, acc, partsIn, fromParts, addUnit, timebar, holdRepeat, wheelScrub, hscroll, calPop, closeCal, parseDate, parseTime, autoDate, autoTime, bindTimeInput, dateFieldHTML, fmtDate, fmtTime, fmtDay, fmtDMY, fmtHMS, todayIn, bindDateInput, bindCity, personForm, chartOf, here, initials, lvClass, lvCls, moonSVG, reduceMotion, pad, daysIn, isDark };
 })(window);

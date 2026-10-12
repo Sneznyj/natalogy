@@ -122,3 +122,13 @@ Object.assign(window.NI18N.en, {
   'tb.stepA': 'Step', 'tb.back': 'Back', 'tb.fwd': 'Forward', 'tb.playT2': 'Run time with the chosen step', 'tb.years': 'Years', 'tb.yearsA': 'Shift by years', 'tb.mins': 'Minutes', 'tb.minsA': 'Minutes', 'tb.secs': 'Seconds', 'tb.secsA': 'Seconds', 'tb.yShort': 'y',
   'ph.date': 'DD.MM.YYYY', 'ph.time': 'HH:MM', 'dyn.softer': 'easier', 'dyn.harder': 'more tense', 'dyn.softer2': 'easier day (more support)', 'dyn.harder2': 'more tense day',
 });
+// 4-я волна (12.10.2026, вечер): размер текста, календарь без окна по нажатию, колесо крутится мышью, стрелки у ползунков
+Object.assign(window.NI18N.en, {
+  'fz.m': 'Normal', 'fz.l': 'Large', 'fz.xl': 'Extra large', 'fz.tg': 'Text size: {n}. Click — larger', 'fz.toastM': 'Normal text size', 'fz.toastL': 'Large text', 'fz.toastXL': 'Extra large text',
+  'set.fz': 'Text size', 'set.fzHint': 'You can also change it with the «Aa» button at the top.',
+  'cal.how2': 'Hover a day for a summary, click to show it on the right', 'cal.howTouch2': 'Tap a day — details below the calendar', 'tip.pick': 'Click — show on the right', 'tip.below': 'Click — details below',
+  'acts.lead2': 'The best days for activities, by score. Tap an activity to recolour the calendar; tap a date to show that day in the calendar.',
+  'heat.lead2': 'Each cell is a day’s score. You see at once when love, money or a launch go better. Tap a cell to show the day in the calendar.',
+  'chart.spinHint': 'You can turn the wheel: hold the circle with the mouse and move around it, or scroll the mouse wheel over it', 'chart.tbNatal': 'Birth time — shift it to check', 'chart.tbSky': 'Sky at date and time', 'chart.tbTr': 'Transits at date and time',
+  'tb.less': 'back', 'tb.more': 'forward', 'tb.saT': 'Back by 1 (hold — fast)', 'tb.saT2': 'Forward by 1 (hold — fast)', 'tb.fwdW': 'forward', 'tb.backW': 'back', 'tb.stepIs': 'step: {u}',
+});

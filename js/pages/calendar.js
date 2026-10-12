@@ -1,5 +1,5 @@
 /* «Календарь»: месяц (как лунный календарь на сайте Алины) и неделя карточками, баллы 1–10 по сфере или делу.
-   Наведение — краткий прогноз, нажатие — окно с подробностями, справа — панель выбранного дня.
+   Наведение — краткий прогноз, нажатие — день в панели справа (той же высоты, что календарь); окно с подробностями — только кнопкой «Подробнее о дне».
    Ниже: «Что когда делать» (дела по баллам), ритм месяца, карта баллов по сферам, фон долгих транзитов, ход недели по часам. */
 (function (root) {
   'use strict';
@@ -28,7 +28,7 @@
     el.innerHTML = `<div class="sec-head"><span class="eyebrow">${t('cal.eyebrow', 'Личный календарь')} · ${esc(p.name)}</span><h1>${t('cal.title2', 'Когда <em>что</em> делать')}</h1>
         <p>${t('cal.lead', 'Баллы от 1 до 10: чем выше, тем легче идёт дело. Выбери сферу или дело — календарь перекрасится под него.')}</p></div>
       <div class="cal-top"><div class="seg" role="group" aria-label="${t('cal.view', 'Вид')}"><button type="button" data-view="month" aria-pressed="${state.view === 'month'}">${t('cal.month', 'Месяц')}</button><button type="button" data-view="week" aria-pressed="${state.view === 'week'}">${t('cal.week', 'Неделя')}</button></div>
-        <span class="hint-click">${icon('info', 'xs')} ${canHover() ? t('cal.how', 'Наведи на день — кратко, нажми — подробно') : t('cal.howTouch', 'Нажми на день — откроются подробности')}</span></div>
+        <span class="hint-click">${icon('info', 'xs')} ${canHover() ? t('cal.how2', 'Наведи на день — кратко, нажми — покажу его справа') : t('cal.howTouch2', 'Нажми на день — подробности под календарём')}</span></div>
       <div class="scrollx"><div class="chips" id="flt" role="group" aria-label="${t('cal.filter', 'Сфера')}"></div></div>
       <div id="calBody" class="stack s18"></div>
       <div id="bgBox" class="stack"></div>`;
@@ -60,7 +60,7 @@
           <div class="cal" id="cal" role="grid" aria-label="${esc(TX.MONTHS_N[mo - 1] + ' ' + y)}">${grid(y, mo, null, now)}</div>
           <div class="row sb tiny muted"><span>${t('cal.marks2', '☽ знак Луны · полоска внизу — часы Луны без курса · R/D — разворот планеты')}</span><span>${esc(keyName(state.key))}</span></div>
         </div>
-        <aside class="dpanel" id="dpanel" aria-live="polite"><div class="card" style="min-height:420px;opacity:.5"></div></aside>
+        <aside class="dpanel" id="dpanel" aria-live="polite"><div class="card" style="opacity:.5"></div></aside>
       </div>
       <div class="grid2"><div class="card stack" id="actsBox"><h3>${t('acts.title', 'Что когда делать')}</h3><p class="muted small">…</p></div><div class="card stack" id="bestBox"><h3>${t('cal.best', 'Лучшие дни месяца')}</h3></div></div>
       <div class="card stack" id="heatBox"></div>`;
@@ -74,21 +74,23 @@
     const cal = box.querySelector('#cal'); if (!cal) return;
     if (!state.sel || state.sel.y !== y || state.sel.mo !== mo) state.sel = { y, mo, d: 1 };
     cal.innerHTML = grid(y, mo, list, now);
-    const pick = (d, open) => {
+    const pick = (d, reveal) => {
       state.sel = { y, mo, d };
       cal.querySelectorAll('.cday.sel').forEach((x) => x.classList.remove('sel'));
       const c = cal.querySelector(`[data-d="${d}"]`); if (c) c.classList.add('sel');
       drawPanel(ctx, list[d - 1]);
-      if (open) openDay(ctx, list[d - 1]);
+      if (reveal) revealPanel(ctx, reveal);
     };
-    cal.addEventListener('click', (e) => { const b = e.target.closest('[data-d]'); if (b) pick(+b.dataset.d, true); });
+    ctx.pick = (d) => pick(d, 'show');
+    // нажатие на день — только выбрать: панель справа покажет его; окно — кнопкой «Подробнее о дне»
+    cal.addEventListener('click', (e) => { const b = e.target.closest('[data-d]'); if (b) pick(+b.dataset.d, 'below'); });
     cal.addEventListener('keydown', (e) => {
       const b = e.target.closest('[data-d]'); if (!b) return;
       const k = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key]; if (!k) return;
       const nd = +b.dataset.d + k; if (nd < 1 || nd > list.length) return;
       e.preventDefault(); pick(nd, false); const c = cal.querySelector(`[data-d="${nd}"]`); if (c) c.focus();
     });
-    UI.richTip(cal, '.cday[data-d]', (b) => root.NDay.tipHTML(list[+b.dataset.d - 1], { key: state.key, person: p }));
+    UI.richTip(cal, '.cday[data-d]', (b) => root.NDay.tipHTML(list[+b.dataset.d - 1], { key: state.key, person: p, foot: t('tip.pick', 'Нажми — покажу справа') }));
     drawPanel(ctx, list[state.sel.d - 1]);
     actsBox(ctx, box.querySelector('#actsBox'), list);
     bestBox(ctx, box.querySelector('#bestBox'), list);
@@ -133,6 +135,17 @@
       <span class="cd-voc">${voc}</span></button>`;
   }
 
+  /** Показать панель дня, если её не видно: на узком экране она под календарём ('below' — только в этом случае), снизу страницы — над нами ('show'). */
+  function revealPanel(ctx, mode) {
+    const pn = ctx.el.querySelector('#dpanel'), cal = ctx.el.querySelector('#cal'); if (!pn) return;
+    const r = pn.getBoundingClientRect(), vh = window.innerHeight;
+    const stacked = !!cal && r.top >= cal.getBoundingClientRect().bottom - 2;
+    if (mode === 'below' && !stacked) return;
+    if (r.top >= 60 && r.top < vh - 200) return; // и так на виду
+    const to = stacked ? pn : ctx.el.querySelector('.cal-layout') || pn;
+    to.scrollIntoView({ behavior: UI.reduceMotion() ? 'auto' : 'smooth', block: 'start' });
+  }
+
   function drawPanel(ctx, day) {
     const box = ctx.el.querySelector('#dpanel'); if (!box || !day) return;
     box.innerHTML = root.NDay.panel(day, { person: ctx.p, key: state.key, isToday: same(day, ctx.now) });
@@ -163,7 +176,7 @@
     const pool = future.length >= 3 ? future : list;
     const acts = Object.keys(NS.ACTIVITIES);
     box.innerHTML = `<div class="row sb"><h3>${t('acts.title', 'Что когда делать')}</h3><span class="tag gold">${future.length >= 3 && future.length < list.length ? t('acts.fromToday', 'с сегодняшнего дня') : t('acts.month', 'весь месяц')}</span></div>
-      <p class="muted small">${t('acts.lead', 'Лучшие дни для дел — по баллам. Нажми на дело, чтобы раскрасить календарь под него; на дату — откроются подробности.')}</p>
+      <p class="muted small">${t('acts.lead2', 'Лучшие дни для дел — по баллам. Нажми на дело, чтобы раскрасить календарь под него; на дату — день покажется в календаре.')}</p>
       <div class="acts">${acts.map((a) => {
         const top = NS.bestBy(pool, 'act:' + a, 3);
         const on = state.key === 'act:' + a;
@@ -175,7 +188,7 @@
       drawFilters(ctx); drawBody(ctx);
       const lay = ctx.el.querySelector('#calBody'); if (lay) lay.scrollIntoView({ behavior: UI.reduceMotion() ? 'auto' : 'smooth', block: 'start' });
     }));
-    box.querySelectorAll('[data-day]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); const d = +b.dataset.day; state.sel = { y: state.y, mo: state.mo, d }; const cal = ctx.el.querySelector('#cal'); if (cal) { cal.querySelectorAll('.cday.sel').forEach((x) => x.classList.remove('sel')); const c = cal.querySelector(`[data-d="${d}"]`); if (c) c.classList.add('sel'); } drawPanel(ctx, list[d - 1]); openDay(ctx, list[d - 1]); }));
+    box.querySelectorAll('[data-day]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); if (ctx.pick) ctx.pick(+b.dataset.day); }));
   }
 
   // лучшие и трудные дни + ритм месяца
@@ -191,7 +204,7 @@
       <span class="label bad">${t('cal.avoid', 'Лучше избегать')}</span><div class="tags">${worst.map(chip).join('')}</div>
       <span class="label">${t('cal.rhythm', 'Ритм месяца по баллам')}</span>
       <div class="viz-bars" style="height:96px">${bars}</div><div class="viz-axis">${list.map((d) => `<span>${d.d % 5 === 0 || d.d === 1 ? d.d : ''}</span>`).join('')}</div>`;
-    box.querySelectorAll('[data-day]').forEach((b) => b.addEventListener('click', () => { const d = +b.dataset.day; state.sel = { y: state.y, mo: state.mo, d }; drawPanel(ctx, list[d - 1]); const cal = ctx.el.querySelector('#cal'); if (cal) { cal.querySelectorAll('.cday.sel').forEach((x) => x.classList.remove('sel')); const c = cal.querySelector(`[data-d="${d}"]`); if (c) c.classList.add('sel'); } openDay(ctx, list[d - 1]); }));
+    box.querySelectorAll('[data-day]').forEach((b) => b.addEventListener('click', () => { if (ctx.pick) ctx.pick(+b.dataset.day); }));
   }
 
   // карта баллов по сферам (или делам) на весь месяц
@@ -199,11 +212,11 @@
     const TX = UI.TX(), now = ctx.now;
     const rows = state.heat === 'act' ? Object.keys(NS.ACTIVITIES).map((a) => ['act:' + a, TX.ACT[a].name, TX.ACT[a].icon]) : [['overall', t('all', 'Всё вместе'), 'grid']].concat(NS.SPHERES.map((s) => [s, TX.SPH[s].name, root.NDay.SPH_ICON[s]]));
     const head = list.map((d) => { const wd = new Date(Date.UTC(d.y, d.mo - 1, d.d)).getUTCDay(); return `<th class="d${wd === 0 || wd === 6 ? ' we' : ''}">${d.d}</th>`; }).join('');
-    box.innerHTML = `<div class="row sb"><div class="stack s6"><h3>${t('heat.title', 'Баллы на весь месяц')}</h3><p class="muted small">${t('heat.lead', 'Каждая клетка — баллы дня. Сразу видно, когда лучше для любви, денег или запуска. Нажми на клетку — откроется день.')}</p></div>
+    box.innerHTML = `<div class="row sb"><div class="stack s6"><h3>${t('heat.title', 'Баллы на весь месяц')}</h3><p class="muted small">${t('heat.lead2', 'Каждая клетка — баллы дня. Сразу видно, когда лучше для любви, денег или запуска. Нажми на клетку — день покажется в календаре.')}</p></div>
       <div class="seg"><button type="button" data-heat="sph" aria-pressed="${state.heat !== 'act'}">${t('heat.sph', 'Сферы')}</button><button type="button" data-heat="act" aria-pressed="${state.heat === 'act'}">${t('heat.act', 'Дела')}</button></div></div>
       <div class="heat-wrap"><table class="heat"><thead><tr><th></th>${head}</tr></thead><tbody>${rows.map(([k, n, ic]) => `<tr><th><span class="row nw" style="gap:6px">${icon(ic, 'sm')}${esc(n)}</span></th>${list.map((d) => { const r = NS.rateBy(d, k); return `<td class="f-${LVK(r.level)}${same(d, now) ? ' today' : ''}" data-day="${d.d}" data-k="${k}" data-tip="${esc(n + ' · ' + TX.monthDay(d.d, d.mo) + ': ' + r.pts + '/10, ' + TX.LEVEL[r.level])}">${r.pts}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>`;
     box.querySelectorAll('[data-heat]').forEach((b) => b.addEventListener('click', () => { state.heat = b.dataset.heat; heatBox(ctx, box, list); root.NWheel.bindTips(box); }));
-    box.querySelectorAll('td[data-day]').forEach((c) => c.addEventListener('click', () => { const d = +c.dataset.day; state.sel = { y: state.y, mo: state.mo, d }; drawPanel(ctx, list[d - 1]); openDay(ctx, list[d - 1]); }));
+    box.querySelectorAll('td[data-day]').forEach((c) => c.addEventListener('click', () => { if (ctx.pick) ctx.pick(+c.dataset.day); }));
   }
 
   // ---------- неделя ----------
@@ -237,11 +250,11 @@
         <span class="wk-d"><small>${esc(TX.WD[new Date(Date.UTC(d.y, d.mo - 1, d.d)).getUTCDay()])}</small><b>${d.d}</b></span>
         <span class="row" style="gap:8px">${UI.dots(r.level)}${UI.ptsBadge(r)}</span>
         <span class="wk-t">${esc(title)}</span>
-        <span class="tag acc" style="justify-self:start;font-size:11.5px">${mh ? `☽︎ ${t('moon.house', '{n} дом', { n: mh })} · ${esc(TX.H[mh].area.split(',')[0])}` : `☽︎ ${esc(TX.S[ms.sign].name)}`}</span>
+        <span class="tag acc" style="justify-self:start;font-size:calc(11.75px*var(--fz))">${mh ? `☽︎ ${t('moon.house', '{n} дом', { n: mh })} · ${esc(TX.H[mh].area.split(',')[0])}` : `☽︎ ${esc(TX.S[ms.sign].name)}`}</span>
         <span class="stack" style="gap:2px">${evs.map((e) => root.NDay.evRow(e, tz, true)).join('')}</span>
       </button>`;
     }).join('');
-    UI.richTip(wk, '.wk[data-d]', (b) => root.NDay.tipHTML(days.find((x) => x.d === +b.dataset.d && x.mo === +b.dataset.m), { key: state.key, person: p }));
+    UI.richTip(wk, '.wk[data-d]', (b) => root.NDay.tipHTML(days.find((x) => x.d === +b.dataset.d && x.mo === +b.dataset.m), { key: state.key, person: p, foot: t('tip.below', 'Нажми — подробности ниже') }));
     const bestD = days.slice().sort((a, b) => NS.rateBy(b, state.key).ptsF - NS.rateBy(a, state.key).ptsF);
     box.querySelector('#weekSum').textContent = t('week.sum', 'Лучшие дни недели: {a}. Осторожнее: {b}.', { a: bestD.slice(0, 2).map((d) => TX.WD_FULL[new Date(Date.UTC(d.y, d.mo - 1, d.d)).getUTCDay()]).join(', '), b: TX.WD_FULL[new Date(Date.UTC(bestD[6].y, bestD[6].mo - 1, bestD[6].d)).getUTCDay()] });
     const showDay = (d) => {
@@ -361,8 +374,8 @@
       const tx = TX.evText(e, tz);
       const seg = r.segs.find(([a, b]) => b >= mStart && a <= mEnd) || r.segs[0];
       const exact = [...new Set(r.exact.filter((d) => d >= AC.addDays(seg[0], -1) && d <= AC.addDays(seg[1], 1)).map((d) => d.toISOString().slice(0, 10)))].map((s) => new Date(s + 'T12:00:00Z'));
-      return `<div class="lt" style="--c:${c}"><h4><span class="g" style="color:${c};font-size:16px">${pg(r.T)}${W.ASP_G[r.type]}︎${pg(r.N)}</span>${esc(tx.title)}</h4><div class="when">${exact.length ? t('lt.exact', 'точно') + ' ' + exact.map((d) => UI.fmtDay(d, tz)).join(', ') + ' · ' : ''}${UI.fmtDay(seg[0], tz)} — ${UI.fmtDay(seg[1], tz, { year: 'numeric' })}</div><p>${esc(tx.text)}${e.nHouse ? ' ' + esc(t('lt.house', 'Тема {n} дома: {a}.', { n: e.nHouse, a: TX.H[e.nHouse].area })) : ''}</p></div>`;
-    }).join('') + retro.filter((r) => r.end >= mStart && r.start <= mEnd).map((r) => `<div class="lt" style="--c:var(--gold-2)"><h4><span class="g" style="color:var(--gold);font-size:16px">${pg(r.id)}<sup>R</sup></span>${esc(TX.RETRO[r.id].name)}</h4><div class="when">${UI.fmtDay(r.start, tz)} — ${UI.fmtDay(r.end, tz, { year: 'numeric' })}</div><p>${esc(TX.RETRO[r.id].tip)}</p></div>`).join('');
+      return `<div class="lt" style="--c:${c}"><h4><span class="g" style="color:${c};font-size:calc(16px*var(--fz))">${pg(r.T)}${W.ASP_G[r.type]}︎${pg(r.N)}</span><span>${esc(tx.title)}</span></h4><i class="lt-bar" aria-hidden="true"></i><div class="when">${exact.length ? t('lt.exact', 'точно') + ' ' + exact.map((d) => UI.fmtDay(d, tz)).join(', ') + ' · ' : ''}${UI.fmtDay(seg[0], tz)} — ${UI.fmtDay(seg[1], tz, { year: 'numeric' })}</div><p>${esc(tx.text)}${e.nHouse ? ' ' + esc(t('lt.house', 'Тема {n} дома: {a}.', { n: e.nHouse, a: TX.H[e.nHouse].area })) : ''}</p></div>`;
+    }).join('') + retro.filter((r) => r.end >= mStart && r.start <= mEnd).map((r) => `<div class="lt" style="--c:var(--gold-2)"><h4><span class="g" style="color:var(--gold);font-size:calc(16px*var(--fz))">${pg(r.id)}<sup>R</sup></span><span>${esc(TX.RETRO[r.id].name)}</span></h4><i class="lt-bar" aria-hidden="true"></i><div class="when">${UI.fmtDay(r.start, tz)} — ${UI.fmtDay(r.end, tz, { year: 'numeric' })}</div><p>${esc(TX.RETRO[r.id].tip)}</p></div>`).join('');
     box.innerHTML = `<div class="sec-head" style="margin-top:8px"><span class="eyebrow">${t('bg.eyebrow', 'Фон')}</span><h2>${t('bg.title', 'Долгие транзиты')}</h2><p>${t('bg.lead', 'Они действуют неделями и месяцами — дни идут на их фоне. Полоса — время действия, ромб — точный аспект, лиловая зона — выбранный месяц.')}</p></div>
       <div class="card stack"><div class="gantt">${axis}${trRows}${rtRows ? `<hr class="soft">${rtRows}` : ''}</div>
         <div class="legend"><span><i class="c-l2"></i>${t('lg.ok', 'помогает')}</span><span><i class="c-lm2"></i>${t('lg.bad', 'мешает')}</span><span><i style="background:var(--dot-acc)"></i>${t('lg.acc', 'сильный акцент')}</span><span><i style="background:var(--gold-2)"></i>${t('lg.retro', 'ретро и тень')}</span></div></div>

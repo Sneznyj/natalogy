@@ -310,18 +310,20 @@
       const base = birthDate(p);
       const bar = UI.timebar({ date: spec.shiftA ? new Date(spec.shiftA) : base, tz: p.place.tz, play: false, dayRange: 30, nowLabel: spec.a === 'custom' ? t('tb.reset2', 'Как введено') : t('tb.reset', 'Как в профиле'), reset: () => base });
       slot.innerHTML = label + bar.html;
-      bar.bind(slot, (d) => { spec.shiftA = Math.abs(d - base) < 500 ? null : d.getTime(); live(); });
+      return bar.bind(slot, (d) => { spec.shiftA = Math.abs(d - base) < 500 ? null : d.getTime(); live(); });
     };
+    let scrubApi = null; // колесо крутится мышью — двигает главный ползунок панели
     if (MOMENT.includes(spec.type) || ringNatal) {
       const tz = UI.here().tz;
       const bar = UI.timebar({ date: parseLocal(spec.date, tz), tz, play: true });
       tbs.innerHTML = `<span class="label" style="display:block;margin-bottom:6px">${ringNatal ? t('pro.momentTr', 'Транзиты: дата и время (внешний круг)') : t('pro.moment', 'Момент карты')}</span>` + bar.html;
-      bar.bind(tbs, (d) => { spec.date = d.toISOString(); live(); });
+      scrubApi = bar.bind(tbs, (d) => { spec.date = d.toISOString(); live(); });
       if (ringNatal && p && p.place) {
         tbs2.innerHTML = `<details class="tb-more"${spec.shiftA ? ' open' : ''}><summary>${icon('clock', 'sm')} ${t('pro.birthTime2', 'Уточнить время рождения (внутренний круг)')}</summary><div data-tb2in style="margin-top:8px"></div></details>`;
         birthBar(tbs2.querySelector('[data-tb2in]'), '');
       }
-    } else if (p && p.place) birthBar(tbs, `<span class="label" style="display:block;margin-bottom:6px">${t('pro.birthTime', 'Время рождения — ползунком можно уточнять')}</span>`);
+    } else if (p && p.place) scrubApi = birthBar(tbs, `<span class="label" style="display:block;margin-bottom:6px">${t('pro.birthTime', 'Время рождения — ползунком можно уточнять')}</span>`);
+    UI.wheelScrub(box.querySelector('[data-dyn="wheel"]'), () => scrubApi);
     // настройки
     box.querySelectorAll('[data-k]').forEach((inp) => inp.addEventListener('change', () => {
       const k = inp.dataset.k; spec[k] = inp.type === 'checkbox' ? inp.checked : inp.value;

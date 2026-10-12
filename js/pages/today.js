@@ -27,8 +27,8 @@
       case 'transit': return { g: `${pg(e.T)}${e.retro ? '<sup>R</sup>' : ''}${W.ASP_G[e.type]}${VS}${pg(e.N)}`, cls: e.type === 'conj' && Math.abs(e.v) < 0.45 ? 'acc' : e.v > 0 ? 'ok' : 'bad' };
       case 'ingress': return { g: `${pg(e.T)}→${sg(e.sign)}`, cls: 'acc' };
       case 'phase': return { g: UI.moonSVG(e.phase * 90 + 0.01, 16), cls: 'acc' };
-      case 'vocStart': return { g: `${pg('moon')}<small style="font:700 10px var(--f-ui)">${t('voc.abbr', 'б/к')}</small>`, cls: 'bad' };
-      case 'vocEnd': return { g: `${pg('moon')}<small style="font:700 10px var(--f-ui)">✓</small>`, cls: 'ok' };
+      case 'vocStart': return { g: `${pg('moon')}<small style="font:700 calc(11px*var(--fz)) var(--f-ui)">${t('voc.abbr', 'б/к')}</small>`, cls: 'bad' };
+      case 'vocEnd': return { g: `${pg('moon')}<small style="font:700 calc(11px*var(--fz)) var(--f-ui)">✓</small>`, cls: 'ok' };
       case 'station': return { g: `${pg(e.T)}<sup>${e.dir === 'retro' ? 'R' : 'D'}</sup>`, cls: 'acc' };
       case 'eclipse': return { g: icon('eclipse', 'sm'), cls: 'bad' };
       default: return { g: '•', cls: 'n' };
@@ -119,7 +119,7 @@
     const asp = AC.aspectsBetween(inner.points.concat(natal.houses ? [{ id: 'asc', lon: natal.houses.asc }, { id: 'mc', lon: natal.houses.mc }] : []), outer.points, { orbMult: 0.4 })
       .filter((x) => ['conj', 'sextile', 'square', 'trine', 'opp'].includes(x.type)).sort((a, b) => a.orb - b.orb).slice(0, 14);
     const svg = W.svg(inner, { outer, aspects: asp, lang: UI.lang(), labels: { in: t('natal', 'натал'), out: t('transit', 'транзит') }, label: t('dd.wheel', 'Транзиты к карте') });
-    const chips = asp.slice(0, 8).map((x) => `<span class="tag plain" style="font-family:var(--f-glyph)" data-tip="${esc(TX.P[x.b] ? TX.P[x.b].name + ' ' + (TX.ASP[x.type] ? TX.ASP[x.type].name : '') + ' ' + (TX.P[x.a] ? TX.P[x.a].yourDat || TX.P[x.a].name : x.a) : '')}"><span style="color:${x.nature === 'soft' ? 'var(--w-soft)' : x.nature === 'hard' ? 'var(--w-hard)' : 'var(--w-conj)'}">${pg(x.b)}${W.ASP_G[x.type]}${VS}${pg(x.a)}</span> <span class="mono" style="font-size:11px">${x.orb.toFixed(1)}°</span></span>`).join('');
+    const chips = asp.slice(0, 8).map((x) => `<span class="tag plain" style="font-family:var(--f-glyph)" data-tip="${esc(TX.P[x.b] ? TX.P[x.b].name + ' ' + (TX.ASP[x.type] ? TX.ASP[x.type].name : '') + ' ' + (TX.P[x.a] ? TX.P[x.a].yourDat || TX.P[x.a].name : x.a) : '')}"><span style="color:${x.nature === 'soft' ? 'var(--w-soft)' : x.nature === 'hard' ? 'var(--w-hard)' : 'var(--w-conj)'}">${pg(x.b)}${W.ASP_G[x.type]}${VS}${pg(x.a)}</span> <span class="mono" style="font-size:calc(11.5px*var(--fz))">${x.orb.toFixed(1)}°</span></span>`).join('');
     return `<div class="wheel-card"><div class="wheel-box" style="max-width:420px">${svg}</div><div class="tags" style="justify-content:center">${chips}</div><p class="tiny muted" style="text-align:center">${isToday ? t('dd.wheelNow', 'Внутри — твоя карта, снаружи — небо сейчас ({t}).', { t: UI.fmtTime(at, UI.here().tz) }) : t('dd.wheelNoon', 'Внутри — твоя карта, снаружи — небо в 12:00 этого дня.')}</p></div>`;
   }
 
@@ -165,7 +165,7 @@
     const voc = day.flags.voc.length ? day.flags.voc.map((v) => `${UI.fmtTime(v.start, tz)}–${UI.fmtTime(v.end, tz)}`).join(', ') : '';
     const keyName = !opts.key || opts.key === 'overall' ? '' : opts.key.startsWith('act:') ? TX.ACT[opts.key.slice(4)].name : TX.SPH[opts.key].name;
     return `<div class="card stack" style="gap:14px">
-      <div class="row sb"><span class="eyebrow" style="font-size:19px">${esc(UI.fmtDate(day.y, day.mo, day.d, { weekday: 'long', year: undefined }))}</span>${opts.isToday ? `<span class="tag acc">${t('today', 'Сегодня')}</span>` : ''}</div>
+      <div class="row sb"><span class="eyebrow" style="font-size:calc(19px*var(--fz))">${esc(UI.fmtDate(day.y, day.mo, day.d, { weekday: 'long', year: undefined }))}</span>${opts.isToday ? `<span class="tag acc">${t('today', 'Сегодня')}</span>` : ''}</div>
       <div class="dp-head">${UI.ringPts(r, 70)}<div class="stack s6" style="min-width:0"><h3>${esc(keyName ? keyName + ': ' + lvName(r.level) : TX.dayTitle(day))}</h3><p class="small muted">${esc(TX.headline(day))}</p></div></div>
       ${tagsHTML(TX.dayTags(day))}
       <section class="stack s6"><span class="label">${t('dd.spheres', 'Баллы по сферам')}</span>${sphereBars(day)}</section>
@@ -189,7 +189,7 @@
       ${up.length ? `<div class="small"><span style="color:var(--mint);font-weight:800">↑</span> ${up.map(([k, v]) => `${esc(TX.SPH[k].name)} ${v.pts}`).join(' · ')}</div>` : ''}
       ${down.length ? `<div class="small"><span style="color:var(--rose);font-weight:800">↓</span> ${down.map(([k, v]) => `${esc(TX.SPH[k].name)} ${v.pts}`).join(' · ')}</div>` : ''}
       ${ev.map((e) => evRow(e, tz, true)).join('')}
-      <div class="rt-foot">${t('tip.click', 'Нажми — все подробности дня')} ›</div>`;
+      <div class="rt-foot">${opts.foot || t('tip.click', 'Нажми — все подробности дня')} ›</div>`;
   }
 
   // ---------- окна ----------

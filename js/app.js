@@ -18,6 +18,15 @@
     const dark = th === 'dark' || (th !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
     const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', dark ? '#120D20' : '#FDFAF5');
     const tg = document.querySelector('[data-theme-tg]'); if (tg) tg.innerHTML = icon(dark ? 'sun' : 'moon');
+    applySize();
+  }
+  // размер текста: обычный / крупный (по умолчанию) / очень крупный — для тех, кому не хочется всматриваться
+  const SIZES = ['m', 'l', 'xl'];
+  function applySize() {
+    const z = root.NStore.settings().textSize || 'l';
+    document.documentElement.setAttribute('data-fz', SIZES.includes(z) ? z : 'l');
+    const b = document.querySelector('[data-fz-tg]');
+    if (b) { const n = { m: t('fz.m', 'Обычный'), l: t('fz.l', 'Крупный'), xl: t('fz.xl', 'Очень крупный') }[z] || ''; b.title = t('fz.tg', 'Размер текста: {n}. Нажми — крупнее', { n }); b.setAttribute('aria-label', b.title); b.dataset.z = z; }
   }
 
   function parseHash() {
@@ -35,6 +44,7 @@
       <header class="top"><div class="top-in">
         <a class="brand" href="#today"><span class="brand-mark" aria-hidden="true"></span>${esc(root.NCONFIG.brand)}</a>
         ${p ? `<button class="who" type="button" data-who aria-label="${t('who', 'Чья карта')}"><span class="av">${esc(UI.initials(p.name))}</span><b>${esc(p.name)}</b>${icon('down', 'sm')}</button>` : ''}
+        <button class="iconbtn fz-tg" type="button" data-fz-tg><span aria-hidden="true">A<small>A</small></span></button>
         <button class="iconbtn theme-tg" type="button" data-theme-tg aria-label="${t('theme.toggle', 'Сменить тему')}" title="${t('theme.toggle', 'Сменить тему')}">${icon(UI.isDark() ? 'sun' : 'moon')}</button>
         <a class="iconbtn" href="#settings" aria-label="${t('nav.settings', 'Настройки')}">${icon('settings')}</a>
       </div></header>
@@ -44,6 +54,15 @@
     if (who) who.addEventListener('click', openWho);
     const tg = app.querySelector('[data-theme-tg]');
     if (tg) tg.addEventListener('click', () => { root.NStore.set('theme', UI.isDark() ? 'light' : 'dark'); applyTheme(); tg.innerHTML = icon(UI.isDark() ? 'sun' : 'moon'); });
+    const fz = app.querySelector('[data-fz-tg]');
+    if (fz) fz.addEventListener('click', () => {
+      const z = root.NStore.settings().textSize || 'l';
+      const nz = SIZES[(SIZES.indexOf(z) + 1) % SIZES.length];
+      root.NStore.set('textSize', nz); applySize();
+      UI.toast({ m: t('fz.toastM', 'Обычный размер текста'), l: t('fz.toastL', 'Крупный текст'), xl: t('fz.toastXL', 'Очень крупный текст') }[nz]);
+      window.dispatchEvent(new Event('resize'));
+    });
+    applySize();
   }
 
   function openWho() {
@@ -69,6 +88,7 @@
     else if (force || lastShellFor !== sig || !document.querySelector('.shell')) { shell(); lastShellFor = sig; }
     document.querySelectorAll('[data-nav]').forEach((a) => { if (a.dataset.nav === page) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
     const main = document.getElementById('main');
+    main.dataset.page = page;
     const v = document.createElement('div'); v.className = 'view';
     main.innerHTML = ''; main.appendChild(v);
     UI.closeSheet();
@@ -88,6 +108,6 @@
     if ('serviceWorker' in navigator && location.protocol === 'https:' && !root.NCONFIG.noSW) navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
-  root.NApp = { route, applyTheme, editPerson: (p, after) => root.NPeople.editPerson(p, after) };
+  root.NApp = { route, applyTheme, applySize, editPerson: (p, after) => root.NPeople.editPerson(p, after) };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })(window);
