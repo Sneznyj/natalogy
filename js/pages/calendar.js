@@ -168,7 +168,7 @@
         const top = NS.bestBy(pool, 'act:' + a, 3);
         const on = state.key === 'act:' + a;
         return `<div class="act${on ? ' on' : ''}"><button class="act-main" type="button" data-act="${a}" aria-pressed="${on}" title="${esc(t('acts.paint', 'Раскрасить календарь под это дело'))}"><span class="ic">${icon(TX.ACT[a].icon)}</span><span style="min-width:0"><b>${esc(TX.ACT[a].name)}</b><span class="tiny muted" style="display:block">${esc(TX.ACT[a].hint)}</span></span></button>
-          <span class="days">${top.map(({ day, r }) => `<button class="dchip" type="button" data-day="${day.d}" title="${esc(UI.fmtDate(day.y, day.mo, day.d, { weekday: 'long', year: undefined }))}">${day.d} ${esc(TX.MONTHS[day.mo - 1].slice(0, 3))} ${UI.ptsBadge(r, true)}</button>`).join('')}</span></div>`;
+          <span class="days">${top.map(({ day, r }) => `<button class="dchip" type="button" data-day="${day.d}" title="${esc(UI.fmtDate(day.y, day.mo, day.d, { weekday: 'long', year: undefined }))}">${esc(TX.monthDay(day.d, day.mo))} ${UI.ptsBadge(r, true)}</button>`).join('')}</span></div>`;
       }).join('')}</div>`;
     box.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
       const k = 'act:' + b.dataset.act; state.key = state.key === k ? 'overall' : k;

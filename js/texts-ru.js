@@ -220,5 +220,5 @@
   }
 
   root.NTexts = root.NTexts || {};
-  root.NTexts.ru = { P, S, H, ASP, SPH, LEVEL, LEVEL_DAY, MOON_SIGN, PHASE8, PHASE_TIP, RETRO, SHADOW, ECLIPSE, gend, phaseIdx, reason, headline, signName, planetName, MONTHS, MONTHS_N, WD, WD_FULL, fmtTime, monthDay: (d, m) => `${d} ${MONTHS[m - 1]}`, dayTitle, dayTags, ACT, evText, PHASE4, TAGS };
+  root.NTexts.ru = { P, S, H, ASP, SPH, LEVEL, LEVEL_DAY, MOON_SIGN, PHASE8, PHASE_TIP, RETRO, SHADOW, ECLIPSE, gend, phaseIdx, reason, headline, signName, planetName, MONTHS, MONTHS_N, WD, WD_FULL, fmtTime, monthDay: (d, m) => `${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')}`, dayTitle, dayTags, ACT, evText, PHASE4, TAGS };
 })(typeof window !== 'undefined' ? window : globalThis);

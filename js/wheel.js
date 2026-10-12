@@ -50,9 +50,11 @@
     const lang = opts.lang || 'ru';
     const bi = !!opts.outer;
     const S = 720, C = S / 2;
+    // двойное колесо — как в Sotis: пояс знаков, внешний круг планет (транзиты/вторая карта), внутренний круг (натал), аспекты в центре
     const R = bi
-      ? { zodOut: 300, zodIn: 266, tickTo: 258, pl: 230, plDeg: 207, asp: 184, oTick: 308, opl: 324, oplDeg: 347, hLab: 248 }
+      ? { zodOut: 336, zodIn: 300, ring: 244, pl: 214, plDeg: 192, asp: 178, opl: 274, oplDeg: 253, hLab: 352, axis: 350, hNum: 166 }
       : { zodOut: 312, zodIn: 276, tickTo: 267, pl: 246, plDeg: 219, asp: 194, hLab: 334, axis: 330 };
+    const PADV = bi ? 18 : 0;
     const asc = chart.asc != null ? chart.asc : 0;
     const ang = (lon) => 180 + norm(lon - asc); // ASC слева, против часовой
     const xy = (r, a) => [C + r * Math.cos(a * Math.PI / 180), C - r * Math.sin(a * Math.PI / 180)];
@@ -61,17 +63,18 @@
     const vis = (p) => !show || show.has(p.id);
     const degTxt = (lon) => `${Math.floor(norm(lon) % 30)}°`;
     const degMin = (lon) => { const d = norm(lon) % 30; return `${Math.floor(d)}°${String(Math.floor((d % 1) * 60)).padStart(2, '0')}′`; };
-    let s = `<svg class="nw" viewBox="0 0 ${S} ${S}" role="img" aria-label="${esc(opts.label || (lang === 'ru' ? 'Колесо карты' : 'Chart wheel'))}" xmlns="http://www.w3.org/2000/svg">`;
-    // поле внутри пояса
-    s += `<circle cx="${C}" cy="${C}" r="${R.zodIn}" fill="var(--w-paper)"/>`;
-    s += `<circle cx="${C}" cy="${C}" r="${R.asp}" fill="var(--w-inner)" stroke="var(--w-line2)" stroke-width="1"/>`;
-    // пояс знаков: пастельные сектора с просветами
+    let s = `<svg class="nw${bi ? ' bi' : ''}" viewBox="${-PADV} ${-PADV} ${S + 2 * PADV} ${S + 2 * PADV}" role="img" aria-label="${esc(opts.label || (lang === 'ru' ? 'Колесо карты' : 'Chart wheel'))}" xmlns="http://www.w3.org/2000/svg">`;
+    // поле внутри пояса; у двойного — внешний круг чуть тонирован, чтобы два круга планет читались отдельно
+    s += `<circle cx="${C}" cy="${C}" r="${R.zodIn}" fill="${bi ? 'var(--w-ring2)' : 'var(--w-paper)'}"/>`;
+    if (bi) s += `<circle cx="${C}" cy="${C}" r="${R.ring}" fill="var(--w-paper)" stroke="var(--w-ring-line)" stroke-width="1.6"/>`;
+    s += `<circle cx="${C}" cy="${C}" r="${R.asp}" fill="var(--w-inner)" stroke="${bi ? 'var(--w-ring-line)' : 'var(--w-line2)'}" stroke-width="${bi ? 1.4 : 1}"/>`;
+    // пояс знаков: пастельные сектора с просветами, значки знаков — чёрные (контрастно)
     for (let i = 0; i < 12; i++) {
       const a0 = ang(i * 30) + 0.35, a1 = ang(i * 30 + 30) - 0.35;
       const el = ELEM[i % 4];
       s += `<path d="M${P(R.zodOut, a0)} A${R.zodOut} ${R.zodOut} 0 0 0 ${P(R.zodOut, a1)} L${P(R.zodIn, a1)} A${R.zodIn} ${R.zodIn} 0 0 1 ${P(R.zodIn, a0)}Z" fill="var(--w-${el})"/>`;
       const [gx, gy] = xy((R.zodOut + R.zodIn) / 2, ang(i * 30 + 15));
-      s += `<text x="${r1(gx)}" y="${r1(gy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_G}" font-size="${bi ? 20 : 23}" fill="var(--w-${el}-g)" data-tip="${esc(SIGNS[lang][i])}">${SIGN_G[i]}${VS}</text>`;
+      s += `<text x="${r1(gx)}" y="${r1(gy + 0.5)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_G}" font-size="${bi ? 23 : 24}" font-weight="700" fill="var(--w-sign)" data-tip="${esc(SIGNS[lang][i])}">${SIGN_G[i]}${VS}</text>`;
     }
     // шкала градусов по внутреннему краю пояса
     let ticks = '';
@@ -82,28 +85,27 @@
     s += `<path d="${ticks}" stroke="var(--w-tick)" stroke-width=".7" fill="none"/>`;
     s += `<circle cx="${C}" cy="${C}" r="${R.zodIn}" fill="none" stroke="var(--w-line2)" stroke-width=".8"/>`;
     // дома: линии куспидов, оси, номера с градусами
+    let hnum = '';
     if (chart.cusps) {
       const AX = { 0: ['AC', 'var(--w-angle)'], 3: ['IC', 'var(--w-angle2)'], 6: ['DC', 'var(--w-angle)'], 9: ['MC', 'var(--w-angle2)'] };
       for (let i = 0; i < 12; i++) {
         const c = chart.cusps[i], ax = AX[i];
         const a = ang(c);
         if (ax) {
-          s += `<line x1="${r1(xy(R.asp, a)[0])}" y1="${r1(xy(R.asp, a)[1])}" x2="${r1(xy(bi ? R.zodIn : R.axis - 14, a)[0])}" y2="${r1(xy(bi ? R.zodIn : R.axis - 14, a)[1])}" stroke="${ax[1]}" stroke-width="2.2" stroke-linecap="round"/>`;
-          if (!bi && (i === 0 || i === 9)) { const [hx, hy] = xy(R.axis - 6, a); s += `<circle cx="${r1(hx)}" cy="${r1(hy)}" r="3.4" fill="${ax[1]}"/>`; }
+          s += `<line x1="${r1(xy(R.asp, a)[0])}" y1="${r1(xy(R.asp, a)[1])}" x2="${r1(xy(R.axis - 14, a)[0])}" y2="${r1(xy(R.axis - 14, a)[1])}" stroke="${ax[1]}" stroke-width="2.4" stroke-linecap="round"/>`;
+          if (i === 0 || i === 9) { const [hx, hy] = xy(R.axis - 6, a); s += `<circle cx="${r1(hx)}" cy="${r1(hy)}" r="3.6" fill="${ax[1]}"/>`; }
         } else {
           s += `<line x1="${r1(xy(R.asp, a)[0])}" y1="${r1(xy(R.asp, a)[1])}" x2="${r1(xy(R.zodIn, a)[0])}" y2="${r1(xy(R.zodIn, a)[1])}" stroke="var(--w-line2)" stroke-width=".9"/>`;
-          if (!bi) s += `<line x1="${r1(xy(R.zodOut, a)[0])}" y1="${r1(xy(R.zodOut, a)[1])}" x2="${r1(xy(R.zodOut + 8, a)[0])}" y2="${r1(xy(R.zodOut + 8, a)[1])}" stroke="var(--w-line2)" stroke-width=".9"/>`;
+          s += `<line x1="${r1(xy(R.zodOut, a)[0])}" y1="${r1(xy(R.zodOut, a)[1])}" x2="${r1(xy(R.zodOut + 8, a)[0])}" y2="${r1(xy(R.zodOut + 8, a)[1])}" stroke="var(--w-line2)" stroke-width=".9"/>`;
         }
         const tip = (ax ? ax[0] + ' · ' : '') + (lang === 'ru' ? 'Дом ' : 'House ') + (i + 1) + ' · ' + fmtDeg(c, lang);
-        if (bi) {
+        const [hx, hy] = xy(R.hLab, a);
+        const label = ax ? ax[0] : ROMAN[i];
+        s += `<text x="${r1(hx)}" y="${r1(hy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${ax ? 14 : 12.5}" font-weight="800" fill="${ax ? 'var(--w-ink)' : 'var(--w-muted)'}" data-tip="${esc(tip)}">${label}<tspan font-size="9.5" font-weight="700" dy="-5">${Math.floor(norm(c) % 30)}</tspan></text>`;
+        if (bi) { // номер дома — внутри круга аспектов, посередине дома
           const next = chart.cusps[(i + 1) % 12], mid = c + norm(next - c) / 2;
-          const [hx, hy] = xy(R.hLab, ang(mid));
-          s += `<text x="${r1(hx)}" y="${r1(hy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="10.5" font-weight="700" fill="var(--w-muted)" data-tip="${esc(tip)}">${i + 1}</text>`;
-          if (ax) { const [lx, ly] = xy(R.zodIn - 26, a + (i === 9 || i === 3 ? 4.2 : -4.2)); s += `<text x="${r1(lx)}" y="${r1(ly)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="11" font-weight="800" fill="${ax[1]}" data-tip="${esc(tip)}">${ax[0]}</text>`; }
-        } else {
-          const [hx, hy] = xy(R.hLab, a);
-          const label = ax ? ax[0] : ROMAN[i];
-          s += `<text x="${r1(hx)}" y="${r1(hy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${ax ? 14 : 12.5}" font-weight="800" fill="${ax ? ax[1] : 'var(--w-muted)'}" data-tip="${esc(tip)}">${label}<tspan font-size="9.5" font-weight="600" dy="-5">${Math.floor(norm(c) % 30)}</tspan></text>`;
+          const [nx, ny] = xy(R.hNum, ang(mid));
+          hnum += `<text x="${r1(nx)}" y="${r1(ny)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="10.5" font-weight="700" fill="var(--w-muted)" stroke="var(--w-inner)" stroke-width="3" paint-order="stroke" data-tip="${esc(tip)}">${i + 1}</text>`;
         }
       }
     }
@@ -137,13 +139,13 @@
       aspHTML += `<g class="nw-asp" data-tip="${esc(tip)}"><line x1="${r1(x0)}" y1="${r1(y0)}" x2="${r1(x1)}" y2="${r1(y1)}" stroke="transparent" stroke-width="10"/><line class="al" x1="${r1(x0)}" y1="${r1(y0)}" x2="${r1(x1)}" y2="${r1(y1)}" stroke="${col}" stroke-width="${r1(0.9 + st * 1.4)}" opacity="${r1(0.55 + st * 0.45)}" ${minor ? 'stroke-dasharray="4 3"' : ''}/></g>`;
       aspGly += g;
     }
-    s += aspHTML + aspGly;
+    s += aspHTML + aspGly + hnum;
     // планеты
     function ring(points, rGlyph, rDeg, tickFrom, tickTo, cls, sideLabel, minSep) {
       const items = points.map((p) => ({ p, ang: ang(p.lon) }));
       spread(items, minSep);
       const out = cls === 'out';
-      const col = out ? 'var(--w-planet2)' : 'var(--w-planet)';
+      const tickCol = out ? 'var(--w-planet2)' : 'var(--w-ink)';
       let h = '';
       for (const it of items) {
         const p = it.p, a0 = ang(p.lon);
@@ -153,21 +155,25 @@
         const name = NAMES[lang][p.id] || p.id;
         const tip = `${name}${sideLabel ? ' · ' + sideLabel : ''}: ${fmtDeg(p.lon, lang)}${p.house ? ` · ${lang === 'ru' ? 'дом' : 'house'} ${p.house}` : ''}${p.retro ? (lang === 'ru' ? ' · ретроградный' : ' · retrograde') : ''}`;
         h += `<g class="nw-pl ${cls}" data-id="${p.id}" data-tip="${esc(tip)}" tabindex="0">`;
-        h += `<line x1="${r1(xy(tickFrom, a0)[0])}" y1="${r1(xy(tickFrom, a0)[1])}" x2="${r1(xy(tickTo, a0)[0])}" y2="${r1(xy(tickTo, a0)[1])}" stroke="${col}" stroke-width="2"/>`;
-        if (Math.abs(it.ang - a0) > 1.2) { const lr = out ? rGlyph - 13 : rGlyph + 14; h += `<line x1="${r1(xy(tickTo, a0)[0])}" y1="${r1(xy(tickTo, a0)[1])}" x2="${r1(xy(lr, it.ang)[0])}" y2="${r1(xy(lr, it.ang)[1])}" stroke="var(--w-line2)" stroke-width=".7"/>`; }
-        if (!out) { const [px, py] = xy(R.asp, a0); h += `<circle cx="${r1(px)}" cy="${r1(py)}" r="2.6" fill="${col}"/>`; }
-        h += `<circle class="pl-bg" cx="${r1(gx)}" cy="${r1(gy)}" r="13.5" fill="${out ? 'var(--w-plbg2)' : 'var(--w-plbg)'}" stroke="transparent"/>`;
+        h += `<line x1="${r1(xy(tickFrom, a0)[0])}" y1="${r1(xy(tickFrom, a0)[1])}" x2="${r1(xy(tickTo, a0)[0])}" y2="${r1(xy(tickTo, a0)[1])}" stroke="${tickCol}" stroke-width="2.2"/>`;
+        if (Math.abs(it.ang - a0) > 1.2) { const lr = rGlyph + (bi ? 12 : 14); h += `<line x1="${r1(xy(tickTo, a0)[0])}" y1="${r1(xy(tickTo, a0)[1])}" x2="${r1(xy(lr, it.ang)[0])}" y2="${r1(xy(lr, it.ang)[1])}" stroke="var(--w-line2)" stroke-width=".8"/>`; }
+        const [px, py] = xy(R.asp, a0);
+        h += `<circle cx="${r1(px)}" cy="${r1(py)}" r="${out ? 2.3 : 2.7}" fill="${tickCol}"/>`;
+        h += `<circle class="pl-bg" cx="${r1(gx)}" cy="${r1(gy)}" r="${bi ? 13 : 14}" fill="${out ? 'var(--w-plbg2)' : 'var(--w-plbg)'}" stroke="transparent"/>`;
         h += isTxt
-          ? `<text x="${r1(gx)}" y="${r1(gy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="11" font-weight="800" fill="${col}">${g}</text>`
-          : `<text x="${r1(gx)}" y="${r1(gy + 0.5)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_G}" font-size="${bi ? 20 : 24}" fill="${col}">${g}${VS}</text>`;
-        if (opts.degrees !== false) h += `<text x="${r1(dx)}" y="${r1(dy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${bi ? 11 : 13}" font-weight="700" fill="${out ? 'var(--w-planet2)' : 'var(--w-deg)'}">${degTxt(p.lon)}${p.retro ? `<tspan fill="var(--w-hard)" font-size="9" font-weight="800">R</tspan>` : ''}</text>`;
+          ? `<text x="${r1(gx)}" y="${r1(gy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="11.5" font-weight="800" fill="var(--w-ink)">${g}</text>`
+          : `<text x="${r1(gx)}" y="${r1(gy + 0.5)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_G}" font-size="${bi ? 22 : 25}" font-weight="700" fill="var(--w-ink)">${g}${VS}</text>`;
+        if (opts.degrees !== false) h += `<text x="${r1(dx)}" y="${r1(dy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${bi ? 11.5 : 13}" font-weight="800" fill="${out ? 'var(--w-deg2)' : 'var(--w-deg)'}">${degTxt(p.lon)}${p.retro ? `<tspan fill="var(--w-hard)" font-size="9" font-weight="800">R</tspan>` : ''}</text>`;
         else if (p.retro) h += `<text x="${r1(dx)}" y="${r1(dy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="9" font-weight="800" fill="var(--w-hard)">R</text>`;
         h += '</g>';
       }
       return h;
     }
-    s += ring(ptsIn.filter((p) => !['asc', 'mc'].includes(p.id)), R.pl, R.plDeg, R.zodIn, R.zodIn - 11, 'in', opts.labels && opts.labels.in, bi ? 7.4 : 7.2);
-    if (bi) s += ring(opts.outer.points.filter((p) => !['asc', 'mc'].includes(p.id) && (!opts.showOuter || opts.showOuter.includes(p.id))), R.opl, R.oplDeg, R.zodOut, R.oTick, 'out', opts.labels && opts.labels.out, 6.2);
+    if (bi) {
+      // внутренний круг — натал, внешний — вторая карта (транзиты, соляр, партнёр…); у каждого своя граница
+      s += ring(ptsIn.filter((p) => !['asc', 'mc'].includes(p.id)), R.pl, R.plDeg, R.ring, R.ring - 8, 'in', opts.labels && opts.labels.in, 7.6);
+      s += ring(opts.outer.points.filter((p) => !['asc', 'mc'].includes(p.id) && (!opts.showOuter || opts.showOuter.includes(p.id))), R.opl, R.oplDeg, R.zodIn, R.zodIn - 8, 'out', opts.labels && opts.labels.out, 6.4);
+    } else s += ring(ptsIn.filter((p) => !['asc', 'mc'].includes(p.id)), R.pl, R.plDeg, R.zodIn, R.zodIn - 11, 'in', opts.labels && opts.labels.in, 7.2);
     s += '</svg>';
     return s;
   }

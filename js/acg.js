@@ -98,13 +98,13 @@
       const l = L[id]; if (!l) continue;
       const col = COLORS[id];
       const tipOf = (ang) => `${(nm[id] || id)} — ${(opts.angleNames || {})[ang] || ang}`;
-      if (angles.has('mc')) s += `<line class="acg-l" data-tip="${tipOf('mc')}" x1="${px(l.mc)}" y1="0" x2="${px(l.mc)}" y2="${H}" stroke="${col}" stroke-width="1.6"/>`;
-      if (angles.has('ic')) s += `<line class="acg-l" data-tip="${tipOf('ic')}" x1="${px(l.ic)}" y1="0" x2="${px(l.ic)}" y2="${H}" stroke="${col}" stroke-width="1.2" stroke-dasharray="5 4"/>`;
+      if (angles.has('mc')) s += `<line class="acg-l" data-acg="${id}|mc" data-tip="${tipOf('mc')}" x1="${px(l.mc)}" y1="0" x2="${px(l.mc)}" y2="${H}" stroke="${col}" stroke-width="1.6"/>`;
+      if (angles.has('ic')) s += `<line class="acg-l" data-acg="${id}|ic" data-tip="${tipOf('ic')}" x1="${px(l.ic)}" y1="0" x2="${px(l.ic)}" y2="${H}" stroke="${col}" stroke-width="1.2" stroke-dasharray="5 4"/>`;
       for (const ang of ['asc', 'dsc']) {
         if (!angles.has(ang)) continue;
         let d = '', prev = null;
         for (const [lon, lat] of l[ang]) { const x = px(lon), y = py(lat); d += (prev == null || Math.abs(lon - prev) > 180 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1); prev = lon; }
-        s += `<path class="acg-l" data-tip="${tipOf(ang)}" d="${d}" fill="none" stroke="${col}" stroke-width="${ang === 'asc' ? 1.6 : 1.2}" ${ang === 'dsc' ? 'stroke-dasharray="2 3"' : ''}/>`;
+        s += `<path class="acg-l" data-acg="${id}|${ang}" data-tip="${tipOf(ang)}" d="${d}" fill="none" stroke="${col}" stroke-width="${ang === 'asc' ? 1.6 : 1.2}" ${ang === 'dsc' ? 'stroke-dasharray="2 3"' : ''}/>`;
       }
       // подпись у верхнего края на линии MC
       if (angles.has('mc')) s += `<text x="${(px(l.mc) + 3).toFixed(1)}" y="12" font-family="'Noto Sans Symbols 2','Noto Sans Symbols','Segoe UI Symbol',sans-serif" font-size="12" fill="${col}">${(opts.glyphs || {})[id] || ''}</text>`;
@@ -114,5 +114,67 @@
     s += '</svg>';
     return s;
   }
-  root.NACG = { lines, cityHits, svg, loadWorld, COLORS, equatorOfDate };
+  // ---------- обычная карта мира (Leaflet + тайлы с названиями всех мест), зум, линии по нажатию ----------
+  // насыщенные цвета линий — видны и на светлой, и на тёмной карте
+  const MAP_COL = { sun: '#E07A00', moon: '#5B6EB0', mercury: '#108C77', venus: '#D23C86', mars: '#D7263D', jupiter: '#1F63D6', saturn: '#7A5A14', uranus: '#0096A8', neptune: '#6440D8', pluto: '#9A2FB0' };
+  const MAP_COL_D = { sun: '#FFB347', moon: '#C9CCFF', mercury: '#5FE0C4', venus: '#FF8CC0', mars: '#FF6B6B', jupiter: '#7FB0FF', saturn: '#E3C27A', uranus: '#5FE3F2', neptune: '#B49BFF', pluto: '#E38BF5' };
+  const mapColor = (id, dark) => (dark ? MAP_COL_D : MAP_COL)[id] || '#888';
+  let LP = null;
+  function loadLeaflet() {
+    if (root.L && root.L.map) return Promise.resolve(root.L);
+    if (LP) return LP;
+    const cfg = (root.NCONFIG || {}).leaflet || {};
+    if (!cfg.js) return Promise.reject(new Error('no leaflet'));
+    LP = new Promise((res, rej) => {
+      if (!document.querySelector('link[data-leaflet]')) { const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = cfg.css; css.setAttribute('data-leaflet', '1'); document.head.appendChild(css); }
+      const s = document.createElement('script'); s.src = cfg.js; s.async = true;
+      const to = setTimeout(() => rej(new Error('timeout')), 9000);
+      s.onload = () => { clearTimeout(to); root.L && root.L.map ? res(root.L) : rej(new Error('no L')); };
+      s.onerror = () => { clearTimeout(to); rej(new Error('load')); };
+      document.head.appendChild(s);
+    }).catch((e) => { LP = null; throw e; });
+    return LP;
+  }
+  function tileLayer(dark) {
+    const cfg = (root.NCONFIG || {}).tiles || {};
+    return root.L.tileLayer(dark ? cfg.dark : cfg.light, { subdomains: cfg.subdomains || 'abc', maxZoom: 19, attribution: cfg.attribution || '' });
+  }
+  /** Долготы подряд без скачка ±360 — чтобы линия шла непрерывно, и её копии на соседних «мирах». */
+  function unwrap(pts) { const out = []; let prev = null, off = 0; for (const [lon, lat] of pts) { if (prev != null) { if (lon + off - prev > 180) off -= 360; else if (lon + off - prev < -180) off += 360; } const x = lon + off; out.push([lat, x]); prev = x; } return out; }
+  function drawLeafletLines(layer, Ls, o) {
+    const Lf = root.L; layer.clearLayers();
+    const angles = new Set(o.angles), copies = [-360, 0, 360];
+    for (const id of o.show) {
+      const l = Ls[id]; if (!l) continue;
+      const col = mapColor(id, o.dark);
+      const tip = (ang) => `${o.glyphs[id] || ''} ${(o.names || {})[id] || id} — ${(o.angleNames || {})[ang] || ang}`;
+      const add = (latlngs, ang, style) => {
+        for (const k of copies) {
+          const ll = latlngs.map(([a, b]) => [a, b + k]);
+          // широкая прозрачная линия поверх — легко попасть пальцем
+          const hit = Lf.polyline(ll, { color: col, weight: 16, opacity: 0, interactive: true });
+          const line = Lf.polyline(ll, Object.assign({ color: col, weight: 3, opacity: 0.95, interactive: false, lineCap: 'round' }, style));
+          hit.bindTooltip(tip(ang), { sticky: true, className: 'acg-tt' });
+          hit.on('click', (e) => o.onClick(id, ang, e.latlng));
+          hit.on('mouseover', () => line.setStyle({ weight: 5.5 })); hit.on('mouseout', () => line.setStyle({ weight: style && style.weight ? style.weight : 3 }));
+          line.addTo(layer); hit.addTo(layer);
+        }
+      };
+      if (angles.has('mc')) add([[-85, l.mc], [85, l.mc]], 'mc', {});
+      if (angles.has('ic')) add([[-85, l.ic], [85, l.ic]], 'ic', { dashArray: '8 7', weight: 2.6 });
+      if (angles.has('asc') && l.asc.length) add(unwrap(l.asc), 'asc', {});
+      if (angles.has('dsc') && l.dsc.length) add(unwrap(l.dsc), 'dsc', { dashArray: '3 7', weight: 2.8 });
+      // подписи: значок планеты и угол прямо на линии
+      const lab = (lat, lon, ang) => { for (const k of copies) { const m = Lf.marker([lat, lon + k], { icon: Lf.divIcon({ className: 'acg-lab', html: `<span style="background:${col}">${o.glyphs[id] || ''}<small>${ang.toUpperCase()}</small></span>`, iconSize: null }), keyboard: false }); m.on('click', (e) => o.onClick(id, ang, e.latlng)); m.addTo(layer); } };
+      if (angles.has('mc')) lab(62, l.mc, 'mc');
+      if (angles.has('ic')) lab(-48, l.ic, 'ic');
+      const mid = (arr) => arr[Math.floor(arr.length * 0.62)];
+      if (angles.has('asc') && l.asc.length) { const q = mid(l.asc); lab(q[1], q[0], 'asc'); }
+      if (angles.has('dsc') && l.dsc.length) { const q = mid(l.dsc); lab(q[1], q[0], 'dsc'); }
+    }
+    const dot = (pt, cls, label) => { if (!pt) return; for (const k of copies) Lf.marker([pt.lat, pt.lon + k], { icon: Lf.divIcon({ className: 'acg-pt ' + cls, html: '<i></i>', iconSize: [18, 18] }), zIndexOffset: 500 }).bindTooltip(label, { direction: 'top', offset: [0, -8] }).addTo(layer); };
+    dot(o.birth, 'birth', o.birthLabel); dot(o.here, 'here', o.hereLabel);
+  }
+
+  root.NACG = { lines, cityHits, svg, loadWorld, COLORS, equatorOfDate, loadLeaflet, tileLayer, drawLeafletLines, mapColor };
 })(window);

@@ -224,35 +224,103 @@
   }
 
   // ---------- страница ----------
+  /**
+   * Лента дней как слайдер: от недели назад до двух месяцев вперёд, тянется мышью и пальцем, стрелки листают,
+   * ползунок под лентой мотает дни, «Список дней» — все дни списком.
+   */
+  const SPAN = 68, BACK = 7;
   async function page(el, params) {
     const p = root.NStore.active();
     if (!p) { location.hash = '#onboard'; return; }
-    const here = UI.here();
-    const now = UI.todayIn(here.tz);
-    let cur = params.d ? (() => { const [y, mo, d] = params.d.split('-').map(Number); return { y, mo, d }; })() : now;
+    const here = UI.here(), tz = here.tz;
+    const now = UI.todayIn(tz);
     const add = (c, k) => { const dt = new Date(Date.UTC(c.y, c.mo - 1, c.d + k)); return { y: dt.getUTCFullYear(), mo: dt.getUTCMonth() + 1, d: dt.getUTCDate() }; };
-    const draw = async () => {
-      const isToday = cur.y === now.y && cur.mo === now.mo && cur.d === now.d;
-      const wd = (new Date(Date.UTC(cur.y, cur.mo - 1, cur.d)).getUTCDay() + 6) % 7;
-      const mon = add(cur, -wd);
-      el.innerHTML = `<section class="today-hero">
-        <div class="row sb"><span class="eyebrow">${isToday ? t('today', 'Сегодня') : t('day', 'День')} · ${esc(UI.fmtDate(cur.y, cur.mo, cur.d, { weekday: 'long', year: undefined }))}</span>
-          <div class="daynav"><button class="iconbtn bd" data-dd="-1" aria-label="${t('prevDay', 'Предыдущий день')}">${icon('left')}</button>${isToday ? '' : `<button class="btn sm" data-dd="0">${t('today', 'Сегодня')}</button>`}<button class="iconbtn bd" data-dd="1" aria-label="${t('nextDay', 'Следующий день')}">${icon('right')}</button></div></div>
-        <h1>${esc(t('hi', '{name}, вот твой день', { name: p.name }))}</h1>
-        <div class="wstrip" id="wstrip">${Array.from({ length: 7 }, () => '<span class="ws load"></span>').join('')}</div>
-      </section><div id="dayBox"><div class="card" style="min-height:280px;opacity:.5"></div></div>`;
-      el.querySelectorAll('[data-dd]').forEach((b) => b.addEventListener('click', () => { const k = +b.dataset.dd; cur = k === 0 ? now : add(cur, k); draw(); }));
-      const days = await root.NCompute.range(p, mon.y, mon.mo, mon.d, 7, here.tz);
-      const ws = el.querySelector('#wstrip'); if (!ws) return;
-      const TX = UI.TX();
-      ws.innerHTML = days.map((d) => { const sel = d.y === cur.y && d.mo === cur.mo && d.d === cur.d, td = d.y === now.y && d.mo === now.mo && d.d === now.d; return `<button class="ws tap ${UI.lvCls(d.overall.level)}${sel ? ' sel' : ''}" type="button" data-y="${d.y}" data-m="${d.mo}" data-d="${d.d}" aria-pressed="${sel}"><span class="ws-d">${esc(TX.WD[new Date(Date.UTC(d.y, d.mo - 1, d.d)).getUTCDay()])} <b>${d.d}</b>${td ? ' ·' : ''}</span>${UI.dots(d.overall.level)}<span class="ws-t">${esc(TX.dayTitle(d))}</span>${UI.ptsBadge(d.overall)}</button>`; }).join('');
-      ws.querySelectorAll('[data-d]').forEach((b) => b.addEventListener('click', () => { cur = { y: +b.dataset.y, mo: +b.dataset.m, d: +b.dataset.d }; draw(); }));
-      const day = days.find((d) => d.y === cur.y && d.mo === cur.mo && d.d === cur.d) || await root.NCompute.day(p, cur.y, cur.mo, cur.d, here.tz);
-      const box = el.querySelector('#dayBox'); if (!box) return;
-      box.innerHTML = render(day, { person: p, isToday, calLink: true });
-      bindDay(box, day, p);
+    const diff = (a, b) => Math.round((Date.UTC(a.y, a.mo - 1, a.d) - Date.UTC(b.y, b.mo - 1, b.d)) / 86400000);
+    const same = (a, b) => a.y === b.y && a.mo === b.mo && a.d === b.d;
+    let cur = params.d ? (() => { const [y, mo, d] = params.d.split('-').map(Number); return { y, mo, d }; })() : now;
+    let start = add(now, -BACK);
+    if (diff(cur, start) < 0 || diff(cur, start) >= SPAN) start = add(cur, -BACK);
+    let days = new Array(SPAN).fill(null);
+    const TX = UI.TX();
+    const wdOf = (c) => new Date(Date.UTC(c.y, c.mo - 1, c.d)).getUTCDay();
+    const cardHTML = (k) => {
+      const c = add(start, k), d = days[k];
+      const sel = same(c, cur), td = same(c, now);
+      if (!d) return `<button class="ws tap load${sel ? ' sel' : ''}" type="button" data-k="${k}" aria-pressed="${sel}"><span class="ws-d">${esc(TX.WD[wdOf(c)])} <b>${UI.pad(c.d)}.${UI.pad(c.mo)}</b></span></button>`;
+      return `<button class="ws tap ${UI.lvCls(d.overall.level)}${sel ? ' sel' : ''}${td ? ' today' : ''}" type="button" data-k="${k}" aria-pressed="${sel}"><span class="ws-d">${esc(TX.WD[wdOf(c)])} <b>${UI.pad(c.d)}.${UI.pad(c.mo)}</b></span>${UI.dots(d.overall.level)}<span class="ws-t">${esc(TX.dayTitle(d))}</span>${UI.ptsBadge(d.overall)}${td ? `<em class="ws-today">${t('todayS', 'сегодня')}</em>` : ''}</button>`;
     };
-    await draw();
+    const heading = () => `${same(cur, now) ? t('today', 'Сегодня') : t('day', 'День')} · ${UI.fmtDate(cur.y, cur.mo, cur.d, { weekday: 'long' })}`;
+    el.innerHTML = `<section class="today-hero">
+        <div class="row sb"><span class="eyebrow" data-head>${esc(heading())}</span>
+          <div class="daynav"><button class="iconbtn bd" data-dd="-1" aria-label="${t('prevDay', 'Предыдущий день')}">${icon('left')}</button><button class="btn sm" data-dd="0">${t('today', 'Сегодня')}</button><button class="iconbtn bd" data-dd="1" aria-label="${t('nextDay', 'Следующий день')}">${icon('right')}</button><button class="btn sm" data-dlist>${icon('list', 'sm')} ${t('dlist', 'Список дней')}</button></div></div>
+        <h1>${esc(t('hi', '{name}, вот твой день', { name: p.name }))}</h1>
+        <div class="dslider">
+          <div class="hs dstrip-wrap"><button class="hs-btn" type="button" data-hsl aria-label="${t('scrollL', 'Прокрутить влево')}">${icon('left', 'sm')}</button><div class="hs-track"><div class="wstrip dstrip" id="wstrip"></div></div><button class="hs-btn" type="button" data-hsr aria-label="${t('scrollR', 'Прокрутить вправо')}">${icon('right', 'sm')}</button></div>
+          <label class="dsl-range"><span class="mono tiny" data-dsl0></span><input type="range" min="0" max="${SPAN - 1}" step="1" data-dsl aria-label="${esc(t('dsl.a', 'Мотать дни'))}"><span class="mono tiny" data-dsl1></span></label>
+        </div>
+      </section><div id="dayBox"><div class="card" style="min-height:280px;opacity:.5"></div></div>`;
+    const ws = el.querySelector('#wstrip'), rng = el.querySelector('[data-dsl]'), box = el.querySelector('#dayBox');
+    let hs = null;
+    const drawStrip = () => {
+      ws.innerHTML = Array.from({ length: SPAN }, (_, k) => cardHTML(k)).join('');
+      rng.value = diff(cur, start);
+      const e = add(start, SPAN - 1);
+      el.querySelector('[data-dsl0]').textContent = `${UI.pad(start.d)}.${UI.pad(start.mo)}`;
+      el.querySelector('[data-dsl1]').textContent = `${UI.pad(e.d)}.${UI.pad(e.mo)}`;
+      if (!hs) hs = UI.hscroll(el.querySelector('.dstrip-wrap'), { active: '.sel', page: 0.8 });
+    };
+    let detT = 0, seq = 0;
+    const showDay = async (smooth) => {
+      const my = ++seq;
+      el.querySelector('[data-head]').textContent = heading();
+      const k = diff(cur, start);
+      const day = days[k] || await root.NCompute.day(p, cur.y, cur.mo, cur.d, tz);
+      if (my !== seq || !box.isConnected) return;
+      box.innerHTML = render(day, { person: p, isToday: same(cur, now), calLink: true });
+      bindDay(box, day, p);
+      root.NWheel.bindTips(box);
+      if (!smooth) history.replaceState(null, '', `#today${same(cur, now) ? '' : '?d=' + ymd(cur)}`);
+    };
+    const select = (c, opts) => {
+      opts = opts || {};
+      if (diff(c, start) < 0 || diff(c, start) >= SPAN) { start = add(c, -BACK); days = new Array(SPAN).fill(null); cur = c; drawStrip(); fill(); }
+      cur = c;
+      ws.querySelectorAll('.ws').forEach((b) => { const s = +b.dataset.k === diff(cur, start); b.classList.toggle('sel', s); b.setAttribute('aria-pressed', String(s)); });
+      rng.value = diff(cur, start);
+      if (hs && hs.center) hs.center(!opts.instant);
+      clearTimeout(detT);
+      if (opts.smooth) { el.querySelector('[data-head]').textContent = heading(); detT = setTimeout(() => showDay(false), 140); } else showDay(false);
+    };
+    // дни считаем месяцами: сперва ближайшие, остальное — следом, не замораживая экран
+    const fill = async () => {
+      const myStart = ymd(start);
+      for (let k = 0; k < SPAN;) {
+        const c = add(start, k);
+        const n = Math.min(SPAN - k, UI.daysIn(c.y, c.mo) - c.d + 1);
+        const list = await root.NCompute.range(p, c.y, c.mo, c.d, n, tz);
+        if (ymd(start) !== myStart || !ws.isConnected) return;
+        for (let i = 0; i < n; i++) { days[k + i] = list[i]; const b = ws.querySelector(`[data-k="${k + i}"]`); if (b) b.outerHTML = cardHTML(k + i); }
+        k += n;
+      }
+    };
+    ws.addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (b) select(add(start, +b.dataset.k)); });
+    rng.addEventListener('input', () => select(add(start, +rng.value), { smooth: true }));
+    el.querySelectorAll('[data-dd]').forEach((b) => b.addEventListener('click', () => { const k = +b.dataset.dd; select(k === 0 ? now : add(cur, k)); }));
+    el.querySelector('[data-dlist]').addEventListener('click', () => openDayList());
+    const openDayList = () => {
+      const rows = days.map((d, k) => {
+        const c = add(start, k), wdi = wdOf(c);
+        if (!d) return '';
+        const best = Object.entries(d.spheres).sort((a, b) => b[1].ptsF - a[1].ptsF)[0];
+        return `${wdi === 1 || k === 0 ? `<div class="dl-week">${t('dl.week', 'Неделя с {d}', { d: `${UI.pad(c.d)}.${UI.pad(c.mo)}` })}</div>` : ''}<button class="dl-row ${UI.lvCls(d.overall.level)}${same(c, cur) ? ' sel' : ''}${same(c, now) ? ' today' : ''}" type="button" data-lk="${k}"><span class="dl-d"><b>${UI.pad(c.d)}.${UI.pad(c.mo)}</b><small>${esc(TX.WD[wdi])}</small></span>${UI.dots(d.overall.level)}<span class="dl-t">${esc(TX.dayTitle(d))}<small>${esc(TX.SPH[best[0]].name)} ${best[1].pts}/10${same(c, now) ? ' · ' + t('todayS', 'сегодня') : ''}</small></span>${UI.ptsBadge(d.overall)}</button>`;
+      }).join('');
+      const body = UI.modal(`<div class="dl-list">${rows || `<p class="muted">${t('dl.loading', 'Считаю дни…')}</p>`}</div>`, { title: t('dlist', 'Список дней'), eyebrow: `${UI.pad(start.d)}.${UI.pad(start.mo)} — ${UI.pad(add(start, SPAN - 1).d)}.${UI.pad(add(start, SPAN - 1).mo)}` });
+      body.querySelectorAll('[data-lk]').forEach((b) => b.addEventListener('click', () => { UI.closeSheet(); select(add(start, +b.dataset.lk), { instant: true }); window.scrollTo({ top: 0 }); }));
+      const s = body.querySelector('.dl-row.sel'); if (s) s.scrollIntoView({ block: 'center' });
+    };
+    drawStrip();
+    showDay(true);
+    await fill();
   }
 
   root.NDay = { render, panel, tipHTML, bindDay, openDay, openSphere, reasonList, keyEvents, evRow, evGlyph, evColor, importance, wheelBlock, SPH_ICON, pg, sg };

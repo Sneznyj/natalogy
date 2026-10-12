@@ -117,9 +117,9 @@
   // ---------- v2: day title, do / better not, activities, timed events ----------
   const TITLE = {
     up: { love: 'Tenderness', money: 'Money', career: 'Career', launch: 'Launch', talk: 'Talks', energy: 'Charged', rest: 'Inspiration' },
-    mid: { love: 'Warmth', money: 'Shopping', career: 'Getting things done', launch: 'Go ahead', talk: 'Connect', energy: 'Action', rest: 'Cosy' },
+    mid: { love: 'Warmth', money: 'Shopping', career: 'Productive', launch: 'Go ahead', talk: 'Connect', energy: 'Action', rest: 'Cosy' },
     flat: 'Steady',
-    down: { love: 'No quarrels', money: 'Hold the wallet', career: 'No rush', launch: 'Slow down', talk: 'Quieter', energy: 'Save energy', rest: 'Stillness' },
+    down: { love: 'No quarrels', money: 'Thrifty', career: 'No rush', launch: 'Slow down', talk: 'Quieter', energy: 'Save energy', rest: 'Stillness' },
   };
   function dayTitle(day) {
     const list = Object.entries(day.spheres).sort((a, b) => b[1].ptsF - a[1].ptsF);
@@ -181,5 +181,5 @@
     }
   }
   root.NTexts = root.NTexts || {};
-  root.NTexts.en = { P, S, H, ASP, SPH, LEVEL, LEVEL_DAY, MOON_SIGN, PHASE8, PHASE_TIP, RETRO, SHADOW, ECLIPSE, gend, phaseIdx, reason, headline, signName: (id) => S[id].name, planetName: (id) => P[id].name, MONTHS, MONTHS_N: MONTHS, WD, WD_FULL, fmtTime, monthDay: (d, m) => `${MONTHS[m - 1]} ${d}`, dayTitle, dayTags, ACT, evText, PHASE4, TAGS };
+  root.NTexts.en = { P, S, H, ASP, SPH, LEVEL, LEVEL_DAY, MOON_SIGN, PHASE8, PHASE_TIP, RETRO, SHADOW, ECLIPSE, gend, phaseIdx, reason, headline, signName: (id) => S[id].name, planetName: (id) => P[id].name, MONTHS, MONTHS_N: MONTHS, WD, WD_FULL, fmtTime, monthDay: (d, m) => `${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')}`, dayTitle, dayTags, ACT, evText, PHASE4, TAGS };
 })(typeof window !== 'undefined' ? window : globalThis);

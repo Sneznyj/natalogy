@@ -16,14 +16,14 @@
   const specs = { main: null, left: null, right: null };
 
   const nowLocal = (tz) => { const q = UI.partsIn(new Date(), tz); return `${q.y}-${UI.pad(q.mo)}-${UI.pad(q.d)}T${UI.pad(q.h)}:${UI.pad(q.mi)}`; };
-  const parseLocal = (s, tz) => { const m = String(s).match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/); if (!m) return new Date(); return AC.localToUTC(+m[1], +m[2], +m[3], +m[4], +m[5], tz).date; };
+  const parseLocal = (s, tz) => { if (/Z$/.test(String(s))) { const d = new Date(s); if (!isNaN(d)) return d; } const m = String(s).match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/); if (!m) return new Date(); return AC.localToUTC(+m[1], +m[2], +m[3], +m[4], +m[5], tz).date; };
   const fmtLon = (l) => { const TX = UI.TX(); const s = AC.signOf(l); return `${Math.floor(l % 30)}°${UI.pad(Math.floor((l % 1) * 60))}′ ${TX.S[s].name}`; };
   const pName = (id) => (UI.TX().P[id] ? UI.TX().P[id].name : /^c\d+$/.test(id) ? t('cusp', 'Куспид') + ' ' + id.slice(1) : id);
   const mkView = () => ({ pts: ALL_PTS.filter((x) => x !== 'fortune'), asp: MAJOR.slice(), cusps: false, orb: 1, hs: root.NStore.settings().houseSystem || 'placidus' });
 
   function defaultSpec(type, p) {
     const here = UI.here();
-    return { type: type || 'natal', a: p.id, custom: null, shiftA: null, b: (root.NStore.people().find((x) => x.id !== p.id) || {}).id || null, date: nowLocal(here.tz), year: UI.todayIn(here.tz).y, place: 'here', overlay: true, dir: 'arc', view: mkView() };
+    return { type: type || 'natal', a: p.id, custom: null, shiftA: null, b: (root.NStore.people().find((x) => x.id !== p.id) || {}).id || null, date: nowLocal(here.tz), year: UI.todayIn(here.tz).y, place: 'here', overlay: true, ring: true, dir: 'arc', view: mkView() };
   }
   /** Старые сохранённые карты — без своих настроек показа и данных вручную. */
   function normSpec(s, p) { const d = defaultSpec(s && s.type, p); const out = Object.assign(d, s || {}); out.view = Object.assign(mkView(), (s && s.view) || {}); return out; }
@@ -39,7 +39,7 @@
     const k = [p.y, p.mo, p.d, p.h, p.mi, p.timeKnown, p.place.lat, p.place.lon, p.place.tz, hs, at ? at.getTime() : ''].join('|');
     if (cache.has(k)) return cache.get(k);
     let c;
-    if (at) { const q = UI.partsIn(at, p.place.tz); c = AC.chart({ y: q.y, mo: q.mo, d: q.d, h: q.h, mi: q.mi, timeKnown: true, zone: p.place.tz, lat: p.place.lat, lon: p.place.lon, name: p.name }, { houseSystem: hs }); }
+    if (at) c = AC.chart({ date: at, timeKnown: true, zone: p.place.tz, lat: p.place.lat, lon: p.place.lon, name: p.name }, { houseSystem: hs });
     else c = AC.chart({ y: p.y, mo: p.mo, d: p.d, h: p.h, mi: p.mi, timeKnown: p.timeKnown !== false, zone: p.place.tz, lat: p.place.lat, lon: p.place.lon, name: p.name }, { houseSystem: hs });
     cache.set(k, c); if (cache.size > 80) cache.delete(cache.keys().next().value);
     return c;
@@ -61,13 +61,22 @@
     const natal = natalOf(spec);
     const tz = UI.here().tz;
     const date = parseLocal(spec.date, tz);
-    const out = { title: '', sub: '', info: [], inner: null, outer: null, aspects: [], innerChart: natal, labels: null, p };
+    const out = { title: '', sub: '', info: [], inner: null, outer: null, aspects: [], innerChart: natal, labels: null, p, moments: [] };
     const inPts = (c) => sel(c.points).concat(v.cusps ? cuspPts(c) : []);
     const opt = Object.assign({}, natal.opts, { houseSystem: v.hs });
     switch (spec.type) {
       case 'natal': {
         out.inner = toWheel(natal); out.title = TX.chartTypes.natal + ' · ' + p.name;
-        out.aspects = keepAsp(AC.aspectsWithin(inPts(natal), optsAsp()));
+        out.moments.push({ label: t('mom.birth', 'Момент рождения'), date: natal.date, tz: p.place.tz, place: p.place.name, main: spec.ring === false });
+        if (spec.ring !== false) {
+          // в любой наталке — второй круг с транзитами и ползунок даты
+          const sky = AC.chart({ date, timeKnown: false });
+          out.outer = { points: sel(sky.points.filter((x) => !['asc', 'mc', 'fortune', 'lilith'].includes(x.id))) };
+          out.aspects = keepAsp(AC.aspectsBetween(inPts(natal), out.outer.points, Object.assign(optsAsp(), { orbMult: 0.35 * v.orb })));
+          out.labels = { in: t('natal', 'натал'), out: t('transit', 'транзит') };
+          out.title = TX.chartTypes.natal + ' + ' + TX.chartTypes.transit.toLowerCase() + ' · ' + p.name;
+          out.moments.push({ label: t('mom.transits', 'Транзиты на момент'), date, tz, main: true });
+        } else out.aspects = keepAsp(AC.aspectsWithin(inPts(natal), optsAsp()));
         break;
       }
       case 'transit': {
@@ -75,7 +84,8 @@
         const sky = AC.chart({ date, lat: pl.lat, lon: pl.lon, zone: tz, timeKnown: true }, opt);
         out.inner = toWheel(natal); out.outer = { points: sel(sky.points.filter((x) => !['asc', 'mc', 'fortune', 'lilith'].includes(x.id))) };
         out.aspects = keepAsp(AC.aspectsBetween(inPts(natal), out.outer.points, Object.assign(optsAsp(), { orbMult: 0.35 * v.orb })));
-        out.title = TX.chartTypes.transit + ' · ' + p.name; out.sub = UI.fmtDay(date, tz, { year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        out.title = TX.chartTypes.transit + ' · ' + p.name;
+        out.moments.push({ label: t('mom.transits', 'Транзиты на момент'), date, tz, place: spec.place === 'birth' ? p.place.name : (UI.here().name || ''), main: true });
         out.labels = { in: t('natal', 'натал'), out: t('transit', 'транзит') };
         break;
       }
@@ -84,7 +94,11 @@
         const rc = spec.type === 'solar' ? AC.solarReturn(natal, +spec.year, pl, opt) : PRO.lunarReturn(natal, AC.addDays(date, -1), pl, opt);
         out.innerChart = rc;
         out.title = TX.chartTypes[spec.type] + ' · ' + p.name;
-        out.sub = UI.fmtDay(rc.returnDate, tz, { year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' · ' + (spec.place === 'birth' ? t('placeBirth', 'место рождения') : t('placeHere', 'где я сейчас'));
+        out.sub = spec.place === 'birth' ? t('placeBirth', 'место рождения') : t('placeHere', 'где я сейчас');
+        const placeName = spec.place === 'birth' ? p.place.name : (UI.here().name || '');
+        const nextD = spec.type === 'solar' ? AC.solarReturn(natal, +spec.year + 1, pl, opt).returnDate : PRO.lunarReturnDate(natal, AC.addDays(rc.returnDate, 1));
+        out.moments.push({ label: spec.type === 'solar' ? t('mom.solar', 'Начало соляра') : t('mom.lunar', 'Начало лунара'), date: rc.returnDate, tz: pl.zone || tz, place: placeName, main: true });
+        out.moments.push({ label: spec.type === 'solar' ? t('mom.solarEnd', 'Следующий соляр') : t('mom.lunarEnd', 'Следующий лунар'), date: nextD, tz: pl.zone || tz });
         out.inner = toWheel(rc);
         if (spec.overlay) { out.outer = { points: sel(natal.points.filter((x) => !['fortune'].includes(x.id))) }; out.aspects = keepAsp(AC.aspectsBetween(inPts(rc), out.outer.points, Object.assign(optsAsp(), { orbMult: 0.5 * v.orb }))); out.labels = { in: TX.chartTypes[spec.type].toLowerCase(), out: t('natal', 'натал') }; }
         else out.aspects = keepAsp(AC.aspectsWithin(inPts(rc), optsAsp()));
@@ -99,7 +113,8 @@
         out.inner = toWheel(natal); out.outer = { points: sel(dir) };
         out.aspects = keepAsp(AC.aspectsBetween(inPts(natal), out.outer.points, Object.assign(optsAsp(), { orbMult: 0.15 * v.orb })));
         out.title = (spec.dir === 'deg' ? t('dir.deg', 'Дирекции 1° = 1 год') : t('dir.arc', 'Дирекции солнечной дуги')) + ' · ' + p.name;
-        out.sub = UI.fmtDay(date, tz, { year: 'numeric' }) + ' · ' + t('arc', 'дуга') + ' ' + arc.toFixed(2) + '°';
+        out.sub = t('arc', 'дуга') + ' ' + arc.toFixed(2) + '°';
+        out.moments.push({ label: t('mom.dir', 'Дирекции на дату'), date, tz, main: true });
         out.labels = { in: t('natal', 'натал'), out: t('directed', 'дирекция') };
         break;
       }
@@ -107,7 +122,8 @@
         const pr = AC.progressed(natal, date, opt);
         out.inner = toWheel(natal); out.outer = { points: sel(pr.points) };
         out.aspects = keepAsp(AC.aspectsBetween(inPts(natal), out.outer.points, Object.assign(optsAsp(), { orbMult: 0.15 * v.orb })));
-        out.title = TX.chartTypes.progressions + ' · ' + p.name; out.sub = UI.fmtDay(date, tz, { year: 'numeric' }) + ' · ' + t('progDate', 'прогрессивная дата') + ' ' + UI.fmtDay(pr.date, p.place.tz, { year: 'numeric' });
+        out.title = TX.chartTypes.progressions + ' · ' + p.name;
+        out.moments.push({ label: t('mom.prog', 'Прогрессии на дату'), date, tz, main: true }, { label: t('progDate2', 'Прогрессивная дата'), date: pr.date, tz: p.place.tz });
         out.info.push([t('progMoon', 'Прогрессивная Луна'), fmtLon(pr.byId.moon.lon)], [t('progPhase', 'Фаза прогрессий'), TX.PHASE8[pr.moonPhase]]);
         out.labels = { in: t('natal', 'натал'), out: t('progressed', 'прогрессии') };
         break;
@@ -117,7 +133,8 @@
         const c = AC.chart({ date, lat: pl.lat, lon: pl.lon, zone: pl.zone, timeKnown: true }, opt);
         out.innerChart = c; out.inner = toWheel(c);
         out.aspects = keepAsp(AC.aspectsWithin(inPts(c), optsAsp()));
-        out.title = TX.chartTypes.horary; out.sub = UI.fmtDay(date, tz, { year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        out.title = TX.chartTypes.horary;
+        out.moments.push({ label: t('mom.horary', 'Момент вопроса'), date, tz: pl.zone, main: true });
         const ph = PRO.planetaryHours(date, pl.lat, pl.lon, pl.zone);
         const h = PRO.horary(c, ph);
         out.info.push([t('hor.moon', 'Луна'), `${TX.S[h.moonSign].name}${h.voc ? ' · ' + t('voc.short', 'без курса') : ''}`]);
@@ -194,6 +211,7 @@
       ${spec.type === 'solar' ? `<div class="field"><label>${t('pro.year', 'Год')}</label><input class="input" type="number" min="1900" max="2100" data-k="year" value="${esc(spec.year)}"></div>` : ''}
       ${['solar', 'lunar', 'horary', 'transit'].includes(spec.type) ? `<div class="field"><label>${t('pro.place', 'Место')}</label><select class="select" data-k="place"><option value="here" ${spec.place === 'here' ? 'selected' : ''}>${t('placeHere', 'где я сейчас')}</option><option value="birth" ${spec.place === 'birth' ? 'selected' : ''}>${t('placeBirth', 'место рождения')}</option></select></div>` : ''}
       ${['solar', 'lunar'].includes(spec.type) ? `<label class="check"><input type="checkbox" data-k="overlay" ${spec.overlay ? 'checked' : ''}> ${t('pro.overlay', 'Наложить на натал')}</label>` : ''}
+      ${spec.type === 'natal' ? `<label class="check"><input type="checkbox" data-k="ring" ${spec.ring !== false ? 'checked' : ''}> ${t('pro.ring', 'Второй круг: транзиты')}</label>` : ''}
       ${spec.type === 'directions' ? `<div class="field"><label>${t('pro.dir', 'Метод')}</label><select class="select" data-k="dir"><option value="arc" ${spec.dir === 'arc' ? 'selected' : ''}>${t('dir.arcS', 'Солнечная дуга')}</option><option value="deg" ${spec.dir === 'deg' ? 'selected' : ''}>${t('dir.degS', '1° = 1 год')}</option></select></div>` : ''}
     </div>`;
   }
@@ -207,8 +225,8 @@
       <span class="label">${t('pro.customT', 'Данные этой карты')}</span>
       <div class="ctrl" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">
         <div class="field"><label>${t('f.name', 'Имя')}</label><input class="input" data-c="name" value="${esc(c.name || '')}" placeholder="${t('pro.customName', 'Например: Клиент')}"></div>
-        <div class="field"><label>${t('f.date', 'Дата рождения')}</label><input class="input" data-c="date" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" value="${esc(dateStr)}"><span class="hint"></span></div>
-        <div class="field"><label>${t('f.time', 'Время рождения')}</label><input class="input" data-c="time" type="time" value="${esc(timeStr)}"></div>
+        <div class="field"><label>${t('f.date', 'Дата рождения')}</label>${UI.dateFieldHTML('data-c="date"', dateStr)}<span class="hint"></span></div>
+        <div class="field"><label>${t('f.time', 'Время рождения')}</label><input class="input" data-c="time" inputmode="numeric" placeholder="${esc(t('ph.time', 'ЧЧ:ММ'))}" value="${esc(timeStr)}"></div>
         <div class="field ac"><label>${t('f.city', 'Город рождения')}</label><input class="input" data-c="city" autocomplete="off" placeholder="${t('f.cityPh', 'Начните вводить: Минск, Псков…')}"></div>
       </div>
       <p class="err" data-cerr hidden></p>
@@ -234,10 +252,15 @@
         ${spec.a === 'custom' ? customForm(spec, slot) : ''}
         ${displayBox(spec, slot)}
       </div>
-      <div class="wheel-card">
-        <div class="row sb" data-dyn="head"></div>
+      <div class="wheel-card wc-top">
+        <div class="row sb ph-head" data-dyn="head"></div>
+        <div data-dyn="moments"></div>
+      </div>
+      <div class="wheel-card wc-body">
         <div class="wheel-box" data-dyn="wheel"></div>
+        <div class="row" style="justify-content:center" data-dyn="ringkey"></div>
         <div data-tb></div>
+        <div data-tb2></div>
         <div data-dyn="banner"></div>
         <div data-dyn="info"></div>
       </div>
@@ -254,7 +277,9 @@
     const v = spec.view, pts = new Set(v.pts);
     const rowsIds = (r.innerChart.points || []).filter((p) => pts.has(p.id)).map((p) => p.id).concat(v.cusps && r.innerChart.houses ? cuspPts(r.innerChart).map((x) => x.id) : []);
     const colIds = r.outer ? r.outer.points.map((p) => p.id) : rowsIds;
-    q('head').innerHTML = `<div><h3>${esc(r.title)}</h3>${r.sub ? `<span class="tiny muted">${esc(r.sub)}</span>` : ''}</div>`;
+    q('head').innerHTML = `<div class="ph-title"><h3 title="${esc(r.title)}">${esc(r.title)}</h3>${r.sub ? `<span class="tiny muted">${esc(r.sub)}</span>` : ''}</div>`;
+    q('moments').innerHTML = r.moments.length ? `<div class="moments">${r.moments.map((m) => { const qd = UI.partsIn(m.date, m.tz); return `<div class="moment${m.main ? ' mo-key' : ''}"><span class="mo-l">${esc(m.label)}</span><b class="mo-d">${UI.fmtDMY(qd)} <span>${UI.fmtHMS(qd)}</span></b>${m.place ? `<span class="mo-p">${esc(m.place)}</span>` : ''}</div>`; }).join('')}</div>` : '';
+    q('ringkey').innerHTML = r.outer && r.labels ? `<span class="ring-key"><i class="rk-in"></i>${esc(t('ring.inX', 'внутри — {a}', { a: r.labels.in }))}<i class="rk-out"></i>${esc(t('ring.outX', 'снаружи — {a}', { a: r.labels.out }))}</span>` : '';
     q('wheel').innerHTML = (r.error ? `<p class="err">${esc(r.error)}</p>` : '') + root.NWheel.svg(r.inner, { outer: r.outer, aspects: r.aspects.map((x) => Object.assign({}, x)), lang: UI.lang(), labels: r.labels, label: r.title });
     q('info').innerHTML = r.info.length ? `<div class="facts" style="display:flex;flex-wrap:wrap;gap:6px">${r.info.map(([k, val]) => `<span class="chip static">${esc(k)}: <b>${esc(val)}</b></span>`).join('')}</div>` : '';
     q('grid').innerHTML = `<div class="row sb"><h3>${t('pro.grid', 'Таблица аспектов')}</h3><span class="tiny muted">${r.aspects.length} · ${t('pro.gridHint', 'наведи на клетку — орбис')}</span></div>${grid(rowsIds, colIds, r.aspects, !r.outer)}`;
@@ -263,7 +288,7 @@
     const bn = q('banner');
     if (spec.shiftA && !MOMENT.includes(spec.type)) {
       const p = subjectOf(spec), qq = UI.partsIn(new Date(spec.shiftA), p.place.tz);
-      bn.innerHTML = `<div class="rect-banner">${icon('alert', 'sm')}<span>${t('rect.changed', 'Пробное время рождения: {d} {t} (в профиле — {p}).', { d: `${UI.pad(qq.d)}.${UI.pad(qq.mo)}.${qq.y}`, t: `${UI.pad(qq.h)}:${UI.pad(qq.mi)}`, p: p.timeKnown !== false ? `${UI.pad(p.h)}:${UI.pad(p.mi)}` : t('rect.unknown', 'время не указано') })}</span><span class="spacer"></span><button class="btn sm" type="button" data-rreset>${t('rect.reset', 'Вернуть')}</button><button class="btn sm primary" type="button" data-rsave>${spec.a === 'custom' ? t('rect.apply', 'Записать в данные') : t('rect.save', 'Сохранить в профиль')}</button></div>`;
+      bn.innerHTML = `<div class="rect-banner">${icon('alert', 'sm')}<span>${t('rect.changed', 'Пробное время рождения: {d} {t} (в профиле — {p}).', { d: UI.fmtDMY(qq), t: UI.fmtHMS(qq, qq.s ? true : false), p: p.timeKnown !== false ? `${UI.pad(p.h)}:${UI.pad(p.mi)}` : t('rect.unknown', 'время не указано') })}</span><span class="spacer"></span><button class="btn sm" type="button" data-rreset>${t('rect.reset', 'Вернуть')}</button><button class="btn sm primary" type="button" data-rsave>${spec.a === 'custom' ? t('rect.apply', 'Записать в данные') : t('rect.save', 'Сохранить в профиль')}</button></div>`;
     } else bn.innerHTML = '';
     root.NWheel.bindTips(q('wheel')); root.NWheel.bindTips(q('grid'));
   }
@@ -277,18 +302,24 @@
     const live = () => updatePanel(box, spec, slot, compact);
     // ползунок: момент карты (транзиты, дирекции…) или время рождения (натал, соляр, синастрия…)
     const p = subjectOf(spec);
-    const tbs = box.querySelector('[data-tb]');
-    if (MOMENT.includes(spec.type)) {
-      const tz = UI.here().tz;
-      const bar = UI.timebar({ date: parseLocal(spec.date, tz), tz, play: true });
-      tbs.innerHTML = `<span class="label" style="display:block;margin-bottom:6px">${t('pro.moment', 'Момент карты')}</span>` + bar.html;
-      bar.bind(tbs, (d) => { const qd = UI.partsIn(d, tz); spec.date = `${qd.y}-${UI.pad(qd.mo)}-${UI.pad(qd.d)}T${UI.pad(qd.h)}:${UI.pad(qd.mi)}`; live(); });
-    } else if (p && p.place) {
+    const tbs = box.querySelector('[data-tb]'), tbs2 = box.querySelector('[data-tb2]');
+    const ringNatal = spec.type === 'natal' && spec.ring !== false;
+    const birthBar = (slot, label) => {
       const base = birthDate(p);
       const bar = UI.timebar({ date: spec.shiftA ? new Date(spec.shiftA) : base, tz: p.place.tz, play: false, dayRange: 30, nowLabel: spec.a === 'custom' ? t('tb.reset2', 'Как введено') : t('tb.reset', 'Как в профиле'), reset: () => base });
-      tbs.innerHTML = `<span class="label" style="display:block;margin-bottom:6px">${t('pro.birthTime', 'Время рождения — ползунком можно уточнять')}</span>` + bar.html;
-      bar.bind(tbs, (d) => { spec.shiftA = Math.abs(d - base) < 30000 ? null : d.getTime(); live(); });
-    }
+      slot.innerHTML = label + bar.html;
+      bar.bind(slot, (d) => { spec.shiftA = Math.abs(d - base) < 500 ? null : d.getTime(); live(); });
+    };
+    if (MOMENT.includes(spec.type) || ringNatal) {
+      const tz = UI.here().tz;
+      const bar = UI.timebar({ date: parseLocal(spec.date, tz), tz, play: true });
+      tbs.innerHTML = `<span class="label" style="display:block;margin-bottom:6px">${ringNatal ? t('pro.momentTr', 'Транзиты: дата и время (внешний круг)') : t('pro.moment', 'Момент карты')}</span>` + bar.html;
+      bar.bind(tbs, (d) => { spec.date = d.toISOString(); live(); });
+      if (ringNatal && p && p.place) {
+        tbs2.innerHTML = `<details class="tb-more"${spec.shiftA ? ' open' : ''}><summary>${icon('clock', 'sm')} ${t('pro.birthTime2', 'Уточнить время рождения (внутренний круг)')}</summary><div data-tb2in style="margin-top:8px"></div></details>`;
+        birthBar(tbs2.querySelector('[data-tb2in]'), '');
+      }
+    } else if (p && p.place) birthBar(tbs, `<span class="label" style="display:block;margin-bottom:6px">${t('pro.birthTime', 'Время рождения — ползунком можно уточнять')}</span>`);
     // настройки
     box.querySelectorAll('[data-k]').forEach((inp) => inp.addEventListener('change', () => {
       const k = inp.dataset.k; spec[k] = inp.type === 'checkbox' ? inp.checked : inp.value;
@@ -301,6 +332,7 @@
       const c = spec.custom || {};
       const di = UI.bindDateInput(cf.querySelector('[data-c="date"]'), () => {});
       if (c.y) di.check();
+      UI.bindTimeInput(cf.querySelector('[data-c="time"]'), null, false);
       const city = UI.bindCity(cf.querySelector('.ac'), null, c.place || null);
       cf.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -308,7 +340,7 @@
         const fail = (m) => { err.textContent = m; err.hidden = false; };
         const r = UI.parseDate(cf.querySelector('[data-c="date"]').value);
         if (r.error) return fail(r.error);
-        const tm = cf.querySelector('[data-c="time"]').value.match(/^(\d{1,2}):(\d{2})/);
+        const tm0 = UI.parseTime(cf.querySelector('[data-c="time"]').value), tm = tm0 ? [0, tm0.h, tm0.mi] : null;
         const pl = city.value; if (!pl) return fail(t('err.city', 'Выберите город из списка'));
         spec.custom = { name: cf.querySelector('[data-c="name"]').value.trim() || t('pro.customDefault', 'Карта'), gender: 'f', y: r.y, mo: r.mo, d: r.d, h: tm ? +tm[1] : 12, mi: tm ? +tm[2] : 0, timeKnown: !!tm, place: { name: pl.name, nameEn: pl.nameEn, country: pl.country, countryEn: pl.countryEn, lat: pl.lat, lon: pl.lon, tz: pl.tz } };
         spec.shiftA = null; remount();
@@ -344,12 +376,16 @@
     live();
   }
 
-  const TABS = () => [['chart', t('pro.t.chart', 'Карта'), 'chart'], ['split', t('pro.t.split', 'Две карты'), 'split'], ['rect', t('pro.t.rect', 'Ректификация'), 'target'], ['tables', t('pro.t.tables', 'Таблицы'), 'table'], ['firdaria', t('pro.t.fird', 'Фирдарии'), 'timeline'], ['directions', t('pro.t.dir', 'Дирекции'), 'route'], ['acg', t('pro.t.acg', 'Астрокарта'), 'map'], ['dynamics', t('pro.t.dyn', 'Динамика'), 'chart-line'], ['moon', t('pro.t.moon', 'Луна'), 'moon'], ['retro', t('pro.t.retro', 'Ретро'), 'retro'], ['saved', t('pro.t.saved', 'Сохранённые'), 'save']];
+  // «Дирекции» убраны из вкладок (тип карты «Дирекции» остался), «Ректификация» — отдельный VIP-раздел в меню слева
+  const TABS = () => [['chart', t('pro.t.chart', 'Карта'), 'chart'], ['split', t('pro.t.split', 'Две карты'), 'split'], ['tables', t('pro.t.tables', 'Таблицы'), 'table'], ['firdaria', t('pro.t.fird', 'Фирдарии'), 'timeline'], ['acg', t('pro.t.acg', 'Астрокарта'), 'map'], ['dynamics', t('pro.t.transits', 'Транзиты'), 'chart-line'], ['moon', t('pro.t.moon', 'Луна'), 'moon'], ['retro', t('pro.t.retro', 'Ретро'), 'retro'], ['saved', t('pro.t.saved', 'Сохранённые'), 'save']];
 
   async function page(el, params) {
     const p = params.id ? root.NStore.person(params.id) : root.NStore.active();
     if (!p) { location.hash = '#onboard'; return; }
+    if (params.tab === 'rect') { location.replace('#rectify' + (params.id ? '?id=' + params.id : '')); return; }
+    if (params.tab === 'directions') { params.tab = 'chart'; params.type = 'directions'; }
     if (params.tab) tab = params.tab;
+    if (!TABS().some(([k]) => k === tab)) tab = 'chart';
     const okA = (s) => s && (s.a === 'custom' ? true : !!root.NStore.person(s.a));
     if (!okA(specs.main)) specs.main = defaultSpec('natal', p);
     if (params.id && tab !== 'split') { specs.main.a = p.id; specs.main.shiftA = null; }
@@ -360,17 +396,17 @@
     const redraw = () => {
       const y = window.scrollY;
       el.innerHTML = `<div class="sec-head"><span class="eyebrow">${t('pro.eyebrow', 'Профи-режим')}</span><h1>${t('pro.title', 'Астропроцессор')}</h1></div>
-        <div class="pro-tabs scrollx"><div class="chips" role="tablist">${TABS().map(([k, n, ic]) => `<button class="chip" type="button" role="tab" data-tab="${k}" aria-pressed="${tab === k}">${icon(ic)} ${esc(n)}</button>`).join('')}</div></div>
+        <div class="pro-tabs hs"><button class="hs-btn" type="button" data-hsl aria-label="${t('scrollL', 'Прокрутить влево')}">${icon('left', 'sm')}</button><div class="hs-track"><div class="chips" role="tablist">${TABS().map(([k, n, ic]) => `<button class="chip" type="button" role="tab" data-tab="${k}" aria-pressed="${tab === k}">${icon(ic)} ${esc(n)}</button>`).join('')}</div></div><button class="hs-btn" type="button" data-hsr aria-label="${t('scrollR', 'Прокрутить вправо')}">${icon('right', 'sm')}</button></div>
         <div id="proBody"></div>`;
       el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.tab; redraw(); }));
+      UI.hscroll(el.querySelector('.pro-tabs'));
       const body = el.querySelector('#proBody');
       try {
         if (tab === 'chart') { body.innerHTML = '<div data-slot-host="main"></div>'; mountPanel(body, 'main', false); }
         else if (tab === 'split') {
-          body.innerHTML = `<p class="small muted" style="margin-bottom:12px">${t('pro.splitHint', 'Две полностью независимые карты: у каждой свой человек или данные вручную, свой тип, своё время (ползунки дней и часов) и свои настройки показа.')}</p><div class="split"><div data-slot-host="left"></div><div data-slot-host="right"></div></div>`;
+          body.innerHTML = `<p class="small muted" style="margin-bottom:12px">${t('pro.splitHint2', 'Две полностью независимые карты: у каждой свой человек или данные вручную, свой тип, своё время (дата, часы, минуты, секунды) и свои настройки показа. Колёса стоят на одном уровне.')}</p><div class="split"><div data-slot-host="left"></div><div data-slot-host="right"></div></div>`;
           mountPanel(body, 'left', true, t('pro.card1', 'Карта 1')); mountPanel(body, 'right', true, t('pro.card2', 'Карта 2'));
-        } else if (tab === 'rect') { if (root.NRectPage) root.NRectPage.render(body, p, params); }
-        else if (tab === 'saved') savedView(body, redraw);
+        } else if (tab === 'saved') savedView(body, redraw);
         else if (root.NProMore && root.NProMore[tab]) root.NProMore[tab](body, specs.main.a && specs.main.a !== 'custom' ? root.NStore.person(specs.main.a) || p : p, { redraw, G, AG, pName, fmtLon });
       } catch (e) { console.error(e); body.innerHTML = `<p class="err">${esc(t('pro.err', 'Не получилось посчитать'))}: ${esc(e.message)}</p>`; }
       root.NWheel.bindTips(body);
@@ -381,7 +417,7 @@
 
   function savedView(body, redraw) {
     const list = root.NStore.saved();
-    body.innerHTML = list.length ? `<div class="card"><div class="items">${list.map((c) => `<div class="item"><span class="gl">${icon('save')}</span><div class="row sb"><div><h4>${esc(c.title)}</h4><p class="tiny">${esc(new Date(c.at).toLocaleString())}</p></div><div class="row"><a class="btn sm" href="#pro?load=${c.id}">${t('open', 'Открыть')}</a><button class="iconbtn" data-del="${c.id}" aria-label="${t('delete', 'Удалить')}">${icon('trash')}</button></div></div></div>`).join('')}</div></div>`
+    body.innerHTML = list.length ? `<div class="card"><div class="items">${list.map((c) => `<div class="item"><span class="gl">${icon('save')}</span><div class="row sb"><div><h4>${esc(c.title)}</h4><p class="tiny">${esc(UI.fmtDay(new Date(c.at), UI.here().tz, { year: 'numeric', hour: '2-digit' }))}</p></div><div class="row"><a class="btn sm" href="#pro?load=${c.id}">${t('open', 'Открыть')}</a><button class="iconbtn" data-del="${c.id}" aria-label="${t('delete', 'Удалить')}">${icon('trash')}</button></div></div></div>`).join('')}</div></div>`
       : `<div class="empty"><h3>${t('saved.empty', 'Пока пусто')}</h3><p class="muted">${t('saved.emptyP', 'Нажми «Сохранить» над любой картой — она появится здесь, и к ней можно вернуться позже.')}</p></div>`;
     body.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => { root.NStore.removeChart(b.dataset.del); redraw(); }));
   }

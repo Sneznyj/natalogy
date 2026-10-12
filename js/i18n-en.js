@@ -98,3 +98,27 @@ Object.assign(window.NI18N.en, {
   'rect.ctlRes': 'Of {n} shifted biographies, {g} had a peak at least as high — chance of a random match ≈ {p}%.', 'rect.shifted': 'shifted biography', 'rect.real': 'real biography', 'rect.ctlLegend': 'grey — peaks of shifted biographies, green — the real one, pink — not lower than the real one', 'rect.ctlGo': 'Check (≈10 seconds)',
   'tb.days': 'Days', 'tb.daysA': 'Shift by days', 'tb.hours': 'Hours', 'tb.hoursA': 'Time of day', 'tb.dShort': 'd',
 });
+// 3-я волна (12.10.2026): два круга, машина времени, VIP, фирдарии, обычная карта, лента дней
+Object.assign(window.NI18N.en, {
+  'nav.rect': 'Rectification', 'theme.toggle': 'Switch theme',
+  'trx.period': 'Active', 'trx.exact': 'Exact', 'trx.sum': 'What it means', 'trx.inTheme': 'in the area of “{a}”', 'trx.touched': 'What it touches in your chart', 'trx.house': 'In your chart — house {n}: {a}.', 'trx.whatT': 'What is a transit', 'trx.eyebrow': 'Transit', 'trx.tap': 'tap — what it means', 'trx.tapRow': 'tap a row — what this transit means',
+  'chart.m.transit2': 'Two circles: natal + transits', 'chart.h.transit2': 'Inner circle — your birth chart, outer circle — the planets at the chosen moment. Move the date, hours, minutes and seconds — the dynamics and all transits are on the right; tap a transit for its meaning.',
+  'ring.in': 'inside — natal', 'ring.out': 'outside — transits', 'ring.inX': 'inside — {a}', 'ring.outX': 'outside — {a}',
+  'dyn.near': 'Dynamics ±30 days', 'dyn.nearT': 'Dynamics around the date', 'dyn.nearHint': 'tap a day to jump', 'dyn.moment': 'chosen moment', 'pos.aspTr2': 'Transits to the chart ({n})', 'dyn.title2': 'Transits: forces by week',
+  'fd.sn': 'South Node', 'fd.house': 'house {n}', 'f.nowS': 'now', 'fd.inChart': 'In your chart: {x}', 'fd.ruler': 'The period ruler in your chart: {x}', 'fd.subs': 'Sub-periods — tap to open', 'fd.noSubs': 'Node periods have no sub-periods.', 'fd.ages': 'age {a} to {b}', 'fd.ages2': 'age {a}–{b}', 'fd.barHint': 'Tap a segment to open that period.', 'fd.all': 'All periods of life', 'fd.allHint': 'each period opens — sub-periods and meanings inside',
+  'acg.styleA': 'Map style', 'acg.auto': 'Like theme', 'acg.light': 'Light', 'acg.dark': 'Dark', 'acg.loading': 'Loading the world map…',
+  'acg.legend2': 'Wheel or +/− to zoom, drag the map with the mouse or a finger. Solid vertical — zenith (MC), dashed — nadir (IC); curves — rising (ASC, solid) and setting (DSC, dashes). Tap any line to see what it means. Gold dot — birthplace, blue — where you are now.',
+  'acg.good': 'What is good here', 'acg.bad': 'Be careful', 'acg.fromBirth': 'Birthplace: {n} km from the line', 'acg.fromHere': 'Where you are now: {n} km from the line', 'acg.nearCities': 'Cities near this line', kmS: 'km', 'acg.clicked': 'Point on the map: {a}, {b}', 'acg.eyebrow': 'Astrocartography line',
+  'mom.birth': 'Moment of birth', 'mom.transits': 'Transits for', 'mom.solar': 'Solar return starts', 'mom.lunar': 'Lunar return starts', 'mom.solarEnd': 'Next solar return', 'mom.lunarEnd': 'Next lunar return', 'mom.dir': 'Directions for', 'mom.prog': 'Progressions for', progDate2: 'Progressed date', 'mom.horary': 'Moment of the question',
+  'pro.ring': 'Second circle: transits', 'pro.momentTr': 'Transits: date and time (outer circle)', 'pro.birthTime2': 'Fine-tune the birth time (inner circle)', 'pro.t.transits': 'Transits',
+  'pro.splitHint2': 'Two fully independent charts: each has its own person or manual data, its own type, its own time (date, hours, minutes, seconds) and display settings. The wheels sit on the same level.',
+  scrollL: 'Scroll left', scrollR: 'Scroll right',
+  'vip.paid': 'Paid service', 'vip.h1': 'Rectification — your exact birth time', 'vip.lead': 'The most valuable information in astrology: the Ascendant, MC, houses and the accuracy of every forecast depend on the minute of birth. The app checks your birth time against the events of your life and finds the time that explains them best.',
+  'vip.f1': 'Ascendant and houses — to the minute', 'vip.f2': 'arcs, transits, progressions, eclipses', 'vip.f3': 'chance check', 'vip.lockT': 'Available in VIP', 'vip.lockP': 'Get VIP to refine your birth time by the events of your life.', 'vip.get': 'Get VIP', 'vip.note': 'Access is open for now while we test.',
+  todayS: 'today', dlist: 'List of days', 'dsl.a': 'Scroll through days', 'dl.week': 'Week from {d}', 'dl.loading': 'Calculating days…',
+  'cal.pick': 'Pick a date', 'cal.prevM': 'Previous month', 'cal.nextM': 'Next month', 'cal.month': 'Month', 'cal.year': 'Year', 'cal.typeHint': 'You can just type digits: 18061998',
+  'tb.u.s': 'sec', 'tb.u.mi': 'min', 'tb.u.h': 'hour', 'tb.u.d': 'day', 'tb.u.mo': 'mon', 'tb.u.y': 'year',
+  'tb.dateT': 'Type digits in a row: 18061998. Mouse wheel or ↑↓ over a number scrolls it', 'tb.timeT': 'Hours:minutes:seconds. Type in a row: 093215. Wheel or ↑↓ over a number scrolls it', 'tb.cal': 'Open calendar',
+  'tb.stepA': 'Step', 'tb.back': 'Back', 'tb.fwd': 'Forward', 'tb.playT2': 'Run time with the chosen step', 'tb.years': 'Years', 'tb.yearsA': 'Shift by years', 'tb.mins': 'Minutes', 'tb.minsA': 'Minutes', 'tb.secs': 'Seconds', 'tb.secsA': 'Seconds', 'tb.yShort': 'y',
+  'ph.date': 'DD.MM.YYYY', 'ph.time': 'HH:MM', 'dyn.softer': 'easier', 'dyn.harder': 'more tense', 'dyn.softer2': 'easier day (more support)', 'dyn.harder2': 'more tense day',
+});

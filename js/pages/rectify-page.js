@@ -46,8 +46,8 @@
         <div class="ctrl">
           <div class="field"><label>${t('rect.who', 'Чья карта')}</label><select class="select" data-rp>${people.map((x) => `<option value="${x.id}" ${x.id === p.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>
           <div class="field"><label>${t('rect.prof', 'Время в профиле')}</label><div class="input" style="display:flex;align-items:center;background:var(--surface-2)">${p.timeKnown !== false ? hm(prof) : t('rect.noTime', 'не указано')} · ${esc(p.place.name)}</div></div>
-          <div class="field"><label>${t('rect.from', 'Искать с')}</label><input class="input" type="time" data-rf value="${hm(st.from)}"></div>
-          <div class="field"><label>${t('rect.to', 'по')}</label><input class="input" type="time" data-rt value="${hm(st.to)}"></div>
+          <div class="field"><label>${t('rect.from', 'Искать с')}</label><input class="input" inputmode="numeric" placeholder="${esc(t('ph.time', 'ЧЧ:ММ'))}" data-rf value="${hm(st.from)}"></div>
+          <div class="field"><label>${t('rect.to', 'по')}</label><input class="input" inputmode="numeric" placeholder="${esc(t('ph.time', 'ЧЧ:ММ'))}" data-rt value="${hm(st.to)}"></div>
           <div class="field"><label>${t('rect.step', 'Шаг')}</label><select class="select" data-rs>${[1, 2, 4, 10].map((s) => `<option value="${s}" ${st.step === s ? 'selected' : ''}>${s} ${t('rect.min', 'мин')}</option>`).join('')}</select></div>
         </div>
         <div class="chips">${p.timeKnown !== false ? [30, 60, 120].map((w) => `<button class="chip" type="button" data-rw="${w}">${esc(w < 60 ? t('rect.pmMin', '± {n} мин', { n: w }) : t('rect.pmH', '± {n} ч', { n: w / 60 }))}</button>`).join('') : ''}<button class="chip" type="button" data-rw="day">${t('rect.allDay', 'Весь день')}</button></div>
@@ -63,7 +63,7 @@
     </div>`;
     const list = body.querySelector('[data-rlist]');
     const rowHTML = (e, i) => `<div class="rev" data-i="${i}">
-      <input class="input" type="date" data-f="date" value="${e.y ? `${e.y}-${UI.pad(e.mo)}-${UI.pad(e.d)}` : ''}" aria-label="${t('rect.date', 'Дата')}">
+      ${UI.dateFieldHTML(`data-f="date" aria-label="${esc(t('rect.date', 'Дата'))}"`, e.y ? `${UI.pad(e.d)}.${UI.pad(e.mo)}.${e.y}` : '')}
       <select class="select" data-f="prec" aria-label="${t('rect.prec', 'Точность даты')}">${PREC_LIST().map(([k, n]) => `<option value="${k}" ${e.prec === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
       <select class="select" data-f="type" aria-label="${t('rect.type', 'Что произошло')}">${TYPE_LIST().map(([k, n]) => `<option value="${k}" ${e.type === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
       <select class="select" data-f="weight" aria-label="${t('rect.weight', 'Важность')}">${WEIGHT_LIST().map(([k, n]) => `<option value="${k}" ${+e.weight === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
@@ -75,9 +75,10 @@
       list.innerHTML = events.length ? `<div class="rev rev-h" aria-hidden="true"><span>${t('rect.date', 'Дата')}</span><span>${t('rect.prec', 'Точность даты')}</span><span>${t('rect.type', 'Что произошло')}</span><span>${t('rect.weight', 'Важность')}</span><span>${t('rect.label', 'Описание')}</span><span></span></div>` + events.map(rowHTML).join('') : `<div class="empty"><h3>${t('rect.emptyT', 'Добавь события своей жизни')}</h3><p class="muted small">${t('rect.emptyP', 'Брак, рождение детей, переезды, смена работы, утраты, аварии — всё, что сильно меняло жизнь. Если дата примерная — выбери «месяц» или «сезон».')}</p></div>`;
       list.querySelectorAll('.rev[data-i]').forEach((row) => {
         const i = +row.dataset.i;
+        UI.bindDateInput(row.querySelector('[data-f="date"]'), null);
         row.querySelectorAll('[data-f]').forEach((inp) => inp.addEventListener('change', () => {
           const f = inp.dataset.f, e = events[i];
-          if (f === 'date') { const m = inp.value.match(/^(\d{4})-(\d{2})-(\d{2})$/); if (m) Object.assign(e, { y: +m[1], mo: +m[2], d: +m[3] }); }
+          if (f === 'date') { const r = UI.parseDate(inp.value); if (!r.error) Object.assign(e, { y: r.y, mo: r.mo, d: r.d }); }
           else if (f === 'weight') e.weight = +inp.value; else e[f] = inp.value;
           persist();
         }));
@@ -89,10 +90,11 @@
       const td = UI.todayIn(UI.here().tz);
       events.push({ y: td.y - 1, mo: td.mo, d: 1, prec: 'month', type: 'move', weight: 2, label: '' });
       persist(); drawList();
-      const last = list.querySelector('.rev[data-i]:last-child input[type=date]'); if (last) last.focus();
+      const last = list.querySelector('.rev[data-i]:last-child [data-f="date"]'); if (last) { last.focus(); last.select(); }
     });
     body.querySelector('[data-rp]').addEventListener('change', (e) => { st.pid = e.target.value; st.from = null; render(body, pActive, {}); });
     const parseHM = (v) => { const m = String(v).match(/^(\d{1,2}):(\d{2})/); return m ? +m[1] * 60 + +m[2] : null; };
+    UI.bindTimeInput(body.querySelector('[data-rf]'), null, false); UI.bindTimeInput(body.querySelector('[data-rt]'), null, false);
     body.querySelector('[data-rf]').addEventListener('change', (e) => { const v = parseHM(e.target.value); if (v != null) st.from = v; });
     body.querySelector('[data-rt]').addEventListener('change', (e) => { const v = parseHM(e.target.value); if (v != null) st.to = v; });
     body.querySelector('[data-rs]').addEventListener('change', (e) => { st.step = +e.target.value; });
@@ -169,7 +171,7 @@
           <div class="wheel-box" data-rwheel></div><div data-rtb></div>
           <div class="row"><button class="btn sm primary" type="button" data-rapply>${icon('check', 'sm')} ${t('rect.apply2', 'Сохранить {t} в профиль', { t: hm(min) })}</button><a class="btn sm" href="#chart?id=${p.id}">${icon('chart', 'sm')} ${t('rect.openChart', 'Открыть карту')}</a></div></div>
         <div class="card stack"><h3>${t('rect.why', 'Почему {t}', { t: hm(min) })}</h3><div class="evlist">${ex.why.map((w) => { const e = ev[w.ei]; const hits = (w.r.hits || []).filter((h) => h.v > 0.05).slice(0, 3); return `<div class="ev" style="grid-template-columns:88px minmax(0,1fr)"><span class="tm">${UI.pad(e.d)}.${UI.pad(e.mo)}.${e.y}</span><div><b>${esc(e.label || typeName(e.type))}</b> <span class="tiny muted">${esc(typeName(e.type))}</span>${hits.length ? hits.map((h) => { const x = hitText(h); return `<p><span class="g" style="color:var(--lav-strong)">${x.g}</span> ${esc(x.s)} · ${t('orb', 'орбис')} ${h.orb.toFixed(2)}°</p>`; }).join('') : `<p class="faint">${t('rect.noHit', 'при этом времени событие ничем не отмечено')}</p>`}</div></div>`; }).join('')}</div></div>`;
-      const drawWheel = (d) => { const q = UI.partsIn(d, p.place.tz); const c = AC.chart({ y: q.y, mo: q.mo, d: q.d, h: q.h, mi: q.mi, timeKnown: true, zone: p.place.tz, lat: p.place.lat, lon: p.place.lon }, { houseSystem: st.opts.hs }); slot.querySelector('[data-rwheel]').innerHTML = root.NChart.wheelOf(c, { label: hm(q.h * 60 + q.mi) }); root.NWheel.bindTips(slot.querySelector('[data-rwheel]')); };
+      const drawWheel = (d) => { const q = UI.partsIn(d, p.place.tz); const c = AC.chart({ date: d, timeKnown: true, zone: p.place.tz, lat: p.place.lat, lon: p.place.lon }, { houseSystem: st.opts.hs }); slot.querySelector('[data-rwheel]').innerHTML = root.NChart.wheelOf(c, { label: UI.fmtHMS(q) }); root.NWheel.bindTips(slot.querySelector('[data-rwheel]')); };
       drawWheel(dt);
       const bar = UI.timebar({ date: dt, tz: p.place.tz, play: false, dayRange: 1, nowLabel: t('rect.toPeak', 'К выбранному'), reset: () => dt });
       const tb = slot.querySelector('[data-rtb]'); tb.innerHTML = bar.html;
@@ -203,5 +205,29 @@
     drawCtl();
   }
 
+  /** Отдельный раздел в меню слева: ректификация — VIP, самая точная информация карты. */
+  function vipPage(el, params) {
+    const p = (params.id && root.NStore.person(params.id)) || root.NStore.active();
+    if (!p) { location.hash = '#onboard'; return; }
+    const cfg = (root.NCONFIG || {}).rectVip || {};
+    el.innerHTML = `<section class="vip-hero">
+        <div class="vip-mark" aria-hidden="true">${icon('crown', 'lg')}</div>
+        <div class="stack s6" style="min-width:0">
+          <div class="row" style="gap:8px"><span class="vip-badge lg">VIP</span><span class="vip-paid">${t('vip.paid', 'Платная услуга')}</span></div>
+          <h1>${t('vip.h1', 'Ректификация — точное время рождения')}</h1>
+          <p>${t('vip.lead', 'Самая ценная информация в астрологии: от минуты рождения зависят Асцендент, MC, дома и точность всех прогнозов. Программа сверяет время рождения с событиями твоей жизни и находит, при каком времени они объясняются лучше всего.')}</p>
+          <div class="tags"><span class="tag gold">${icon('target', 'xs')} ${t('vip.f1', 'Асцендент и дома — до минуты')}</span><span class="tag gold">${icon('route', 'xs')} ${t('vip.f2', 'дуги, транзиты, прогрессии, затмения')}</span><span class="tag gold">${icon('shield', 'xs')} ${t('vip.f3', 'проверка на случайность')}</span></div>
+          ${cfg.note ? `<p class="tiny vip-note">${esc(t('vip.note', cfg.note))}</p>` : ''}
+        </div></section>
+      <div id="vipBody"></div>`;
+    const body = el.querySelector('#vipBody');
+    if (cfg.locked) {
+      body.innerHTML = `<div class="card pad-lg stack vip-lock">${icon('lock', 'lg')}<h2>${t('vip.lockT', 'Доступно в VIP')}</h2><p class="muted">${t('vip.lockP', 'Подключи VIP, чтобы уточнить время рождения по событиям жизни.')}</p>${cfg.url ? `<a class="btn primary" href="${esc(cfg.url)}" target="_blank" rel="noopener">${icon('crown', 'sm')} ${t('vip.get', 'Получить VIP')}</a>` : ''}</div>`;
+      return;
+    }
+    render(body, p, params);
+  }
+
   root.NRectPage = { render };
+  (root.NPages = root.NPages || {}).rectify = { render: vipPage };
 })(window);

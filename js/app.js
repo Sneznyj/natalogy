@@ -10,13 +10,14 @@
     ['pair', t('nav.pair', 'Пара'), 'pair'],
     ['ask', t('nav.ask', 'Спросить'), 'ask'],
   ];
-  const EXTRA = () => [['pro', t('nav.pro', 'Профи'), 'pro'], ['people', t('nav.people', 'Люди'), 'users'], ['settings', t('nav.settings', 'Настройки'), 'settings']];
+  const EXTRA = () => [['rectify', t('nav.rect', 'Ректификация'), 'crown', true], ['pro', t('nav.pro', 'Профи'), 'pro'], ['people', t('nav.people', 'Люди'), 'users'], ['settings', t('nav.settings', 'Настройки'), 'settings']];
 
   function applyTheme() {
     const th = root.NStore.settings().theme;
     if (th === 'light' || th === 'dark') document.documentElement.setAttribute('data-theme', th); else document.documentElement.removeAttribute('data-theme');
     const dark = th === 'dark' || (th !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', dark ? '#101127' : '#F3F2F6');
+    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', dark ? '#120D20' : '#FDFAF5');
+    const tg = document.querySelector('[data-theme-tg]'); if (tg) tg.innerHTML = icon(dark ? 'sun' : 'moon');
   }
 
   function parseHash() {
@@ -34,18 +35,21 @@
       <header class="top"><div class="top-in">
         <a class="brand" href="#today"><span class="brand-mark" aria-hidden="true"></span>${esc(root.NCONFIG.brand)}</a>
         ${p ? `<button class="who" type="button" data-who aria-label="${t('who', 'Чья карта')}"><span class="av">${esc(UI.initials(p.name))}</span><b>${esc(p.name)}</b>${icon('down', 'sm')}</button>` : ''}
+        <button class="iconbtn theme-tg" type="button" data-theme-tg aria-label="${t('theme.toggle', 'Сменить тему')}" title="${t('theme.toggle', 'Сменить тему')}">${icon(UI.isDark() ? 'sun' : 'moon')}</button>
         <a class="iconbtn" href="#settings" aria-label="${t('nav.settings', 'Настройки')}">${icon('settings')}</a>
       </div></header>
-      <nav class="nav" aria-label="${t('nav', 'Разделы')}"><div class="nav-in">${NAV().map(([k, n, ic]) => `<a href="#${k}" data-nav="${k}">${icon(ic)}<span>${esc(n)}</span></a>`).join('')}${EXTRA().map(([k, n, ic]) => `<a href="#${k}" data-nav="${k}" class="nav-extra">${icon(ic)}<span>${esc(n)}</span></a>`).join('')}</div></nav>
+      <nav class="nav" aria-label="${t('nav', 'Разделы')}"><div class="nav-in">${NAV().map(([k, n, ic]) => `<a href="#${k}" data-nav="${k}">${icon(ic)}<span>${esc(n)}</span></a>`).join('')}${EXTRA().map(([k, n, ic, vip]) => `<a href="#${k}" data-nav="${k}" class="nav-extra${vip ? ' nav-vip' : ''}">${icon(ic)}<span>${esc(n)}</span>${vip ? '<b class="vip-badge">VIP</b>' : ''}</a>`).join('')}</div></nav>
       <main class="main" id="main" tabindex="-1"></main></div>`;
     const who = app.querySelector('[data-who]');
     if (who) who.addEventListener('click', openWho);
+    const tg = app.querySelector('[data-theme-tg]');
+    if (tg) tg.addEventListener('click', () => { root.NStore.set('theme', UI.isDark() ? 'light' : 'dark'); applyTheme(); tg.innerHTML = icon(UI.isDark() ? 'sun' : 'moon'); });
   }
 
   function openWho() {
     const list = root.NStore.people(), act = root.NStore.active();
     const body = UI.sheet(`<div class="stack">${list.map((p) => `<button class="sph" type="button" data-p="${p.id}" style="grid-template-columns:auto 1fr auto;min-height:60px"><span class="ic" style="background:var(--night);color:#FFD8A6;font-weight:600">${esc(UI.initials(p.name))}</span><b>${esc(p.name)}</b>${act && act.id === p.id ? icon('check') : ''}<p>${esc(UI.fmtDate(p.y, p.mo, p.d))}</p></button>`).join('')}
-      <div class="row"><button class="btn primary" data-add>${icon('plus')} ${t('people.add', 'Добавить человека')}</button><a class="btn" href="#people">${icon('users')} ${t('nav.people', 'Люди')}</a><a class="btn" href="#pro">${icon('pro')} ${t('nav.pro', 'Профи')}</a></div></div>`, { title: t('who', 'Чья карта') });
+      <div class="row"><button class="btn primary" data-add>${icon('plus')} ${t('people.add', 'Добавить человека')}</button><a class="btn" href="#people">${icon('users')} ${t('nav.people', 'Люди')}</a><a class="btn" href="#pro">${icon('pro')} ${t('nav.pro', 'Профи')}</a><a class="btn vip-btn" href="#rectify">${icon('crown')} ${t('nav.rect', 'Ректификация')} <span class="vip-badge">VIP</span></a></div></div>`, { title: t('who', 'Чья карта') });
     body.querySelectorAll('[data-p]').forEach((b) => b.addEventListener('click', () => { root.NStore.setActive(b.dataset.p); UI.closeSheet(); route(true); }));
     body.querySelector('[data-add]').addEventListener('click', () => root.NPeople.editPerson(null, (id) => { root.NStore.setActive(id); route(true); }));
     body.querySelectorAll('a').forEach((a) => a.addEventListener('click', UI.closeSheet));
