@@ -77,8 +77,9 @@
         const q = st.over[p.id] ? UI.partsIn(st.over[p.id], p.place.tz) : null;
         info.innerHTML = `<span class="tag acc">${icon('user', 'xs')} ${esc(p.name)}</span><span class="tag plain">${q ? `${UI.fmtDMY(q)} ${UI.fmtHMS(q, q.s ? true : false)}` : `${UI.pad(p.d)}.${UI.pad(p.mo)}.${p.y}${p.timeKnown !== false ? ' ' + UI.pad(p.h) + ':' + UI.pad(p.mi) : ''}`} · ${esc(place)}</span><span class="tag plain">${esc((TX.houseSystems || {})[hs()] || hs())}</span>`;
       } else if (st.mode === 'transit') {
-        const sky = AC.chart({ date: mom, timeKnown: false });
-        const outer = { points: sky.points.filter((x) => SKY_IDS.includes(x.id)) };
+        // транзиты на место «где я сейчас» — с домами, чтобы во внешнем круге были свои куспиды
+        const sky = AC.chart({ date: mom, lat: here.lat, lon: here.lon, zone: here.tz, timeKnown: true }, { houseSystem: hs() });
+        const outer = { points: sky.points.filter((x) => SKY_IDS.includes(x.id)), cusps: sky.houses ? sky.houses.cusps : null };
         const inPts = natal.points.filter((x) => IDS.filter((i) => !['fortune', 'lilith'].includes(i)).includes(x.id)).concat(natal.houses ? [{ id: 'asc', lon: natal.houses.asc }, { id: 'mc', lon: natal.houses.mc }] : []);
         aspList = AC.aspectsBetween(inPts, outer.points, { orbMult: 0.4 }).filter((a) => MAJOR.includes(a.type)).sort((a, b) => a.orb - b.orb);
         svg = wheelOf(natal, { outer, aspects: aspList.slice(0, 18).map((a) => Object.assign({}, a, { fromA: 'in', fromB: 'out' })), labels: { in: t('natal', 'натал'), out: t('transit', 'транзит') }, label: t('chart.trOf', 'Транзиты к карте: {n}', { n: p.name }) });

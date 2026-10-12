@@ -23,7 +23,8 @@
 
   function defaultSpec(type, p) {
     const here = UI.here();
-    return { type: type || 'natal', a: p.id, custom: null, shiftA: null, b: (root.NStore.people().find((x) => x.id !== p.id) || {}).id || null, date: nowLocal(here.tz), year: UI.todayIn(here.tz).y, place: 'here', overlay: true, ring: true, dir: 'arc', view: mkView() };
+    const td = UI.todayIn(here.tz), solarYear = p && (td.mo < p.mo || (td.mo === p.mo && td.d < p.d)) ? td.y - 1 : td.y; // соляр, который действует сейчас
+    return { type: type || 'natal', a: p.id, custom: null, shiftA: null, b: (root.NStore.people().find((x) => x.id !== p.id) || {}).id || null, date: nowLocal(here.tz), year: solarYear, place: 'here', overlay: true, ring: true, dir: 'arc', view: mkView() };
   }
   /** Старые сохранённые карты — без своих настроек показа и данных вручную. */
   function normSpec(s, p) { const d = defaultSpec(s && s.type, p); const out = Object.assign(d, s || {}); out.view = Object.assign(mkView(), (s && s.view) || {}); return out; }
@@ -70,19 +71,19 @@
         out.moments.push({ label: t('mom.birth', 'Момент рождения'), date: natal.date, tz: p.place.tz, place: p.place.name, main: spec.ring === false });
         if (spec.ring !== false) {
           // в любой наталке — второй круг с транзитами и ползунок даты
-          const sky = AC.chart({ date, timeKnown: false });
-          out.outer = { points: sel(sky.points.filter((x) => !['asc', 'mc', 'fortune', 'lilith'].includes(x.id))) };
+          const h = UI.here(), sky = AC.chart({ date, lat: h.lat, lon: h.lon, zone: tz, timeKnown: true }, opt); // дома транзита — на место «где я сейчас»
+          out.outer = { points: sel(sky.points.filter((x) => !['asc', 'mc', 'fortune', 'lilith'].includes(x.id))), cusps: sky.houses ? sky.houses.cusps : null };
           out.aspects = keepAsp(AC.aspectsBetween(inPts(natal), out.outer.points, Object.assign(optsAsp(), { orbMult: 0.35 * v.orb })));
           out.labels = { in: t('natal', 'натал'), out: t('transit', 'транзит') };
           out.title = TX.chartTypes.natal + ' + ' + TX.chartTypes.transit.toLowerCase() + ' · ' + p.name;
-          out.moments.push({ label: t('mom.transits', 'Транзиты на момент'), date, tz, main: true });
+          out.moments.push({ label: t('mom.transits', 'Транзиты на момент'), date, tz, place: UI.here().name || '', main: true });
         } else out.aspects = keepAsp(AC.aspectsWithin(inPts(natal), optsAsp()));
         break;
       }
       case 'transit': {
         const pl = placeOf(spec, p);
         const sky = AC.chart({ date, lat: pl.lat, lon: pl.lon, zone: tz, timeKnown: true }, opt);
-        out.inner = toWheel(natal); out.outer = { points: sel(sky.points.filter((x) => !['asc', 'mc', 'fortune', 'lilith'].includes(x.id))) };
+        out.inner = toWheel(natal); out.outer = { points: sel(sky.points.filter((x) => !['asc', 'mc', 'fortune', 'lilith'].includes(x.id))), cusps: sky.houses ? sky.houses.cusps : null };
         out.aspects = keepAsp(AC.aspectsBetween(inPts(natal), out.outer.points, Object.assign(optsAsp(), { orbMult: 0.35 * v.orb })));
         out.title = TX.chartTypes.transit + ' · ' + p.name;
         out.moments.push({ label: t('mom.transits', 'Транзиты на момент'), date, tz, place: spec.place === 'birth' ? p.place.name : (UI.here().name || ''), main: true });
@@ -91,7 +92,8 @@
       }
       case 'solar': case 'lunar': {
         const pl = placeOf(spec, p);
-        const rc = spec.type === 'solar' ? AC.solarReturn(natal, +spec.year, pl, opt) : PRO.lunarReturn(natal, AC.addDays(date, -1), pl, opt);
+        // лунар — тот, что действует на выбранный момент (начался до него), а не следующий
+        const rc = spec.type === 'solar' ? AC.solarReturn(natal, +spec.year, pl, opt) : PRO.lunarReturnAt(natal, date, pl, opt);
         out.innerChart = rc;
         out.title = TX.chartTypes[spec.type] + ' · ' + p.name;
         out.sub = spec.place === 'birth' ? t('placeBirth', 'место рождения') : t('placeHere', 'где я сейчас');
@@ -100,7 +102,7 @@
         out.moments.push({ label: spec.type === 'solar' ? t('mom.solar', 'Начало соляра') : t('mom.lunar', 'Начало лунара'), date: rc.returnDate, tz: pl.zone || tz, place: placeName, main: true });
         out.moments.push({ label: spec.type === 'solar' ? t('mom.solarEnd', 'Следующий соляр') : t('mom.lunarEnd', 'Следующий лунар'), date: nextD, tz: pl.zone || tz });
         out.inner = toWheel(rc);
-        if (spec.overlay) { out.outer = { points: sel(natal.points.filter((x) => !['fortune'].includes(x.id))) }; out.aspects = keepAsp(AC.aspectsBetween(inPts(rc), out.outer.points, Object.assign(optsAsp(), { orbMult: 0.5 * v.orb }))); out.labels = { in: TX.chartTypes[spec.type].toLowerCase(), out: t('natal', 'натал') }; }
+        if (spec.overlay) { out.outer = { points: sel(natal.points.filter((x) => !['fortune'].includes(x.id))), cusps: natal.houses ? natal.houses.cusps : null }; out.aspects = keepAsp(AC.aspectsBetween(inPts(rc), out.outer.points, Object.assign(optsAsp(), { orbMult: 0.5 * v.orb }))); out.labels = { in: TX.chartTypes[spec.type].toLowerCase(), out: t('natal', 'натал') }; }
         else out.aspects = keepAsp(AC.aspectsWithin(inPts(rc), optsAsp()));
         if (rc.houses) out.info.push([t('ascOf', 'Асцендент'), fmtLon(rc.houses.asc)], [t('mcOf', 'MC'), fmtLon(rc.houses.mc)]);
         const sunH = rc.byId.sun.house; if (sunH) out.info.push([t('sunHouse', 'Солнце в доме'), String(sunH)]);
@@ -110,7 +112,7 @@
         const years = (date - natal.date) / (365.2422 * 86400000);
         const arc = spec.dir === 'deg' ? years : PRO.arcAt(natal, years);
         const dir = natal.points.filter((x) => x.id !== 'fortune').map((x) => ({ id: x.id, lon: AC.norm(x.lon + arc), speed: null }));
-        out.inner = toWheel(natal); out.outer = { points: sel(dir) };
+        out.inner = toWheel(natal); out.outer = { points: sel(dir), cusps: natal.houses ? natal.houses.cusps.map((c) => AC.norm(c + arc)) : null };
         out.aspects = keepAsp(AC.aspectsBetween(inPts(natal), out.outer.points, Object.assign(optsAsp(), { orbMult: 0.15 * v.orb })));
         out.title = (spec.dir === 'deg' ? t('dir.deg', 'Дирекции 1° = 1 год') : t('dir.arc', 'Дирекции солнечной дуги')) + ' · ' + p.name;
         out.sub = t('arc', 'дуга') + ' ' + arc.toFixed(2) + '°';
@@ -120,7 +122,7 @@
       }
       case 'progressions': {
         const pr = AC.progressed(natal, date, opt);
-        out.inner = toWheel(natal); out.outer = { points: sel(pr.points) };
+        out.inner = toWheel(natal); out.outer = { points: sel(pr.points), asc: pr.byId.asc ? pr.byId.asc.lon : null, mc: pr.byId.mc ? pr.byId.mc.lon : null };
         out.aspects = keepAsp(AC.aspectsBetween(inPts(natal), out.outer.points, Object.assign(optsAsp(), { orbMult: 0.15 * v.orb })));
         out.title = TX.chartTypes.progressions + ' · ' + p.name;
         out.moments.push({ label: t('mom.prog', 'Прогрессии на дату'), date, tz, main: true }, { label: t('progDate2', 'Прогрессивная дата'), date: pr.date, tz: p.place.tz });
@@ -150,7 +152,7 @@
         if (!q) { out.error = t('needB', 'Добавьте второго человека в «Люди»'); out.inner = toWheel(natal); break; }
         const cb = chartFor(q, v.hs, null);
         if (spec.type === 'synastry') {
-          out.inner = toWheel(natal); out.outer = { points: sel(cb.points.filter((x) => x.id !== 'fortune')) };
+          out.inner = toWheel(natal); out.outer = { points: sel(cb.points.filter((x) => x.id !== 'fortune')), cusps: cb.houses ? cb.houses.cusps : null };
           out.aspects = keepAsp(AC.aspectsBetween(inPts(natal), out.outer.points, Object.assign(optsAsp(), { orbMult: 0.75 * v.orb })));
           out.title = TX.chartTypes.synastry + ' · ' + p.name + ' + ' + q.name; out.labels = { in: p.name, out: q.name };
         } else {

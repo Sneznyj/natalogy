@@ -592,7 +592,7 @@
               if (win && (!inOrb || k === vals.length - 1)) {
                 win.end = inOrb ? day : addDays(day, -1);
                 if (win.end >= start && win.start <= end) {
-                  events.push({ transiting: tid, natal: nid, angle: ang, type: angleToType(ang), start: win.start, end: win.end, exact: win.exact, minOrb: win.min, openStart: win.k0 <= 1, openEnd: inOrb });
+                  events.push({ transiting: tid, natal: nid, angle: ang, type: angleToType(ang), target, start: win.start, end: win.end, exact: win.exact, minOrb: win.min, openStart: win.k0 <= 1, openEnd: inOrb });
                 }
                 win = null;
               }
@@ -602,6 +602,40 @@
       }
     }
     return events.sort((a, b) => (a.exact[0] || a.start) - (b.exact[0] || b.start));
+  }
+
+  /**
+   * Настоящие границы транзита, если окно поиска его обрезало (openStart / openEnd): от края окна идём наружу,
+   * пока планета в орбисе, и добираем точные касания на продлённых кусках. Не дальше 4 лет в каждую сторону
+   * (тогда край остаётся открытым). Без этого у долгих транзитов началом считался первый день окна расчёта.
+   */
+  function transitSpan(e, opts) {
+    if (!e || e.target == null || (!e.openStart && !e.openEnd)) return e;
+    const orb = (TRANSIT_ORB[e.transiting] || 1) * ((opts && opts.orbMult) || 1);
+    const step = ['sun', 'moon', 'mercury', 'venus', 'mars'].includes(e.transiting) ? 1 : 2;
+    const off = (d) => d180(lonAt(e.transiting, d) - e.target);
+    const MAX = 4 * 366;
+    const walk = (from, dir) => {
+      let prevD = addDays(from, -dir), prev = off(prevD), n = 0; // шаг внутрь окна — чтобы не пропустить касание на самом краю
+      const found = [];
+      while (n < MAX) {
+        const d = addDays(prevD, dir * step), v = off(d);
+        if (Math.abs(v - prev) < 20 && (prev < 0) !== (v < 0)) found.push(bisect(off, dir > 0 ? prevD : d, dir > 0 ? d : prevD));
+        if (Math.abs(v) > orb) { // вышли из орбиса — уточняем границу до суток
+          let edge = prevD;
+          for (let k = 1; k < step; k++) { const dd = addDays(prevD, dir * k); if (Math.abs(off(dd)) <= orb) edge = dd; else break; }
+          return { edge, found, open: false };
+        }
+        prevD = d; prev = v; n += step;
+      }
+      return { edge: prevD, found, open: true };
+    };
+    const out = Object.assign({}, e, { exact: e.exact.slice() });
+    if (e.openStart) { const w = walk(e.start, -1); out.start = w.edge; out.exact.push(...w.found); out.openStart = w.open; }
+    if (e.openEnd) { const w = walk(e.end, 1); out.end = w.edge; out.exact.push(...w.found); out.openEnd = w.open; }
+    out.exact.sort((a, b) => a - b);
+    out.exact = out.exact.filter((x, i, arr) => i === 0 || x - arr[i - 1] > 86400000); // одно касание могло найтись дважды — на стыке
+    return out;
   }
 
   function angleToType(a) { return ({ 0: 'conj', 60: 'sextile', 90: 'square', 120: 'trine', 180: 'opp', 150: 'quincunx', 30: 'semisextile', 45: 'semisquare', 135: 'sesquisquare', 72: 'quintile' })[a]; }
@@ -786,7 +820,7 @@
     norm, d180, signOf, signIndex, elementOf, modalityOf, dignity, fmtDeg, jdUT, addDays,
     tzOffsetMin, localToUTC, body, houses, houseOf, chart, aspectsWithin, aspectsBetween, aspectBetween,
     ingresses, stations, retrogradePeriods, moonPhases, eclipses, moonState, lunarDay, voidOfCourse,
-    transits, transitSnapshot, solarReturn, progressed, synastry, composite, sky, profection, electional, ELECT, TRAD_RULER,
+    transits, transitSpan, transitSnapshot, solarReturn, progressed, synastry, composite, sky, profection, electional, ELECT, TRAD_RULER,
     _internals: { meanNode, trueNode, meanLilith, chironLon, ascFromRamc },
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -34,7 +34,7 @@
     }
     const reasons = day0.reasons.filter((r) => Math.abs(r.v) > 0.15).slice(0, 10).map((r) => ({ sphere: r.sphere, effect: r1(r.v), kind: r.kind, transit: r.T, natal: r.N, aspect: r.type, id: r.id, house: r.house }));
     const slow = AC.transits(natal, AC.addDays(day0.start, -20), AC.addDays(day0.start, 60), { transiting: ['jupiter', 'saturn', 'uranus', 'neptune', 'pluto'] })
-      .slice(0, 12).map((e) => ({ transit: e.transiting, aspect: e.type, natal: e.natal, from: e.start.toISOString().slice(0, 10), to: e.end.toISOString().slice(0, 10), exact: e.exact.map((x) => x.toISOString().slice(0, 10)) }));
+      .slice(0, 12).map((e) => AC.transitSpan(e)).map((e) => ({ transit: e.transiting, aspect: e.type, natal: e.natal, from: e.start.toISOString().slice(0, 10), to: e.end.toISOString().slice(0, 10), exact: e.exact.map((x) => x.toISOString().slice(0, 10)) }));
     const retro = AC.retrogradePeriods(['mercury', 'venus', 'mars', 'jupiter', 'saturn'], AC.addDays(day0.start, -10), AC.addDays(day0.start, 90))
       .map((r) => ({ planet: r.id, from: r.start.toISOString().slice(0, 10), to: r.end.toISOString().slice(0, 10) }));
     const age = now.y - person.y - ((now.mo < person.mo || (now.mo === person.mo && now.d < person.d)) ? 1 : 0);

@@ -31,6 +31,7 @@
   --w-paper:#FFFFFF; --w-inner:#FFFFFF; --w-line:#E4DCEC; --w-line2:#C9BEDA; --w-tick:#B7AACB; --w-muted:#8C809F; --w-angle:#C4566F; --w-angle2:#6B4FB8;
   --w-planet:#2B2140; --w-plbg:#FFFFFF; --w-planet2:#6B3FB8; --w-plbg2:#EEE6FA; --w-deg:#2E2640; --w-deg2:#4B2F8C;
   --w-ink:#111018; --w-sign:#111018; --w-ring2:#F7F2FD; --w-ring-line:#9C8CC0;
+  --w-cusp:#8F84A6; --w-cusp-ink:#3A3050; --w-cusp2:#8A5AD8; --w-cusp2-ink:#5A2CAB; /* куспиды: внутренняя карта — графит, внешняя — фиолетовые */
   --w-fire:#F5B7AA; --w-earth:#C6E2B8; --w-air:#CBCDF3; --w-water:#B3DEEC;
   --w-fire-g:#A8402F; --w-earth-g:#3E6E2E; --w-air-g:#4F48A8; --w-water-g:#226F8C;
   --w-soft:#4C86D6; --w-hard:#E0605A; --w-conj:#C08A2E; --w-minor:#9A86D8; --w-asp-bg:#FFFFFF;
@@ -54,7 +55,7 @@
     --tip-bg:#F5F0FF; --tip-fg:#1C1530;
     --shadow:0 12px 30px -14px rgba(0,0,0,.65); --shadow-lg:0 30px 70px -25px rgba(0,0,0,.75); --glow:0 0 0 4px rgba(180,154,240,.25);
     --w-paper:#18122A; --w-inner:#140F24; --w-line:#4A3F6E; --w-line2:#6E6299; --w-tick:#8D82B5; --w-muted:#C9C0E6; --w-angle:#FF8FA8; --w-angle2:#C6B0FF;
-    --w-planet:#FFFFFF; --w-plbg:#231B3D; --w-planet2:#E2C9FF; --w-plbg2:#3A2A5E; --w-deg:#EEE8FF; --w-deg2:#E2C9FF; --w-ink:#FFFFFF; --w-sign:#FFFFFF; --w-ring2:#211A38; --w-ring-line:#8C7FC0;
+    --w-planet:#FFFFFF; --w-plbg:#231B3D; --w-planet2:#E2C9FF; --w-plbg2:#3A2A5E; --w-deg:#EEE8FF; --w-deg2:#E2C9FF; --w-ink:#FFFFFF; --w-sign:#FFFFFF; --w-ring2:#211A38; --w-ring-line:#8C7FC0; --w-cusp:#9A90C4; --w-cusp-ink:#EEE8FF; --w-cusp2:#C7A3FF; --w-cusp2-ink:#E4CCFF;
     --w-fire:#7A3A3A; --w-earth:#355437; --w-air:#3E3F7E; --w-water:#245466;
     --w-fire-g:#FFC2B5; --w-earth-g:#CBEFB9; --w-air-g:#D6D8FF; --w-water-g:#B9ECFF;
     --w-soft:#7FB8FF; --w-hard:#FF8A80; --w-conj:#F5C76E; --w-minor:#C2B0FF; --w-asp-bg:#140F24; --moon-lit:#F3E3B8; --moon-dark:#3A2D5C; --moon-ring:rgba(230,194,122,.55);
@@ -77,7 +78,7 @@
   --tip-bg:#F5F0FF; --tip-fg:#1C1530;
   --shadow:0 12px 30px -14px rgba(0,0,0,.65); --shadow-lg:0 30px 70px -25px rgba(0,0,0,.75); --glow:0 0 0 4px rgba(180,154,240,.25);
   --w-paper:#18122A; --w-inner:#140F24; --w-line:#4A3F6E; --w-line2:#6E6299; --w-tick:#8D82B5; --w-muted:#C9C0E6; --w-angle:#FF8FA8; --w-angle2:#C6B0FF;
-  --w-planet:#FFFFFF; --w-plbg:#231B3D; --w-planet2:#E2C9FF; --w-plbg2:#3A2A5E; --w-deg:#EEE8FF; --w-deg2:#E2C9FF; --w-ink:#FFFFFF; --w-sign:#FFFFFF; --w-ring2:#211A38; --w-ring-line:#8C7FC0;
+  --w-planet:#FFFFFF; --w-plbg:#231B3D; --w-planet2:#E2C9FF; --w-plbg2:#3A2A5E; --w-deg:#EEE8FF; --w-deg2:#E2C9FF; --w-ink:#FFFFFF; --w-sign:#FFFFFF; --w-ring2:#211A38; --w-ring-line:#8C7FC0; --w-cusp:#9A90C4; --w-cusp-ink:#EEE8FF; --w-cusp2:#C7A3FF; --w-cusp2-ink:#E4CCFF;
   --w-fire:#7A3A3A; --w-earth:#355437; --w-air:#3E3F7E; --w-water:#245466;
   --w-fire-g:#FFC2B5; --w-earth-g:#CBEFB9; --w-air-g:#D6D8FF; --w-water-g:#B9ECFF;
   --w-soft:#7FB8FF; --w-hard:#FF8A80; --w-conj:#F5C76E; --w-minor:#C2B0FF; --w-asp-bg:#140F24; --moon-lit:#F3E3B8; --moon-dark:#3A2D5C; --moon-ring:rgba(230,194,122,.55);

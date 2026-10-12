@@ -62,7 +62,7 @@
     const k = [p.id, p.y, p.mo, p.d, p.h, p.mi, p.timeKnown, root.NStore.settings().houseSystem, from.toISOString().slice(0, 10), to.toISOString().slice(0, 10)].join('|');
     if (slowCache.has(k)) return slowCache.get(k);
     const natal = UI.chartOf(p);
-    const tr = AC.transits(natal, from, to, { transiting: ['jupiter', 'saturn', 'uranus', 'neptune', 'pluto'], natal: ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'asc', 'mc'] });
+    const tr = AC.transits(natal, from, to, { transiting: ['jupiter', 'saturn', 'uranus', 'neptune', 'pluto'], natal: ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'asc', 'mc'] }).map((e) => AC.transitSpan(e)); // настоящие начало и конец, а не края окна
     const retro = AC.retrogradePeriods(['mercury', 'venus', 'mars'], AC.addDays(from, -60), AC.addDays(to, 60)).filter((r) => (r.shadowEnd || r.end) >= from && (r.shadowStart || r.start) <= to);
     const r = { transits: tr, retro };
     slowCache.set(k, r);

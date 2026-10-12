@@ -309,13 +309,23 @@
     }
     return null;
   }
-  function lunarReturn(chart, after, place, opts) {
-    const date = lunarReturnDate(chart, after);
+  /** Лунар, который действует на дату: последнее возвращение Луны в натальную точку не позже неё (как в Sotis). */
+  function lunarReturnBefore(chart, at) {
+    let d = lunarReturnDate(chart, new Date(at.getTime() - 29 * 86400000)); // в 29 сутках — одно или два возвращения
+    if (!d || d > at) return null;
+    for (let i = 0; i < 3; i++) { const nx = lunarReturnDate(chart, new Date(d.getTime() + 86400000)); if (!nx || nx > at) break; d = nx; }
+    return d;
+  }
+  function lunarChart(chart, date, place, opts) {
     const p = place || { lat: chart.params.lat, lon: chart.params.lon, zone: chart.params.zone };
     const c = AC.chart({ date, lat: p.lat, lon: p.lon, zone: p.zone || p.tz, timeKnown: true }, opts || chart.opts);
     c.returnDate = date;
     return c;
   }
+  /** Ближайший лунар после даты. */
+  function lunarReturn(chart, after, place, opts) { return lunarChart(chart, lunarReturnDate(chart, after), place, opts); }
+  /** Лунар, действующий на момент (начался до него). */
+  function lunarReturnAt(chart, at, place, opts) { return lunarChart(chart, lunarReturnBefore(chart, at), place, opts); }
 
   // ---------- 9. Управители дня и часа (планетные часы) ----------
   const DAY_RULER = ['sun', 'moon', 'mars', 'mercury', 'jupiter', 'venus', 'saturn']; // вс … сб
@@ -465,7 +475,9 @@
   /** Напряжение и поддержка по неделям: сумма активных медленных транзитов (ближе к точному — сильнее). */
   function dynamics(chart, start, weeks) {
     const end = addDays(start, weeks * 7);
-    const events = AC.transits(chart, start, end, { transiting: ['mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'] });
+    // настоящие начало и конец у транзитов, которые окно расчёта обрезало; порядок — по началу
+    const events = AC.transits(chart, start, end, { transiting: ['mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'] })
+      .map((e) => AC.transitSpan(e)).sort((a, b) => a.start - b.start || (a.exact[0] || a.start) - (b.exact[0] || b.start));
     const series = [];
     for (let w = 0; w < weeks; w++) {
       const t = addDays(start, w * 7 + 3.5);
@@ -488,6 +500,6 @@
   root.ProAstro = {
     SEVEN, TEN, TRAD, EXALT, TRIP, TERMS, FACE_ORDER, STARS, CHALDEAN, DAY_RULER, termOf, faceOf, starLon,
     dignities, receptions, dispositors, patterns, jonesShape, houseStrength, midpoints, fixedStars, firdaria,
-    solarArc, arcAt, lunarReturn, lunarReturnDate, planetaryHours, horary, relocate, angularCities, timeWindow, ephemeris, dynamics,
+    solarArc, arcAt, lunarReturn, lunarReturnAt, lunarReturnDate, lunarReturnBefore, planetaryHours, horary, relocate, angularCities, timeWindow, ephemeris, dynamics,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
