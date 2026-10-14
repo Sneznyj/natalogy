@@ -60,14 +60,17 @@
     const lang = opts.lang || 'ru';
     const bi = !!opts.outer;
     const S = 720, C = S / 2;
+    // opts.scale — крупнее значки и подписи (Профи: «видно издалека»); кольца чуть раздвигаются под них
+    const K = Math.max(1, Math.min(1.25, +opts.scale || 1));
     const R = bi
-      ? { zodOut: 336, zodIn: 308, ring: 238, pl: 211, plDeg: 181, asp: 158, opl: 273, oplDeg: 249, hNum: 146 }
+      ? { zodOut: 336, zodIn: 308, ring: 238, pl: 211, plDeg: 181, asp: 158, opl: K > 1 ? 276 : 273, oplDeg: 249, hNum: 146 }
       : { zodOut: 320, zodIn: 292, pl: 251, plDeg: 215, asp: 190 };
     // кегли: планеты внутреннего и внешнего круга, градусы, подложка значка, знаки зодиака, подписи куспидов (hl — внутренняя карта, oc — внешняя)
-    const GS = bi
+    const GS0 = bi
       ? { in: 28, out: 27, deg: 14, bg: 15, sign: 16, hl: 16, hlAx: 16.5, hd: 12, oc: 14, ocAx: 14.5, od: 11 }
       : { in: 31, out: 31, deg: 15, bg: 17, sign: 18, hl: 16, hlAx: 16.5, hd: 12 };
-    const PADV = bi ? 28 : 12; // поля вокруг — под подписи куспидов снаружи пояса
+    const GS = Object.fromEntries(Object.entries(GS0).map(([k, v]) => [k, Math.round(v * K * 10) / 10]));
+    const PADV = (bi ? 28 : 12) + Math.ceil(36 * (K - 1)); // поля вокруг — под подписи куспидов снаружи пояса (крупнее подписи — шире поля)
     const asc = chart.asc != null ? chart.asc : 0;
     const ang = (lon) => 180 + norm(lon - asc); // ASC слева, против часовой
     const xy = (r, a) => [C + r * Math.cos(a * Math.PI / 180), C - r * Math.sin(a * Math.PI / 180)];
@@ -81,8 +84,8 @@
     const sep = (rG, rD, wG, wD) => Math.max(wG / rG, wD / rD) * 180 / Math.PI; // минимальный разнос значков, градусы
     const layout = (points, minSep) => spread(points.map((p) => ({ p, ang: ang(p.lon) })), minSep);
     const ptsIn = chart.points.filter(vis);
-    const inItems = layout(ptsIn.filter(noAxis), bi ? sep(R.pl, R.plDeg, 30, 26) : sep(R.pl, R.plDeg, 34, 28));
-    const outItems = bi ? layout(opts.outer.points.filter((p) => noAxis(p) && (!opts.showOuter || opts.showOuter.includes(p.id))), sep(R.opl, R.oplDeg, 30, 26)) : [];
+    const inItems = layout(ptsIn.filter(noAxis), bi ? sep(R.pl, R.plDeg, 30 * K, 26 * K) : sep(R.pl, R.plDeg, 34 * K, 28 * K));
+    const outItems = bi ? layout(opts.outer.points.filter((p) => noAxis(p) && (!opts.showOuter || opts.showOuter.includes(p.id))), sep(R.opl, R.oplDeg, 30 * K, 26 * K)) : [];
 
     let s = `<svg class="nw${bi ? ' bi' : ''}" viewBox="${-PADV} ${-PADV} ${S + 2 * PADV} ${S + 2 * PADV}" role="img" aria-label="${esc(opts.label || (lang === 'ru' ? 'Колесо карты' : 'Chart wheel'))}" xmlns="http://www.w3.org/2000/svg">`;
     // поле внутри пояса; у двойного — внешний круг чуть тонирован, чтобы два круга планет читались отдельно
@@ -134,7 +137,7 @@
         if (bi) { // номер дома — внутри круга аспектов, посередине дома
           const next = chart.cusps[(i + 1) % 12], mid = c + norm(next - c) / 2;
           const [nx, ny] = xy(R.hNum, ang(mid));
-          hnum += `<text x="${r1(nx)}" y="${r1(ny)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="11.5" font-weight="800" fill="var(--w-cusp-ink)" stroke="var(--w-inner)" stroke-width="3" paint-order="stroke" data-tip="${esc(tip)}">${i + 1}</text>`;
+          hnum += `<text x="${r1(nx)}" y="${r1(ny)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${r1(11.5 * K)}" font-weight="800" fill="var(--w-cusp-ink)" stroke="var(--w-inner)" stroke-width="3" paint-order="stroke" data-tip="${esc(tip)}">${i + 1}</text>`;
         }
       }
     }
@@ -201,7 +204,7 @@
         let tt = x.type === 'opp' ? 0.3 : 0.5, gx = x0 + (x1 - x0) * tt, gy = y0 + (y1 - y0) * tt;
         for (const k of [0.38, 0.62, 0.3, 0.7]) { if (!glyphsAt.some(([a, b]) => Math.hypot(a - gx, b - gy) < 16)) break; tt = k; gx = x0 + (x1 - x0) * tt; gy = y0 + (y1 - y0) * tt; }
         glyphsAt.push([gx, gy]);
-        g = `<g class="nw-asp" data-tip="${esc(tip)}"><circle cx="${r1(gx)}" cy="${r1(gy)}" r="7.5" fill="var(--w-asp-bg)" stroke="${col}" stroke-width="1"/><text x="${r1(gx)}" y="${r1(gy + 0.5)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_G}" font-size="10" fill="${col}">${ASP_G[x.type]}${VS}</text></g>`;
+        g = `<g class="nw-asp" data-tip="${esc(tip)}"><circle cx="${r1(gx)}" cy="${r1(gy)}" r="${r1(7.5 * K)}" fill="var(--w-asp-bg)" stroke="${col}" stroke-width="1"/><text x="${r1(gx)}" y="${r1(gy + 0.5)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_G}" font-size="${r1(10 * K)}" fill="${col}">${ASP_G[x.type]}${VS}</text></g>`;
       }
       aspHTML += `<g class="nw-asp" data-tip="${esc(tip)}"><line x1="${r1(x0)}" y1="${r1(y0)}" x2="${r1(x1)}" y2="${r1(y1)}" stroke="transparent" stroke-width="10"/><line class="al" x1="${r1(x0)}" y1="${r1(y0)}" x2="${r1(x1)}" y2="${r1(y1)}" stroke="${col}" stroke-width="${r1(0.9 + st * 1.4)}" opacity="${r1(0.55 + st * 0.45)}" ${minor ? 'stroke-dasharray="4 3"' : ''}/></g>`;
       aspGly += g;
@@ -228,7 +231,7 @@
         h += `<circle cx="${r1(px)}" cy="${r1(py)}" r="${out ? 2.3 : 2.7}" fill="${tickCol}"/>`;
         h += `<circle class="pl-bg" cx="${r1(gx)}" cy="${r1(gy)}" r="${GS.bg}" fill="${out ? 'var(--w-plbg2)' : 'var(--w-plbg)'}" stroke="transparent"/>`;
         h += isTxt
-          ? `<text x="${r1(gx)}" y="${r1(gy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="13" font-weight="800" fill="var(--w-ink)">${g}</text>`
+          ? `<text x="${r1(gx)}" y="${r1(gy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${r1(13 * K)}" font-weight="800" fill="var(--w-ink)">${g}</text>`
           : `<text x="${r1(gx)}" y="${r1(gy + 0.5)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_G}" font-size="${gSize}" font-weight="700" fill="var(--w-ink)">${g}${VS}</text>`;
         if (opts.degrees !== false) h += `<text x="${r1(dx)}" y="${r1(dy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${GS.deg}" font-weight="800" fill="${out ? 'var(--w-deg2)' : 'var(--w-deg)'}">${degTxt(p.lon)}${p.retro ? `<tspan fill="var(--w-hard)" font-size="${GS.deg - 2.5}" font-weight="800">R</tspan>` : ''}</text>`;
         else if (p.retro) h += `<text x="${r1(dx)}" y="${r1(dy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${GS.deg - 2.5}" font-weight="800" fill="var(--w-hard)">R</text>`;

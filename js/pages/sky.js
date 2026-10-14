@@ -33,7 +33,7 @@
     const left = (d) => { const h = Math.round((d - now) / 3600000); return h < 48 ? t('sky.inH', 'через {n} ч', { n: h }) : t('sky.inD', 'через {n} дн.', { n: Math.round(h / 24) }); };
     return `<div class="sky-now">
       <div class="card sky-moon">${UI.moonSVG(ms.angle, 96)}<div class="stack s6"><span class="label">${esc(t('sky.moonNow', 'Луна сейчас'))}</span><b class="sm-t">${esc(TX.PHASE8[ms.phase8])} · ${Math.round(ms.illum * 100)}%</b>
-        <span><span class="g">${SG(ms.sign)}</span> ${esc(t('sky.moonIn', 'Луна {s}', { s: TX.S[ms.sign].in }))}${ld ? ' · ' + esc(t('sky.ld', '{n}-е лунные сутки', { n: ld.day })) : ''}</span>
+        <span><span class="g">${SG(ms.sign)}</span> ${esc(t('sky.moonIn', 'Луна {s}', { s: TX.S[ms.sign].in }))}${ld ? ' · ' + esc(t('sky.ld', '{n}‑е лунные сутки', { n: ld.day })) : ''}</span>
         <span class="small muted">${esc(TX.MOON_SIGN[ms.sign])}</span>
         ${cur ? `<span class="tag bad">${esc(t('sky.vocNow', 'Луна без курса до {t}', { t: UI.fmtDay(cur.end, tz, { hour: true }) }))}</span>` : next ? `<span class="tag">${esc(t('sky.vocNext', 'Луна без курса: {a} — {b}', { a: UI.fmtDay(next.start, tz, { hour: true }), b: UI.fmtDay(next.end, tz) === UI.fmtDay(next.start, tz) ? UI.fmtTime(next.end, tz) : UI.fmtDay(next.end, tz, { hour: true }) }))}</span>` : ''}</div></div>
       <div class="card stack"><span class="label">${esc(t('sky.next', 'Ближайшее'))}</span>
@@ -41,7 +41,7 @@
         ${nextFull ? `<div class="sky-li"><span class="g">○</span><span>${esc(t('sky.fullM', 'Полнолуние {s}', { s: TX.S[AC.signOf(nextFull.lon)].in }))}</span><b>${UI.fmtDay(nextFull.date, tz, { hour: true })}</b><small>${esc(left(nextFull.date))}</small></div>` : ''}
         ${ecl ? `<div class="sky-li"><span class="g">◑</span><span>${esc(ecl.type === 'solar' ? t('sky.eclS', 'Солнечное затмение') : t('sky.eclL', 'Лунное затмение'))} ${esc(TX.S[AC.signOf(ecl.lon)].in)}</span><b>${UI.fmtDay(ecl.date, tz, { year: true })}</b><small>${esc(left(ecl.date))}</small></div>` : ''}</div>
       <div class="card stack"><span class="label">${esc(t('sky.retroNow', 'Ретроградны сейчас'))}</span>
-        ${retro.length ? `<div class="tags">${retro.map((id) => `<span class="tag ${['mercury', 'venus', 'mars'].includes(id) ? 'bad' : 'acc'}"><span class="g">${PG(id)}</span> ${esc(TX.P[id].name)} R</span>`).join('')}</div><p class="small muted">${esc(retro.filter((id) => TX.RETRO[id] && ['mercury', 'venus', 'mars'].includes(id)).map((id) => TX.RETRO[id].tip).join(' ') || t('sky.retroSlow', 'Медленные планеты назад — фон для внутренних перемен, на обычные дни влияют мало.'))}</p>` : `<p class="small muted">${esc(t('sky.retroNone', 'Ни одна планета сейчас не идёт назад.'))}</p>`}</div></div>`;
+        ${retro.length ? `<div class="tags">${retro.map((id) => `<span class="tag ${['mercury', 'venus', 'mars'].includes(id) ? 'bad' : 'acc'}"><span class="g">${PG(id)}</span> ${esc(TX.P[id].name)} R</span>`).join('')}</div><p class="small muted">${esc(retro.filter((id) => TX.RETRO[id] && ['mercury', 'venus', 'mars'].includes(id)).map((id) => TX.RETRO[id].tip).join(' ') || t('sky.retroSlow', 'Медленные планеты в ретро — фон для внутренних перемен, на обычные дни влияют мало.'))}</p>` : `<p class="small muted">${esc(t('sky.retroNone', 'Сейчас ни одной планеты в ретро.'))}</p>`}</div></div>`;
   }
 
   // ---------- лунный календарь на месяц ----------
@@ -70,7 +70,7 @@
     const tdy = base.y === y && base.mo === mo ? base.d : 0;
     const vocTxt = (d) => d.vv.map((v) => `${v.start < d.s ? '00:00' : UI.fmtTime(v.start, tz)}–${v.end > d.e ? '24:00' : UI.fmtTime(v.end, tz)}`).join(', ');
     box.innerHTML = `<div class="horo-nav"><button class="iconbtn bd" type="button" data-moff="-1" aria-label="${esc(t('prev', 'Назад'))}">${icon('left')}</button><b>${esc(MN[mo - 1])} ${y}</b><button class="iconbtn bd" type="button" data-moff="1" aria-label="${esc(t('next', 'Вперёд'))}">${icon('right')}</button><span class="tiny muted" style="margin-left:auto">${esc(t('sky.tzNote', 'Время — {tz}', { tz }))}</span></div>
-      <div class="mc-grid">${[1, 2, 3, 4, 5, 6, 0].map((i) => `<span class="wdh">${esc(TX.WD[i])}</span>`).join('')}${'<span></span>'.repeat(lead)}${days.map((d) => `<button type="button" class="mcd${d.d === tdy ? ' now' : ''}${d.pp.some((x) => x.phase === 0 || x.phase === 2) ? ' ph' : ''}" data-md="${d.d - 1}" data-tip="${esc(UI.fmtDate(y, mo, d.d, { weekday: 'short' }) + '\n' + TX.PHASE8[d.ms.phase8] + ' · ' + Math.round(d.ms.illum * 100) + '%' + (d.ld ? '\n' + t('sky.ld', '{n}-е лунные сутки', { n: d.ld.day }) : '') + (d.vv.length ? '\n' + t('sky.voc', 'Без курса: {t}', { t: vocTxt(d) }) : ''))}">
+      <div class="mc-grid">${[1, 2, 3, 4, 5, 6, 0].map((i) => `<span class="wdh">${esc(TX.WD[i])}</span>`).join('')}${'<span></span>'.repeat(lead)}${days.map((d) => `<button type="button" class="mcd${d.d === tdy ? ' now' : ''}${d.pp.some((x) => x.phase === 0 || x.phase === 2) ? ' ph' : ''}" data-md="${d.d - 1}" data-tip="${esc(UI.fmtDate(y, mo, d.d, { weekday: 'short' }) + '\n' + TX.PHASE8[d.ms.phase8] + ' · ' + Math.round(d.ms.illum * 100) + '%' + (d.ld ? '\n' + t('sky.ld', '{n}‑е лунные сутки', { n: d.ld.day }) : '') + (d.vv.length ? '\n' + t('sky.voc', 'Без курса: {t}', { t: vocTxt(d) }) : ''))}">
         <span class="n">${d.d}</span>${UI.moonSVG(d.ms.angle, 26)}<span class="sg">${d.ii.length ? `${SG(d.ii[0].from)}→${SG(d.ii[d.ii.length - 1].to)}` : SG(d.ms.sign)}</span>${d.ld ? `<small class="ldn">${d.ld.day}</small>` : ''}${d.vv.map((v) => { const a = Math.max(0, (v.start - d.s) / (d.e - d.s)), b = Math.min(1, (v.end - d.s) / (d.e - d.s)); return `<i class="vb" style="left:calc(7px + ${(a * 100).toFixed(1)}% - ${(a * 14).toFixed(1)}px);width:calc(${((b - a) * 100).toFixed(1)}% - ${((b - a) * 14).toFixed(1)}px)" title="${esc(vocTxt(d))}"></i>`; }).join('')}${d.pp.map((x) => `<b class="pmk">${['●', '◐', '○', '◑'][x.phase]}</b>`).join('')}</button>`).join('')}</div>
       <p class="tiny muted">${esc(t('sky.mcLegend', 'В клетке: фаза, знак Луны (→ — переход днём), номер лунных суток в полдень. Розовая черта — Луна без курса. Нажми на день — подробности.'))}</p>`;
     box.querySelectorAll('[data-moff]').forEach((b) => b.addEventListener('click', () => { st.off += +b.dataset.moff; moonMonth(box, here); }));
@@ -78,7 +78,7 @@
       const d = days[+b.dataset.md];
       const rows = [
         `<p class="lead">${UI.moonSVG(d.ms.angle, 22)} ${esc(TX.PHASE8[d.ms.phase8])} · ${Math.round(d.ms.illum * 100)}%. ${esc(TX.PHASE_TIP[d.ms.phase8])}.</p>`,
-        d.ld ? `<p><b>${esc(t('sky.ld', '{n}-е лунные сутки', { n: d.ld.day }))}</b> — ${esc(t('sky.ldFrom', 'с {a}', { a: UI.fmtDay(d.ld.start, tz, { hour: true }) }))}${d.ld.end ? ', ' + esc(t('sky.ldTo', 'следующие — с {b}', { b: UI.fmtDay(d.ld.end, tz, { hour: true }) })) : ''}.</p>` : '',
+        d.ld ? `<p><b>${esc(t('sky.ld', '{n}‑е лунные сутки', { n: d.ld.day }))}</b> — ${esc(t('sky.ldFrom', 'с {a}', { a: UI.fmtDay(d.ld.start, tz, { hour: true }) }))}${d.ld.end ? ', ' + esc(t('sky.ldTo', 'следующие — с {b}', { b: UI.fmtDay(d.ld.end, tz, { hour: true }) })) : ''}.</p>` : '',
         `<p><span class="g">${SG(d.ms.sign)}</span> ${esc(TX.MOON_SIGN[d.ms.sign])}</p>`,
         ...d.ii.map((x) => `<p><b>${UI.fmtTime(x.date, tz)}</b> — ${esc(TX.evText({ kind: 'ingress', T: 'moon', sign: x.to }, tz).title)}. ${esc(TX.MOON_SIGN[x.to])}</p>`),
         ...d.pp.map((x) => `<p><b>${UI.fmtTime(x.date, tz)}</b> — ${esc(TX.PHASE4[x.phase])} ${esc(TX.S[AC.signOf(x.lon)].in)}${(() => { const h = natalHouse(x.lon); return h ? ' · ' + esc(t('sky.yourHouse', 'в твоём {n} доме', { n: h })) : ''; })()}.</p>`),
@@ -130,14 +130,15 @@
     const MN = TX.MONTHS_N || TX.MONTHS;
     const axis = Array.from({ length: 8 }, (_, i) => { const d = new Date(Date.UTC(y, i * 3, 1)); return `<span style="left:${X(d)}%">${esc(MN[d.getUTCMonth()].slice(0, 3))} ${String(d.getUTCFullYear()).slice(2)}</span>`; }).join('');
     const ecl = AC.eclipses(s, e);
-    box.innerHTML = `<div class="stack"><h3>${esc(t('sky.rtT', 'Ретроградные периоды {a}–{b}', { a: y, b: y + 1 }))}</h3><div class="rt-axis">${axis}</div><div class="rt-list">${rows}</div><p class="tiny muted">${esc(t('sky.rtLegend', 'Тёмная полоса — планета идёт назад, светлая — тень до и после. Вертикальная черта — сегодня. Наведи — даты.'))}</p></div>
+    box.innerHTML = `<div class="stack"><h3>${esc(t('sky.rtT', 'Ретроградные периоды {a}–{b}', { a: y, b: y + 1 }))}</h3><div class="rt-axis">${axis}</div><div class="rt-list">${rows}</div><p class="tiny muted">${esc(t('sky.rtLegend', 'Тёмная полоса — планета в ретро, светлая — тень до и после. Вертикальная черта — сегодня. Наведи — даты.'))}</p></div>
       <div class="stack" style="margin-top:10px"><h3>${esc(t('sky.eclT', 'Затмения {a}–{b}', { a: y, b: y + 1 }))}</h3><div class="items">${ecl.map((x) => { const h = natalHouse(x.lon); const past = x.date < now; return `<div class="item${past ? ' past' : ''}"><span class="gl">${x.type === 'solar' ? '☉︎' : '☽︎'}</span><div><h4>${esc(x.type === 'solar' ? t('sky.eclS', 'Солнечное затмение') : t('sky.eclL', 'Лунное затмение'))} ${esc(TX.S[AC.signOf(x.lon)].in)} · ${UI.fmtDay(x.date, tz, { year: true, hour: true })}</h4><p>${esc(TX.ECLIPSE[x.type === 'solar' ? 'solar' : 'lunar'])}${h ? ' ' + esc(t('sky.eclH', 'У тебя — в {n} доме: {a}.', { n: h, a: TX.H[h].area })) : ''}</p><div class="why">${esc(({ total: t('ecl.total', 'полное'), partial: t('ecl.partial', 'частное'), annular: t('ecl.annular', 'кольцеобразное'), penumbral: t('ecl.penumbral', 'полутеневое'), hybrid: t('ecl.hybrid', 'гибридное') })[x.kind] || x.kind || '')}</div></div></div>`; }).join('')}</div></div>`;
     root.NWheel.bindTips(box);
   }
 
   async function page(el) {
     const here = UI.here();
-    el.innerHTML = `<div class="sec-head"><span class="eyebrow">${esc(t('nav.sky', 'Небо и Луна'))}</span><h1>${t('sky.title', 'События неба <em>и лунный календарь</em>')}</h1><p>${esc(t('sky.p', 'Фазы и сутки Луны, Луна без курса, переходы планет, ретроградность и затмения — для всех. Время показано для места «где я сейчас»: {c}.', { c: here.name || here.tz }))}</p></div>
+    el.innerHTML = `<div class="sec-head"><span class="eyebrow">${esc(t('nav.sky', 'Небо и Луна'))}</span><h1>${t('sky.title', 'События неба <em>и лунный календарь</em>')}</h1><p>${esc(t('sky.p2', 'Фазы и сутки Луны, Луна без курса, переходы планет, ретроградность и затмения — для всех.'))}</p></div>
+      <div class="loc-bar sky-loc"><span class="label">${esc(t('sky.city', 'Считаю для города'))}</span>${UI.homeChipHTML(root.NStore.active() ? root.NStore.active().id : null)}<span class="tiny">${esc(t('sky.cityHint', 'Луна без курса, лунные сутки и время событий — по поясу {tz}', { tz: here.tz }))}</span></div>
       ${nowCard(here)}
       <div class="seg" role="tablist">${[['moon', t('sky.tMoon', 'Лунный календарь')], ['events', t('sky.tEv', 'События на 3 месяца')], ['retro', t('sky.tRetro', 'Ретро и затмения')]].map(([k, n]) => `<button type="button" data-tab="${k}" aria-pressed="${st.tab === k}">${esc(n)}</button>`).join('')}</div>
       <section class="card sky-body" id="skyBody"><p class="muted">${esc(t('horo.loading', 'Считаю…'))}</p></section>`;
@@ -149,6 +150,7 @@
     };
     el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { st.tab = b.dataset.tab; el.querySelectorAll('[data-tab]').forEach((z) => z.setAttribute('aria-pressed', String(z === b))); draw(); }));
     root.NWheel.bindTips(el);
+    UI.bindHomeChips(el, () => page(el));
     draw();
   }
 

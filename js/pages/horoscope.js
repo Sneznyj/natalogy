@@ -44,7 +44,7 @@
   }
 
   // ---------- кусочки разметки ----------
-  const sphRow = (s, r) => `<div class="hs ${UI.lvCls(r.level)}" data-tip="${esc(sphName(s) + ': ' + r.pts + '/10 · ' + UI.TX().LEVEL[r.level])}"><span class="ic">${icon(SPH_ICON[s], 'sm')}</span><span class="nm">${esc(sphName(s))}</span>${UI.pbar(r)}${UI.ptsBadge(r, true)}</div>`;
+  const sphRow = (s, r) => `<div class="hsr ${UI.lvCls(r.level)}" data-tip="${esc(sphName(s) + ': ' + r.pts + '/10 · ' + UI.TX().LEVEL[r.level])}"><span class="ic">${icon(SPH_ICON[s], 'sm')}</span><span class="nm">${esc(sphName(s))}</span>${UI.pbar(r)}${UI.ptsBadge(r, true)}</div>`;
   const block = (glyph, title, html) => `<div class="hblock"><h4><span class="g">${glyph}</span>${esc(title)}</h4>${html}</div>`;
   function planetHouseText(id, si, at) {
     const lon = AC.body(id, at).lon, n = H.house(lon, si), T = HT();
@@ -105,7 +105,7 @@
       ...asp.map((a) => `<p><span class="g asp-${a.soft ? 'soft' : 'hard'}"><span class="ag">${PG(a.id)}${W.ASP_G[a.a === 0 ? 'conj' : a.a === 60 ? 'sextile' : a.a === 90 ? 'square' : a.a === 120 ? 'trine' : 'opp']}${VS}</span></span> ${esc(T.aspect[a.id][a.soft ? 0 : 1])}.</p>`),
       ...moonIng.map((x) => { const n = H.house(AC.SIGNS.indexOf(x.to) * 30 + 1, si); return `<p><b>${UI.fmtTime(x.date, tz)}</b> — ${esc(t('horo.moonMove2', 'Луна {s}: фокус в твоём {n} — {a}', { s: TX.S[x.to].in, n: houseIn(n), a: TX.H[n].area }))}.</p>`; }),
       ...phases.map((x) => `<p><b>${UI.fmtTime(x.date, tz)}</b> — ${esc(TX.PHASE4[x.phase])}. ${esc(TX.PHASE_TIP[[0, 2, 4, 6][x.phase]])}.</p>`),
-      ...st2.map((x) => `<p><b>${esc(TX.P[x.id].name)}</b> ${esc(x.kind === 'retro' ? t('horo.stR', 'разворачивается назад — замедлись в его темах') : t('horo.stD', 'разворачивается вперёд — дела сдвинутся'))}.</p>`),
+      ...st2.map((x) => `<p><b>${esc(TX.P[x.id].name)}</b> ${esc(x.kind === 'retro' ? t('horo.stR', 'уходит в ретро — замедлись в его темах') : t('horo.stD', 'разворачивается вперёд — дела сдвинутся'))}.</p>`),
       others,
       ...retro.map((id) => `<p><b>${esc(TX.RETRO[id].name)}.</b> ${esc(TX.RETRO[id].tip)}</p>`),
     ].join('');
@@ -132,7 +132,7 @@
     const ev = [lunations(si, from, to, tz), eclipseNotes(si, from, to, tz), ingressNotes(['sun', 'mercury', 'venus', 'mars'], si, from, to, tz)].join('');
     return `<div class="hw-days">${days.map((d, i) => `<button class="hwd ${UI.lvCls(d.r.overall.level)}" type="button" data-goday="${i}"><span class="wd">${esc(TX.WD[wdOf(d)])}</span><span class="dt">${pad(d.d)}.${pad(d.mo)}</span>${UI.ringPts(d.r.overall, 50)}<span class="g" title="${esc(TX.S[d.moonSign].name)}">${PG('moon')}${SG(SIGNS.indexOf(d.moonSign))}</span></button>`).join('')}</div>
       <p class="tiny muted hint-click">${icon('info', 'xs')} ${esc(t('horo.tapDay', 'Нажми на день — откроется гороскоп на этот день'))}</p>
-      <div class="hw-best">${H.SPH.filter((s) => s !== 'mood').map((s) => { const b = bestOf(days, s, 1)[0]; return `<div class="hs ${UI.lvCls(b.r[s].level)}"><span class="ic">${icon(SPH_ICON[s], 'sm')}</span><span class="nm">${esc(sphName(s))}</span><span class="small">${esc(TX.WD[wdOf(b)])}, ${pad(b.d)}.${pad(b.mo)}</span>${UI.ptsBadge(b.r[s], true)}</div>`; }).join('')}</div>
+      <div class="hw-best">${H.SPH.filter((s) => s !== 'mood').map((s) => { const b = bestOf(days, s, 1)[0]; return `<div class="hsr ${UI.lvCls(b.r[s].level)}"><span class="ic">${icon(SPH_ICON[s], 'sm')}</span><span class="nm">${esc(sphName(s))}</span><span class="small">${esc(TX.WD[wdOf(b)])}, ${pad(b.d)}.${pad(b.mo)}</span>${UI.ptsBadge(b.r[s], true)}</div>`; }).join('')}</div>
       ${block(PG('sun'), t('horo.weekTheme', 'Тема недели'), `<p>${esc(T.sunMonth[sun.n])}</p>`)}
       ${block(PG('moon'), t('horo.weekMoon', 'Луна по твоим домам'), runs.map((x) => `<p><b>${pad(x.from.d)}.${pad(x.from.mo)}${x.to !== x.from ? '–' + pad(x.to.d) + '.' + pad(x.to.mo) : ''}</b> · ${esc(houseN(x.h))}: ${esc(TX.H[x.h].area)}.</p>`).join(''))}
       ${ev ? block('✦', t('horo.weekEv', 'События недели'), ev) : ''}`;
@@ -154,7 +154,7 @@
     const ecl = eclipseNotes(si, from, to, tz), rt = retroNotes(['mercury', 'venus', 'mars', 'jupiter', 'saturn'], from, to, tz);
     return `<div class="hm-grid">${wdh}${'<span></span>'.repeat(lead)}${days.map((d, i) => `<button type="button" class="hmd ${UI.lvCls(d.r.overall.level)}${d.y === today.y && d.mo === today.mo && d.d === today.d ? ' now' : ''}" data-goday="${i}" data-tip="${esc(UI.fmtDate(d.y, d.mo, d.d, { weekday: 'short' }) + ' · ' + d.r.overall.pts + '/10\n' + H.SPH.filter((s) => s !== 'mood').map((s) => sphName(s) + ' ' + d.r[s].pts).join(' · '))}"><span class="n">${d.d}</span><b>${d.r.overall.pts}</b><i>${phOn(d)}</i></button>`).join('')}</div>
       <p class="tiny muted">${esc(t('horo.monthLegend', 'Цифра в клетке — общий балл дня. ● новолуние, ○ полнолуние. Нажми на день — откроется его гороскоп.'))}</p>
-      <div class="hw-best">${H.SPH.filter((s) => s !== 'mood').map((s) => `<div class="hs"><span class="ic">${icon(SPH_ICON[s], 'sm')}</span><span class="nm">${esc(sphName(s))}</span><span class="small">${bestOf(days, s, 3).sort((a, b) => a.d - b.d).map((b) => `<button class="dchip" type="button" data-goday="${b.d - 1}">${pad(b.d)}.${pad(b.mo)} ${UI.ptsBadge(b.r[s], true)}</button>`).join(' ')}</span></div>`).join('')}</div>
+      <div class="hw-best">${H.SPH.filter((s) => s !== 'mood').map((s) => `<div class="hsr"><span class="ic">${icon(SPH_ICON[s], 'sm')}</span><span class="nm">${esc(sphName(s))}</span><span class="small">${bestOf(days, s, 3).sort((a, b) => a.d - b.d).map((b) => `<button class="dchip" type="button" data-goday="${b.d - 1}">${pad(b.d)}.${pad(b.mo)} ${UI.ptsBadge(b.r[s], true)}</button>`).join(' ')}</span></div>`).join('')}</div>
       ${block(PG('sun'), t('horo.mTheme', 'Главная тема месяца — {a}', { a: TX.H[sun.n].area }), `<p>${esc(T.sunMonth[sun.n])}</p>`)}
       ${block(PG('venus'), t('horo.mLove', 'Любовь и деньги'), `<p>${esc(ven.text)}</p>`)}
       ${block(PG('mars'), t('horo.mMars', 'Энергия и действия'), `<p>${esc(mar.text)}</p>`)}
@@ -190,7 +190,7 @@
     const ecl = eclipseNotes(si, from, to, tz), rt = retroNotes(['mercury', 'venus', 'mars'], from, to, tz);
     return `<div class="hy-wrap"><div class="hy-bars" data-ys="overall">${months.map((x) => `<button type="button" class="hyb" data-gomonth="${x.m}" data-tip="${esc(MN[x.m] + ': ' + x.overall.pts + '/10\n' + H.SPH.filter((s) => s !== 'mood').map((s) => sphName(s) + ' ' + x[s].pts).join(' · '))}">${['overall', ...H.SPH].map((s) => `<i class="c-${rel[s][x.m].cls}" data-s="${s}" style="height:${rel[s][x.m].h.toFixed(0)}%"></i>`).join('')}${['overall', ...H.SPH].map((s) => `<b data-s="${s}">${rel[s][x.m].txt}</b>`).join('')}<span>${esc(MN[x.m].slice(0, 3))}</span></button>`).join('')}</div>
       <div class="chips hy-chips" role="group">${['overall', ...H.SPH.filter((s) => s !== 'mood')].map((s, i) => `<button class="chip" type="button" data-ys="${s}" aria-pressed="${i === 0}">${s === 'overall' ? esc(t('horo.overall', 'Общий')) : icon(SPH_ICON[s], 'xs') + ' ' + esc(sphName(s))}</button>`).join('')}</div></div>
-      <div class="hw-best">${H.SPH.filter((s) => s !== 'mood').map((s) => `<div class="hs"><span class="ic">${icon(SPH_ICON[s], 'sm')}</span><span class="nm">${esc(sphName(s))}</span><span class="small">${esc(bestM(s))}</span></div>`).join('')}</div>
+      <div class="hw-best">${H.SPH.filter((s) => s !== 'mood').map((s) => `<div class="hsr"><span class="ic">${icon(SPH_ICON[s], 'sm')}</span><span class="nm">${esc(sphName(s))}</span><span class="small">${esc(bestM(s))}</span></div>`).join('')}</div>
       ${block(PG('jupiter'), t('horo.yJup', 'Юпитер: где удача в этом году'), `<p>${esc(jup.text)}</p>${jIngr}`)}
       ${block(PG('saturn'), t('horo.ySat', 'Сатурн: где нужна опора'), `<p>${esc(sat.text)}</p>${sIngr}`)}
       ${ecl ? block('◑', t('horo.yEcl', 'Затмения года'), ecl) : ''}

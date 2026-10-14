@@ -206,7 +206,7 @@
   function calPop(anchor, cur, onPick) {
     closeCal();
     const TXX = TX();
-    const today = todayIn((Store.settings().here || {}).tz || Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const today = todayIn(here().tz || Intl.DateTimeFormat().resolvedOptions().timeZone);
     let y = cur && cur.y ? cur.y : today.y, mo = cur && cur.mo ? cur.mo : today.mo;
     const el = document.createElement('div'); el.className = 'calpop'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', t('cal.pick', 'Выбор даты'));
     document.body.appendChild(el); calEl = el;
@@ -653,7 +653,8 @@
         <div class="field"><label for="pf-date">${t('f.date', 'Дата рождения')}</label>${dateFieldHTML('id="pf-date"', dateStr)}<span class="hint"></span></div>
         <div class="field"><label for="pf-time">${t('f.time', 'Время рождения')}</label><input class="input" id="pf-time" inputmode="numeric" autocomplete="off" placeholder="${esc(t('ph.time', 'ЧЧ:ММ'))}" value="${esc(timeStr)}" ${p.timeKnown === false ? 'disabled' : ''}><label class="check tiny"><input type="checkbox" id="pf-notime" ${p.timeKnown === false ? 'checked' : ''}> ${t('f.noTime', 'Не знаю время')}</label></div>
       </div>
-      <div class="field ac"><label for="pf-city">${t('f.city', 'Город рождения')}</label><input class="input" id="pf-city" autocomplete="off" placeholder="${t('f.cityPh', 'Начните вводить: Минск, Псков…')}"><span class="hint">${t('f.cityHint', 'Нужен для домов и Асцендента; часовой пояс подставится сам')}</span></div>
+      <div class="field ac" data-acb><label for="pf-city">${t('f.city', 'Город рождения')}</label><input class="input" id="pf-city" autocomplete="off" placeholder="${t('f.cityPh', 'Начните вводить: Минск, Псков…')}"><span class="hint">${t('f.cityHint', 'Нужен для домов и Асцендента; часовой пояс подставится сам')}</span></div>
+      <div class="field ac" data-ach><label for="pf-home">${esc(opts.homeLabel || t('f.home', 'Где живёт сейчас'))}</label><input class="input" id="pf-home" autocomplete="off" placeholder="${t('f.homePh', 'Город, где человек живёт')}"><span class="hint">${esc(opts.homeHint || t('f.homeHint', 'Для времени суток, Луны без курса и лучших часов'))}</span></div>
       ${opts.extraHTML || ''}
       <p class="err" data-err hidden></p>
       <div class="row">${opts.cancel ? `<button class="btn" type="button" data-cancel>${t('cancel', 'Отмена')}</button>` : ''}<button class="btn primary" type="submit" style="flex:1">${esc(opts.submit || t('f.save', 'Сохранить'))}</button></div>
@@ -668,7 +669,9 @@
       const noTime = f.querySelector('#pf-notime'), time = f.querySelector('#pf-time');
       bindTimeInput(time, null, false);
       noTime.addEventListener('change', () => { time.disabled = noTime.checked; });
-      const city = bindCity(f.querySelector('.ac'), null, p.place || null);
+      const city = bindCity(f.querySelector('[data-acb]'), null, p.place || null);
+      const home0 = p.home && p.home.tz ? p.home : (opts.homeDefault !== undefined ? opts.homeDefault : (Store.settings().here || null));
+      const homeC = bindCity(f.querySelector('[data-ach]'), null, home0 && !home0.guessed ? home0 : null);
       const cancel = f.querySelector('[data-cancel]'); if (cancel) cancel.addEventListener('click', () => onCancel && onCancel());
       f.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -684,7 +687,7 @@
         const pl = city.value;
         if (!pl) return fail(t('err.city', 'Выберите город из списка'), f.querySelector('#pf-city'));
         err.hidden = true;
-        onSave(Object.assign({}, p, { name, gender, y: r.y, mo: r.mo, d: r.d, h, mi, timeKnown: tk, place: { name: pl.name, nameEn: pl.nameEn, country: pl.country, countryEn: pl.countryEn, lat: pl.lat, lon: pl.lon, tz: pl.tz } }));
+        onSave(Object.assign({}, p, { name, gender, y: r.y, mo: r.mo, d: r.d, h, mi, timeKnown: tk, place: placeData(pl), home: placeData(homeC.value) }));
       });
     } };
   }
@@ -700,23 +703,63 @@
     if (chartCache.size > 60) chartCache.delete(chartCache.keys().next().value);
     return c;
   }
-  /** Где пользователь сейчас (для границ дня и часов): из настроек или по поясу браузера. */
-  function here() { return Store.settings().here || (Store.active() && Store.active().home) || root.NGeo.guessHere(); }
+  /** Где живёт человек, чья карта открыта (границы суток, Луна без курса, лучшие часы, дома транзитов):
+      его город → «где я» из настроек → пояс браузера. */
+  const placeData = (c) => (c ? { name: c.name, nameEn: c.nameEn, country: c.country, countryEn: c.countryEn, lat: c.lat, lon: c.lon, tz: c.tz } : null);
+  function homeOf(p) { return (p && p.home && p.home.tz) ? p.home : (Store.settings().here || root.NGeo.guessHere()); }
+  function here() { return homeOf(Store.active()); }
+  /** Поменять город проживания: у человека (id) или «где я» в настройках, если карточек нет. */
+  function setHome(personId, c) {
+    const p = personId ? Store.person(personId) : null;
+    if (p) Store.upsertPerson(Object.assign({}, p, { home: placeData(c) }));
+    else Store.set('here', placeData(c));
+  }
+  /**
+   * Чип «📍 Город ✎»: нажал — на месте появляется поиск города, выбрал — город сохранён (у человека personId или в настройках).
+   * homeChipHTML(personId, opts{prefix}) + bindHomeChips(rootEl, onChange(personId, city)).
+   */
+  function homeChipHTML(personId, opts) {
+    opts = opts || {};
+    const p = personId ? Store.person(personId) : null, c = p ? homeOf(p) : here();
+    const nm = c && !c.guessed ? (lang() === 'en' ? c.nameEn || c.name : c.name) : t('home.none', 'город не выбран');
+    return `<span class="home-chip" data-home-host="${esc(personId || '')}"><button type="button" class="home-btn" data-home-edit title="${esc(t('home.change', 'Изменить город, где живёт'))}">${icon('pin', 'sm')}<span>${opts.prefix ? `<small>${esc(opts.prefix)}</small> ` : ''}${esc(nm)}</span>${icon('edit', 'xs')}</button></span>`;
+  }
+  function bindHomeChips(rootEl, onChange) {
+    rootEl.querySelectorAll('[data-home-host]').forEach((host) => {
+      const btn = host.querySelector('[data-home-edit]'); if (!btn || btn._b) return; btn._b = true;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = host.dataset.homeHost || null;
+        const p = id ? Store.person(id) : null, cur = p ? homeOf(p) : here();
+        const keep = host.innerHTML;
+        host.innerHTML = `<span class="field ac home-ac"><input class="input" autocomplete="off" placeholder="${esc(t('f.cityPh', 'Начните вводить: Минск, Псков…'))}" aria-label="${esc(t('home.change', 'Изменить город, где живёт'))}"></span><button type="button" class="iconbtn" data-home-x aria-label="${esc(t('cancel', 'Отмена'))}">${icon('close', 'sm')}</button>`;
+        const inp = host.querySelector('input');
+        bindCity(host.querySelector('.home-ac'), (c) => { if (!c) return; setHome(id, c); toast(t('set.hereSaved', 'Теперь считаю для: {c}', { c: c.name })); onChange && onChange(id, c); }, cur && !cur.guessed ? cur : null);
+        host.querySelector('[data-home-x]').addEventListener('click', (ev) => { ev.stopPropagation(); host.innerHTML = keep; delete btn._b; bindHomeChips(rootEl, onChange); });
+        setTimeout(() => { inp.focus(); inp.select(); }, 0);
+      });
+    });
+  }
   const initials = (n) => String(n || '?').trim().slice(0, 1).toUpperCase();
   const lvClass = (l) => ({ 2: 'lv-2', 1: 'lv-1', 0: 'lv0', '-1': 'lv-m1', '-2': 'lv-m2' })[l];
   const lvCls = (l) => ({ 2: 'l2', 1: 'l1', 0: 'l0', '-1': 'lm1', '-2': 'lm2' })[l];
   function moonSVG(angle, size) {
-    // диск Луны по фазовому углу (0 — новолуние, 180 — полнолуние)
-    const r = 26, c = 29, k = Math.cos(angle * Math.PI / 180);
-    const waxing = angle < 180;
+    // диск Луны по фазовому углу (0 — новолуние, 180 — полнолуние). Цвет освещённой части: растущая и полная — насыщенно-жёлтая,
+    // убывающая — светлее; тёмная часть — тёмная, чтобы новолуние и полнолуние не путались даже в маленьком значке
+    const a = ((angle % 360) + 360) % 360;
+    const r = 26, c = 29, k = Math.cos(a * Math.PI / 180);
+    const waxing = a < 180;
     const rx = Math.abs(k) * r;
-    const lit = 'var(--moon-lit,#F6E6BE)', dark = 'var(--moon-dark,#D9CFEE)';
+    const full = Math.abs(a - 180) < 10, isNew = a < 10 || a > 350;
+    const kind = isNew ? 'new' : full ? 'full' : waxing ? 'wax' : 'wane';
+    const lit = kind === 'wane' ? 'var(--moon-wane,#FBE7A1)' : 'var(--moon-wax,#F5B700)', dark = 'var(--moon-dark,#4A4363)';
     const sweep1 = waxing ? 1 : 0;
     const path = `M${c} ${c - r} A${r} ${r} 0 0 ${sweep1} ${c} ${c + r} A${rx} ${r} 0 0 ${k > 0 ? (waxing ? 0 : 1) : (waxing ? 1 : 0)} ${c} ${c - r}Z`;
-    return `<svg class="moon-disc" viewBox="0 0 58 58" width="${size || 58}" height="${size || 58}" style="width:${size || 58}px;height:${size || 58}px" aria-hidden="true"><circle cx="${c}" cy="${c}" r="${r}" fill="${dark}"/><path d="${path}" fill="${lit}"/><circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="var(--moon-ring,rgba(161,114,42,.45))" stroke-width="${size && size < 30 ? 3 : 1.5}"/></svg>`;
+    const sz = size || 58;
+    return `<svg class="moon-disc mn-${kind}" viewBox="0 0 58 58" width="${sz}" height="${sz}" style="width:${sz}px;height:${sz}px" aria-hidden="true"><circle cx="${c}" cy="${c}" r="${r}" fill="${dark}"/>${isNew ? '' : full ? `<circle cx="${c}" cy="${c}" r="${r}" fill="${lit}"/>` : `<path d="${path}" fill="${lit}"/>`}<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="var(--moon-ring,rgba(120,90,20,.5))" stroke-width="${sz < 30 ? 3.4 : 1.6}"/></svg>`;
   }
   /** Тема: светлая ↔ тёмная (кнопка в шапке). */
   function isDark() { const th = Store.settings().theme; return th === 'dark' || (th !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); }
 
-  root.NUI = { lang, t, TX, $, $$, esc, icon, toast, sheet, closeSheet, modal, popup, closePopup, richTip, hideRich, dots, ptsBadge, ringPts, pbar, acc, partsIn, fromParts, addUnit, timebar, holdRepeat, wheelScrub, hscroll, calPop, closeCal, parseDate, parseTime, autoDate, autoTime, bindTimeInput, dateFieldHTML, fmtDate, fmtTime, fmtDay, fmtDMY, fmtHMS, todayIn, bindDateInput, bindCity, personForm, chartOf, here, initials, lvClass, lvCls, moonSVG, reduceMotion, pad, daysIn, isDark };
+  root.NUI = { lang, t, TX, $, $$, esc, icon, toast, sheet, closeSheet, modal, popup, closePopup, richTip, hideRich, dots, ptsBadge, ringPts, pbar, acc, partsIn, fromParts, addUnit, timebar, holdRepeat, wheelScrub, hscroll, calPop, closeCal, parseDate, parseTime, autoDate, autoTime, bindTimeInput, dateFieldHTML, fmtDate, fmtTime, fmtDay, fmtDMY, fmtHMS, todayIn, bindDateInput, bindCity, personForm, chartOf, here, homeOf, setHome, homeChipHTML, bindHomeChips, placeData, initials, lvClass, lvCls, moonSVG, reduceMotion, pad, daysIn, isDark };
 })(window);

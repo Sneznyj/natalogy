@@ -240,8 +240,19 @@
   const FIRD_NIGHT = [['moon', 9], ['saturn', 11], ['jupiter', 12], ['mars', 7], ['sun', 10], ['venus', 8], ['mercury', 13], ['node', 3], ['southNode', 2]];
   const addYears = (d, y) => new Date(d.getTime() + y * 365.2422 * 86400000);
   /** Периоды фирдарий от рождения (75 лет, потом по кругу) с подпериодами (7 равных, халдейский порядок от управителя). */
-  function firdaria(chart, now) {
-    now = now || new Date();
+  /** Делит отрезок на 7 равных частей по халдейскому ряду, начиная с управителя first. */
+  function firdSevenths(first, start, end, now) {
+    const i0 = CHALDEAN.indexOf(first), len = end - start, out = [];
+    for (let k = 0; k < 7; k++) { const s = new Date(start.getTime() + len * k / 7), e = new Date(start.getTime() + len * (k + 1) / 7); out.push({ id: CHALDEAN[(i0 + k) % 7], start: s, end: e, current: now >= s && now < e }); }
+    return out;
+  }
+  /**
+   * Фирдарии: большие периоды (75 лет), у планетных — 7 подпериодов (с управителя периода по халдейскому ряду).
+   * opts.nodeSubs — делить и периоды узлов на 7 (современный вариант; в классике у узлов подпериодов нет): с управителя секты — Солнца днём, Луны ночью.
+   * opts.deep — третий уровень: каждый подпериод ещё на 7 частей (subs2) с его управителя.
+   */
+  function firdaria(chart, now, opts) {
+    now = now || new Date(); opts = opts || {};
     const day = chart.houses ? chart.houses.dayChart : null;
     const seq = day === false ? FIRD_NIGHT : FIRD_DAY;
     const out = [];
@@ -249,11 +260,10 @@
     for (let cycle = 0; cycle < 2; cycle++) {
       for (const [id, years] of seq) {
         const end = addYears(start, years);
-        const subs = [];
-        if (id !== 'node' && id !== 'southNode') {
-          const i0 = CHALDEAN.indexOf(id);
-          for (let k = 0; k < 7; k++) { const s = addYears(start, (years / 7) * k), e = addYears(start, (years / 7) * (k + 1)); subs.push({ id: CHALDEAN[(i0 + k) % 7], start: s, end: e, current: now >= s && now < e }); }
-        }
+        let subs = [];
+        if (id !== 'node' && id !== 'southNode') subs = firdSevenths(id, start, end, now);
+        else if (opts.nodeSubs) subs = firdSevenths(day === false ? 'moon' : 'sun', start, end, now).map((x) => Object.assign(x, { nodeSub: true }));
+        if (opts.deep) for (const sb of subs) sb.subs2 = firdSevenths(sb.id, sb.start, sb.end, now);
         out.push({ id, years, start, end, subs, current: now >= start && now < end });
         start = end;
       }

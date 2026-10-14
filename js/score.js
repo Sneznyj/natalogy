@@ -4,6 +4,9 @@
    Зависимости: AstroCore (engine/astro.js), ProAstro (engine/pro.js). */
 (function (root) {
   'use strict';
+  // какими домами карты управляет планета: знак на куспиде — её знак (современные и классические управители, как принято у нас)
+  const CO_RULE = { sun: ['leo'], moon: ['cancer'], mercury: ['gemini', 'virgo'], venus: ['taurus', 'libra'], mars: ['aries', 'scorpio'], jupiter: ['sagittarius', 'pisces'], saturn: ['capricorn', 'aquarius'], uranus: ['aquarius'], neptune: ['pisces'], pluto: ['scorpio'] };
+  const rulesOf = (id, cusps) => (cusps && CO_RULE[id] ? cusps.map((c, k) => [root.AstroCore.signOf(c), k + 1]).filter(([sg]) => CO_RULE[id].includes(sg)).map(([, h]) => h) : []);
   const AC = root.AstroCore, PRO = root.ProAstro;
   const { norm, d180, addDays } = AC;
   const DAY = 86400000, HOUR = 3600000;
@@ -348,7 +351,7 @@
             if ((a < 0) === (b < 0) || Math.abs(a - b) > 30) continue;
             const at = bisectT((x) => d180(lonAt(T, x) - target), times[i], times[i + 1]);
             const v = nature(T, type);
-            out.push({ at, kind: 'transit', T, N, type, v, retro: d180(lons[i + 1] - lons[i]) < 0, w: W_T[T] * (I_N[N] || 0.55) * (T === 'moon' ? 0.7 : 1), tHouse: timeKnown ? AC.houseOf(lonAt(T, at), natal.houses.cusps) : null, nHouse: natal.byId[N].house || null });
+            out.push({ at, kind: 'transit', T, N, type, v, retro: d180(lons[i + 1] - lons[i]) < 0, w: W_T[T] * (I_N[N] || 0.55) * (T === 'moon' ? 0.7 : 1), tHouse: timeKnown ? AC.houseOf(lonAt(T, at), natal.houses.cusps) : null, nHouse: natal.byId[N].house || null, tRules: timeKnown ? rulesOf(T, natal.houses.cusps) : null, nRules: timeKnown ? rulesOf(N, natal.houses.cusps) : null });
           }
         }
       }

@@ -35,7 +35,7 @@
 
   function posRows(points, cls) {
     const TX = UI.TX();
-    return points.map((p) => `<div class="pos ${cls || ''}" role="button" tabindex="0" data-pid="${p.id}" data-side="${cls || 'in'}"><span class="g">${pg(p.id)}</span><span class="small">${esc(TX.P[p.id] ? TX.P[p.id].name : p.id)}${p.retro ? '<span class="r">R</span>' : ''}</span><span class="dg">${fmtLon(p.lon)} <span class="g" style="color:var(--lav-strong)">${sg(p.lon)}</span></span><span class="hs">${p.house ? p.house : ''}</span></div>`).join('');
+    return points.map((p) => `<div class="pos ${cls || ''}" role="button" tabindex="0" data-pid="${p.id}" data-side="${cls || 'in'}"><span class="g">${pg(p.id)}</span><span class="small">${esc(TX.P[p.id] ? TX.P[p.id].name : p.id)}${p.retro ? '<span class="r">R</span>' : ''}</span><span class="dg">${fmtLon(p.lon)} <span class="g" style="color:var(--lav-strong)">${sg(p.lon)}</span></span><span class="phs">${p.house ? p.house : ''}</span></div>`).join('');
   }
 
   async function page(el, params) {
@@ -201,7 +201,7 @@
     const rows = aspList.slice(0, 16).map((a, i) => {
       const tn = root.NExplain.tone(a.b, a.type);
       const np = TX.P[a.a] || { name: a.a };
-      return `<button class="trrow ${tn}" type="button" data-tr="${i}"><span class="g">${pg(a.b)}${W.ASP_G[a.type]}${VS}${pg(a.a)}</span><span class="small"><b>${esc(root.NExplain.phrase(a.b, a.a, a.type))}</b><br><span class="muted">${esc(root.NExplain.short({ T: a.b, type: a.type }))}</span></span><span class="dg">${a.orb.toFixed(1)}°${a.applying != null ? (a.applying ? ' ↗' : ' ↘') : ''}</span></button>`;
+      return `<button class="trrow ${tn}" type="button" data-tr="${i}"><span class="g">${pg(a.b)}${W.ASP_G[a.type]}${VS}${pg(a.a)}</span><span class="small"><b>${esc(root.NExplain.phrase(a.b, a.a, a.type))}</b><br><span class="muted">${esc(root.NExplain.short({ T: a.b, type: a.type }))}</span>${(() => { const hl = root.NExplain.houseLine({ T: a.b, N: a.a, type: a.type }, natal, mom); return hl ? `<span class="tr-hl">${hl}</span>` : ''; })()}</span><span class="dg">${a.orb.toFixed(1)}°${a.applying != null ? (a.applying ? ' ↗' : ' ↘') : ''}</span></button>`;
     }).join('');
     return `<div class="stack s6"><div class="row sb"><span class="label">${t('dyn.nearT', 'Динамика вокруг даты')}</span><span class="tiny muted">${t('dyn.nearHint', 'нажми на день — перейти')}</span></div>
         <div data-spark>${sparkSVG(natal, key, mom)}</div>
@@ -214,7 +214,7 @@
   function bindDyn(el, p, natal, list, mom) {
     el.querySelectorAll('#posBox [data-tr]').forEach((b) => b.addEventListener('click', () => {
       const a = list[+b.dataset.tr];
-      root.NExplain.transit({ T: a.b, N: a.a, type: a.type, orb: a.orb, applying: a.applying }, { natal, person: p });
+      root.NExplain.transit({ T: a.b, N: a.a, type: a.type, orb: a.orb, applying: a.applying, at: mom }, { natal, person: p });
     }));
     el.querySelectorAll('#posBox [data-sd]').forEach((g) => g.addEventListener('click', () => {
       const d = new Date(mom.getTime() + (+g.dataset.sd) * 86400000);

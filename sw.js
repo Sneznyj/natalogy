@@ -1,5 +1,5 @@
 /* Работа без интернета: кэшируем оболочку приложения и движок. Новая версия — поменять VERSION. */
-const VERSION = 'natalogy-0.3.0-20261012-234637';
+const VERSION = 'natalogy-0.4.0-20261014-1300';
 const SHELL = [
   './', 'index.html', 'app.html', 'privacy.html', 'terms.html', 'manifest.webmanifest', 'css/app.css',
   'js/vendor/astronomy.browser.min.js', 'js/engine/chiron-data.js', 'js/engine/astro.js', 'js/engine/pro.js',

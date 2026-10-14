@@ -194,3 +194,29 @@ Object.assign(window.NI18N.en, {
   'acc.unverified': 'email not confirmed', 'acc.ways': 'Ways to sign in', 'acc.unlink': 'Unlink', 'acc.byPw': 'Email and password', 'acc.linkX': 'Link {p}', 'acc.pwChange': 'Change password', 'acc.pwSet': 'Add sign-in with email and password',
   'acc.pwNew': 'New password', 'acc.pwOk': 'Password saved', 'acc.linkedOk': 'Sign-in linked to your account',
 });
+
+/* 14.10.2026: город проживания у каждого человека, «Чья карта» с карандашом, новая Профи-карта (окошко данных, динамика),
+   диспозиторы графом, все подпериоды фирдарий, дома в транзитах, город для Луны. */
+Object.assign(window.NI18N.en, {
+  'home.lives': 'lives in:', 'home.none': 'no city chosen', 'home.change': 'Change the city where this person lives',
+  'who.edit': 'Edit details: {n}', 'who.editT': 'Edit chart details',
+  'cal.locT': 'Day boundaries, the void-of-course Moon and best hours are calculated for this city', 'cal.locP': 'time for:',
+  'set.hereP': 'Where {n} lives now', 'set.hereHint2': 'This sets day boundaries, the void-of-course Moon and best hours. Time zone: {tz}. Each person has their own city — you can also change it in the “Whose chart” window.',
+  'f.home': 'Lives in (city)', 'f.homePh': 'The city where this person lives', 'f.homeHint': 'For the time of day, the void-of-course Moon and best hours',
+  'house.n': 'house {n}', 't.selfT': 'in its own sign — final dispositor', 't.loopT': 'loop (mutual reception)', 't.dispFrom': 'Build from', 't.dispPl': 'From planets', 't.noTime': 'Needs the birth time', 't.dispH': 'From houses',
+  't.rulers': 'Rulers', 't.modern': 'Modern', 't.tradS': 'Traditional',
+  't.dispHHint': 'Each house leads to the ruler of the sign on its cusp, then to the ruler of that planet’s sign, and so on to the final dispositor or a loop. An arrow means “is ruled by”.',
+  't.dispHint2': 'An arrow leads from a planet to the ruler of its sign. At the top — the final dispositor (gold, in its own sign) or a mutual-reception loop (pink). Hover a circle for details.',
+  't.chainsH': 'House chains as text', 't.chainsP': 'Planet chains as text',
+  'fd.subs2': 'Sub-sub-periods (third level)', 'fd.nodeSubsL': 'nodes split into 7 (modern variant)', 'fd.noSubs2': 'Classically the nodal periods have no sub-periods. Turn on “Split the nodes into sub-periods” above to see them.',
+  'fd.nodeSubs': 'Split the nodes into sub-periods (modern variant; classically the nodes have none)', 'fd.lvl1': 'Major periods', 'fd.lvl2': 'All sub-periods', 'fd.allSubs': 'Table of all sub-periods', 'fd.allSubsHint': '{n} rows — every sub-period of every life period',
+  'fd.colMaj': 'Period', 'fd.colSub': 'Sub-period', 'fd.colFrom': 'From', 'fd.colTo': 'To', 'fd.colAge': 'Age',
+  'acg.legend3': 'Scroll or +/− to zoom, drag the map with the mouse or a finger. Solid vertical — zenith (MC), dashed — nadir (IC); curves — rising (ASC, solid) and setting (DSC, dashed). Tap any line to see what it means. Gold dot — birthplace, blue — the city where you live.',
+  'acg.home': 'Lives in', 'm.city': 'City for the Moon calculations', 'm.cityHint': 'Void-of-course Moon, lunar days and all times are in the {tz} time zone. The city can also be changed in the “Whose chart” window.',
+  placeHome: 'where they live', placeHome2: 'where they live now', 'pdy.natalOver': 'natal · {n}', 'pro.compB': 'Second chart · {n}', 'pro.custom2': '✎ Own data', 'pro.saveChart': 'Save chart',
+  'pdy.overA': 'What to overlay on the natal chart', 'pdy.asType': '{x} — by chart type', 'pdy.none': '— no overlay', 'pdy.moveT': 'Tick — the sliders below move this chart', 'pdy.move': 'move',
+  'pdy.in': 'Inner circle', 'pdy.out': 'Outer circle', 'pdy.title': 'Dynamics', 'pdy.hint': 'tick which chart to move and drag the sliders', 'pdy.zero': 'Reset shift', 'pdy.now2': 'Now', 'pdy.step': 'step: {u}',
+  'tb.hShort': 'h', 'tb.miShort': 'min', 'pdy.start': 'start: {d}', 'pdy.trial': 'trial', 'err.time2': 'Time as HH:MM, e.g. 09:32',
+  'pro.splitHint3': 'Two fully independent charts: each has its own person or data, its own type, its own dynamics and display settings.',
+  'sky.p2': 'Moon phases and lunar days, the void-of-course Moon, planet ingresses, retrogrades and eclipses — for everyone.', 'sky.city': 'Calculated for the city', 'sky.cityHint': 'Void-of-course Moon, lunar days and event times are in the {tz} time zone',
+});

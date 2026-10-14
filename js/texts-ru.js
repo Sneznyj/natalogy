@@ -94,14 +94,14 @@
   const phaseIdx = (a) => (a < 15 || a >= 345 ? 0 : a < 84 ? 1 : a < 96 ? 2 : a < 168 ? 3 : a < 192 ? 4 : a < 264 ? 5 : a < 276 ? 6 : 7);
   const PHASE_TIP = ['Загадывай и планируй, начинать лучше через день-два', 'Время начинать и пробовать', 'Действуй, даже если трудно', 'Доводи до результата', 'Эмоции на пике — не решай сгоряча', 'Делись, благодари, отдавай', 'Подводи итоги и убирай лишнее', 'Отдыхай и завершай'];
   const RETRO = {
-    mercury: { name: 'Меркурий назад', tip: 'Перепроверяй договоры, сообщения и билеты. Хорошо доделывать старое, плохо начинать новое.' },
-    venus: { name: 'Венера назад', tip: 'Не меняй цены и не делай дорогих покупок. Возвращаются люди из прошлого.' },
-    mars: { name: 'Марс назад', tip: 'Энергия уходит внутрь: не начинай споров и рискованных дел.' },
-    jupiter: { name: 'Юпитер назад', tip: 'Рост идёт внутри: пересмотри планы.' },
-    saturn: { name: 'Сатурн назад', tip: 'Время дорабатывать обязательства и сроки.' },
-    uranus: { name: 'Уран назад', tip: 'Перемены зреют внутри.' },
-    neptune: { name: 'Нептун назад', tip: 'Иллюзии рассеиваются.' },
-    pluto: { name: 'Плутон назад', tip: 'Время честно посмотреть на свои страхи.' },
+    mercury: { name: 'Меркурий ретро', tip: 'Перепроверяй договоры, сообщения и билеты. Хорошо доделывать старое, плохо начинать новое.' },
+    venus: { name: 'Венера ретро', tip: 'Не меняй цены и не делай дорогих покупок. Возвращаются люди из прошлого.' },
+    mars: { name: 'Марс ретро', tip: 'Энергия уходит внутрь: не начинай споров и рискованных дел.' },
+    jupiter: { name: 'Юпитер ретро', tip: 'Рост идёт внутри: пересмотри планы.' },
+    saturn: { name: 'Сатурн ретро', tip: 'Время дорабатывать обязательства и сроки.' },
+    uranus: { name: 'Уран ретро', tip: 'Перемены зреют внутри.' },
+    neptune: { name: 'Нептун ретро', tip: 'Иллюзии рассеиваются.' },
+    pluto: { name: 'Плутон ретро', tip: 'Время честно посмотреть на свои страхи.' },
   };
   const SHADOW = { mercury: 'Доделывай, а не начинай: Меркурий проходит градусы будущего разворота.', venus: 'Осторожнее с ценами и покупками: Венера в градусах своего разворота.', mars: 'Не форсируй: Марс в градусах своего разворота.' };
   const ECLIPSE = { solar: 'Солнечное затмение рядом: новое лучше не начинать, события непредсказуемы.', lunar: 'Лунное затмение рядом: эмоции и завершения, не время для старта.' };
@@ -123,7 +123,7 @@
       case 'voc': return `Луна без курса ${Math.round(r.minutes / 60)} ч днём — начатое в это время «повисает»`;
       case 'retro': return `${RETRO[r.id].name}: ${RETRO[r.id].tip.split('.')[0].toLowerCase()}`;
       case 'shadow': return `Тень ${P[r.id].gen}: ${SHADOW[r.id].split(':')[0].toLowerCase()}`;
-      case 'station': return `${P[r.id].name} ${r.dir === 'retro' ? 'разворачивается назад' : 'разворачивается вперёд'} — его темы на пике, не торопись`;
+      case 'station': return `${P[r.id].name} ${r.dir === 'retro' ? 'уходит в ретро' : 'выходит из ретро'} — его темы на пике, не торопись`;
       case 'eclipse': return r.kindOf && ECLIPSE[r.kindOf.includes('solar') ? 'solar' : 'lunar'] ? ECLIPSE['lunar'] : 'Рядом затмение — не время для старта';
       default: return '';
     }
@@ -207,13 +207,13 @@
       case 'transit': {
         const t = P[e.T], n = P[e.N], a = ASP[e.type];
         const good = e.v >= 0;
-        return { title: `${t.name} ${a.verb} ${a.dat ? n.yourDat : n.yourAcc}`, short: EV_SHORT[e.T][good ? 0 : 1], text: `${(good ? t.good : t.bad).replace(/^./, (c) => c.toUpperCase())} в теме «${n.area}».`, ctx: e.tHouse && e.nHouse ? `${t.name} в ${e.tHouse} доме → ${n.your} (${e.nHouse} дом)` : '' };
+        return { title: `${t.name} ${a.verb} ${a.dat ? n.yourDat : n.yourAcc}`, short: EV_SHORT[e.T][good ? 0 : 1], text: `${(good ? t.good : t.bad).replace(/^./, (c) => c.toUpperCase())} в теме «${n.area}».`, ctx: e.tHouse && e.nHouse ? `${t.name}${e.tRules && e.tRules.length ? ` (упр. ${e.tRules.join(', ')} д.)` : ''} идёт по ${e.tHouse} дому → ${n.your} (${e.nRules && e.nRules.length ? `упр. ${e.nRules.join(', ')} д., ` : ''}стоит в ${e.nHouse} доме)` : '' };
       }
       case 'ingress': return { title: `${P[e.T].name} переходит ${SIGN_TO[e.sign]}`, short: e.T === 'moon' ? `Луна ${S[e.sign].in}` : `${P[e.T].name} ${S[e.sign].in}`, text: e.T === 'moon' ? MOON_SIGN[e.sign] : `${P[e.T].area[0].toUpperCase() + P[e.T].area.slice(1)} — ${S[e.sign].style}.`, ctx: '' };
       case 'phase': return { title: PHASE4[e.phase], short: PHASE4[e.phase].toLowerCase(), text: PH4_TIP[e.phase] + '.', ctx: '' };
       case 'vocStart': return { title: 'Луна без курса', short: `без курса до ${fmtTime(e.end, tz)}`, text: `До ${fmtTime(e.end, tz)} начатое «повисает»: хорошо отдыхать, доделывать и думать, а не стартовать.`, ctx: '' };
       case 'vocEnd': return { title: 'Луна снова в курсе', short: 'можно действовать', text: 'Луна без курса закончилась — можно начинать и договариваться.', ctx: '' };
-      case 'station': return { title: `${P[e.T].name} разворачивается ${e.dir === 'retro' ? 'назад' : 'вперёд'}`, short: e.dir === 'retro' ? 'стоянка, разворот назад' : 'стоянка, разворот вперёд', text: `Темы «${P[e.T].area}» на пике — не торопись с решениями.`, ctx: '' };
+      case 'station': return { title: `${P[e.T].name} ${e.dir === 'retro' ? 'уходит в ретро' : 'выходит из ретро'}`, short: e.dir === 'retro' ? 'стоянка, начало ретро' : 'стоянка, конец ретро', text: `Темы «${P[e.T].area}» на пике — не торопись с решениями.`, ctx: '' };
       case 'eclipse': { const sol = String(e.type || e.kindOf || '').includes('solar'); return { title: sol ? 'Солнечное затмение' : 'Лунное затмение', short: 'затмение', text: ECLIPSE[sol ? 'solar' : 'lunar'], ctx: '' }; }
       default: return { title: '', short: '', text: '', ctx: '' };
     }

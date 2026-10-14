@@ -79,7 +79,7 @@
     const lunar = (() => { try { return AC.lunarDay(new Date(day.start.getTime() + 13 * 3600000), here.lat, here.lon); } catch (e) { return null; } })();
     const voc = day.flags.voc.length ? day.flags.voc.map((v) => `${UI.fmtTime(v.start, tz)}–${UI.fmtTime(v.end, tz)}`).join(', ') : t('voc.none', 'нет');
     const mh = day.flags.moonHouse;
-    return `<div class="card soft stack s6"><div class="moonline">${UI.moonSVG(ms.angle, 46)}<div><b>${esc(TX.PHASE8[TX.phaseIdx(ms.angle)])}${lunar ? ' · ' + t('lunarDay', '{n}-е лунные сутки', { n: lunar.day }) : ''}</b><p class="small muted">${esc(TX.MOON_SIGN[ms.sign])}</p></div></div>
+    return `<div class="card soft stack s6"><div class="moonline">${UI.moonSVG(ms.angle, 46)}<div><b>${esc(TX.PHASE8[TX.phaseIdx(ms.angle)])}${lunar ? ' · ' + t('lunarDay', '{n}‑е лунные сутки', { n: lunar.day }) : ''}</b><p class="small muted">${esc(TX.MOON_SIGN[ms.sign])}</p></div></div>
       <div class="tags">${mh ? `<span class="tag acc">☽${VS} ${t('moon.house', '{n} дом', { n: mh })} · ${esc(TX.H[mh].area.split(',')[0])}</span>` : ''}<span class="tag ${day.flags.voc.length ? 'bad' : 'plain'}">${t('voc', 'Луна без курса')}: ${esc(voc)}</span></div>
       <p class="tiny muted">${esc(TX.PHASE_TIP[TX.phaseIdx(ms.angle)])}.</p></div>`;
   }
@@ -93,7 +93,7 @@
     const TX = UI.TX(), f = day.flags, out = [];
     for (const id of f.retro.filter((x) => ['mercury', 'venus', 'mars'].includes(x))) out.push([TX.RETRO[id].name, TX.RETRO[id].tip]);
     for (const id of f.shadow) out.push([t('shadowOf', 'Тень: {p}', { p: TX.P[id].name }), TX.SHADOW[id]]);
-    if (f.station) out.push([TX.P[f.station.id].name + ' ' + (f.station.kind === 'retro' ? t('st.retro', 'разворачивается назад') : t('st.direct', 'разворачивается вперёд')), t('st.tip', 'Темы планеты на пике — не торопись с решениями')]);
+    if (f.station) out.push([TX.P[f.station.id].name + ' ' + (f.station.kind === 'retro' ? t('st.retro', 'уходит в ретро') : t('st.direct', 'выходит из ретро')), t('st.tip', 'Темы планеты на пике — не торопись с решениями')]);
     if (f.eclipse) out.push([f.eclipse.type === 'solar' ? t('ecl.solar', 'Солнечное затмение') : t('ecl.lunar', 'Лунное затмение'), TX.ECLIPSE[f.eclipse.type] || TX.ECLIPSE.lunar]);
     if (!out.length) return '';
     return `<div class="alerts">${out.map(([a, b]) => `<div class="alert">${icon('alert')}<div><b>${esc(a)}.</b> ${esc(b)}</div></div>`).join('')}</div>`;

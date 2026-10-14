@@ -28,11 +28,13 @@
     el.innerHTML = `<div class="sec-head"><span class="eyebrow">${t('cal.eyebrow', 'Личный календарь')} · ${esc(p.name)}</span><h1>${t('cal.title2', 'Когда <em>что</em> делать')}</h1>
         <p>${t('cal.lead', 'Баллы от 1 до 10: чем выше, тем легче идёт дело. Выбери сферу или дело — календарь перекрасится под него.')}</p></div>
       <div class="cal-top"><div class="seg" role="group" aria-label="${t('cal.view', 'Вид')}"><button type="button" data-view="month" aria-pressed="${state.view === 'month'}">${t('cal.month', 'Месяц')}</button><button type="button" data-view="week" aria-pressed="${state.view === 'week'}">${t('cal.week', 'Неделя')}</button></div>
-        <span class="hint-click">${icon('info', 'xs')} ${canHover() ? t('cal.how2', 'Наведи на день — кратко, нажми — покажу его справа') : t('cal.howTouch2', 'Нажми на день — подробности под календарём')}</span></div>
+        <span class="hint-click">${icon('info', 'xs')} ${canHover() ? t('cal.how2', 'Наведи на день — кратко, нажми — покажу его справа') : t('cal.howTouch2', 'Нажми на день — подробности под календарём')}</span>
+        <span class="cal-loc" title="${esc(t('cal.locT', 'Сутки, Луна без курса и лучшие часы считаются по этому городу'))}">${UI.homeChipHTML(p.id, { prefix: t('cal.locP', 'время по городу:') })}</span></div>
       <div class="scrollx"><div class="chips" id="flt" role="group" aria-label="${t('cal.filter', 'Сфера')}"></div></div>
       <div id="calBody" class="stack s18"></div>
       <div id="bgBox" class="stack"></div>`;
     el.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => { state.view = b.dataset.view; el.querySelectorAll('[data-view]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); drawFilters(ctx); drawBody(ctx); }));
+    UI.bindHomeChips(el, () => root.NApp.route(true));
     drawFilters(ctx);
     await drawBody(ctx);
     drawBackground(ctx);
@@ -130,7 +132,7 @@
     return `<button class="cday ${LVK(r.level)}${isToday ? ' today' : ''}${isSel ? ' sel' : ''}" type="button" data-d="${day.d}" aria-label="${esc(label)}">
       <span class="cd-h"><span class="cd-n">${day.d}</span><span class="cd-p pts ${LVK(r.level)}">${r.pts}</span></span>
       <span class="cd-t">${esc(title)}</span>
-      <span class="cd-m">${UI.moonSVG(ms.angle, 14)}<span class="g">${root.NDay.sg(ms.sign)}</span><span>${esc(TX.S[ms.sign].name)}</span></span>
+      <span class="cd-m">${UI.moonSVG(ms.angle, 16)}<span class="g">${root.NDay.sg(ms.sign)}</span><span>${esc(TX.S[ms.sign].name)}</span></span>
       ${mk.length ? `<span class="cd-k">${mk.join('')}</span>` : ''}
       <span class="cd-voc">${voc}</span></button>`;
   }

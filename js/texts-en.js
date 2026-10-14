@@ -169,7 +169,7 @@
       case 'transit': {
         const t = P[e.T], n = P[e.N], a = ASP[e.type];
         const good = e.v >= 0;
-        return { title: `${t.name} ${a.verb} ${n.yourAcc}`, short: EV_SHORT[e.T][good ? 0 : 1], text: `${(good ? t.good : t.bad).replace(/^./, (c) => c.toUpperCase())} in “${n.area}”.`, ctx: e.tHouse && e.nHouse ? `${t.name} in house ${e.tHouse} → ${n.your} (house ${e.nHouse})` : '' };
+        return { title: `${t.name} ${a.verb} ${n.yourAcc}`, short: EV_SHORT[e.T][good ? 0 : 1], text: `${(good ? t.good : t.bad).replace(/^./, (c) => c.toUpperCase())} in “${n.area}”.`, ctx: e.tHouse && e.nHouse ? `${t.name}${e.tRules && e.tRules.length ? ` (rules ${e.tRules.join(', ')})` : ''} transits house ${e.tHouse} → ${n.your} (${e.nRules && e.nRules.length ? `rules ${e.nRules.join(', ')}, ` : ''}in house ${e.nHouse})` : '' };
       }
       case 'ingress': return { title: `${P[e.T].name} enters ${S[e.sign].name}`, short: `${P[e.T].name} ${S[e.sign].in}`, text: e.T === 'moon' ? MOON_SIGN[e.sign] : `${P[e.T].area.replace(/^./, (c) => c.toUpperCase())} — ${S[e.sign].style}.`, ctx: '' };
       case 'phase': return { title: PHASE4[e.phase], short: PHASE4[e.phase].toLowerCase(), text: PH4_TIP[e.phase] + '.', ctx: '' };

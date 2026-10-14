@@ -73,11 +73,18 @@
     if (root.NAccount) root.NAccount.paintHeader();
   }
 
+  /** «Чья карта»: выбрать человека, ✎ — изменить его данные, 📍 — город, где он живёт (по нему считаются сутки, Луна без курса и часы). */
   function openWho() {
     const list = root.NStore.people(), act = root.NStore.active();
-    const body = UI.sheet(`<div class="stack">${list.map((p) => `<button class="sph" type="button" data-p="${p.id}" style="grid-template-columns:auto 1fr auto;min-height:60px"><span class="ic" style="background:var(--night);color:#FFD8A6;font-weight:600">${esc(UI.initials(p.name))}</span><b>${esc(p.name)}</b>${act && act.id === p.id ? icon('check') : ''}<p>${esc(UI.fmtDate(p.y, p.mo, p.d))}</p></button>`).join('')}
-      <div class="row"><button class="btn primary" data-add>${icon('plus')} ${t('people.add', 'Добавить человека')}</button><a class="btn" href="#people">${icon('users')} ${t('nav.people', 'Люди')}</a><a class="btn" href="#pro">${icon('pro')} ${t('nav.pro', 'Профи')}</a><a class="btn vip-btn" href="#rectify">${icon('crown')} ${t('nav.rect', 'Ректификация')} <span class="vip-badge">VIP</span></a></div></div>`, { title: t('who', 'Чья карта') });
+    const body = UI.sheet(`<div class="stack"><div class="who-list">${list.map((p) => `<div class="who-row${act && act.id === p.id ? ' on' : ''}">
+        <button class="who-pick" type="button" data-p="${p.id}" aria-pressed="${!!(act && act.id === p.id)}"><span class="ic">${esc(UI.initials(p.name))}</span><span class="who-n"><b>${esc(p.name)}</b><small>${esc(UI.fmtDate(p.y, p.mo, p.d))}${p.timeKnown !== false ? ' · ' + UI.pad(p.h) + ':' + UI.pad(p.mi) : ''}${p.place ? ' · ' + esc(p.place.name) : ''}</small></span>${act && act.id === p.id ? `<span class="who-ok">${icon('check')}</span>` : ''}</button>
+        <div class="who-side">${UI.homeChipHTML(p.id, { prefix: t('home.lives', 'живёт:') })}<button class="iconbtn bd who-edit" type="button" data-edit="${p.id}" aria-label="${esc(t('who.edit', 'Изменить данные: {n}', { n: p.name }))}" title="${esc(t('who.editT', 'Изменить данные карты'))}">${icon('edit')}</button></div>
+      </div>`).join('')}</div>
+      <div class="row"><button class="btn primary" data-add>${icon('plus')} ${t('people.add', 'Добавить человека')}</button><a class="btn" href="#people">${icon('users')} ${t('nav.people', 'Люди')}</a><a class="btn" href="#pro">${icon('pro')} ${t('nav.pro', 'Профи')}</a><a class="btn vip-btn" href="#rectify">${icon('crown')} ${t('nav.rect', 'Ректификация')} <span class="vip-badge">VIP</span></a></div></div>`, { title: t('who', 'Чья карта'), cls: 'who-sheet' });
     body.querySelectorAll('[data-p]').forEach((b) => b.addEventListener('click', () => { root.NStore.setActive(b.dataset.p); UI.closeSheet(); route(true); }));
+    body.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => root.NPeople.editPerson(root.NStore.person(b.dataset.edit), () => route(true))));
+    // город поменяли: у того, чья карта открыта, страница пересчитывается сразу; окно остаётся открытым с новым городом
+    UI.bindHomeChips(body, async (id) => { if (act && id === act.id) await route(true); openWho(); });
     body.querySelector('[data-add]').addEventListener('click', () => root.NPeople.editPerson(null, (id) => { root.NStore.setActive(id); route(true); }));
     body.querySelectorAll('a').forEach((a) => a.addEventListener('click', UI.closeSheet));
   }
