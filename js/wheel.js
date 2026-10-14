@@ -199,14 +199,17 @@
       const minor = !['conj', 'sextile', 'square', 'trine', 'opp'].includes(x.type);
       const tip = `${nm(x.a)}${x.la ? ' (' + x.la + ')' : ''} ${ASP_G[x.type] || ''} ${nm(x.b)}${x.lb ? ' (' + x.lb + ')' : ''} — ${ASP_N[lang][x.type] || x.type}, ${lang === 'ru' ? 'орбис' : 'orb'} ${x.orb.toFixed(1)}°`;
       const len = Math.hypot(x1 - x0, y1 - y0);
+      // ключ аспекта — по нему таблица аспектов и колесо подсвечивают друг друга (linkAspects)
+      const ak = bi ? x.a + '>' + x.b : [x.a, x.b].sort().join('~');
+      const akA = `data-ak="${esc(ak)}" data-pa="${esc(x.a)}" data-pb="${esc(x.b)}"`;
       let g = '';
       if (opts.aspGlyphs !== false && len > 70 && x.type !== 'conj' && ASP_G[x.type]) {
         let tt = x.type === 'opp' ? 0.3 : 0.5, gx = x0 + (x1 - x0) * tt, gy = y0 + (y1 - y0) * tt;
         for (const k of [0.38, 0.62, 0.3, 0.7]) { if (!glyphsAt.some(([a, b]) => Math.hypot(a - gx, b - gy) < 16)) break; tt = k; gx = x0 + (x1 - x0) * tt; gy = y0 + (y1 - y0) * tt; }
         glyphsAt.push([gx, gy]);
-        g = `<g class="nw-asp" data-tip="${esc(tip)}"><circle cx="${r1(gx)}" cy="${r1(gy)}" r="${r1(7.5 * K)}" fill="var(--w-asp-bg)" stroke="${col}" stroke-width="1"/><text x="${r1(gx)}" y="${r1(gy + 0.5)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_G}" font-size="${r1(10 * K)}" fill="${col}">${ASP_G[x.type]}${VS}</text></g>`;
+        g = `<g class="nw-asp" ${akA} data-tip="${esc(tip)}"><circle cx="${r1(gx)}" cy="${r1(gy)}" r="${r1(7.5 * K)}" fill="var(--w-asp-bg)" stroke="${col}" stroke-width="1"/><text x="${r1(gx)}" y="${r1(gy + 0.5)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_G}" font-size="${r1(10 * K)}" fill="${col}">${ASP_G[x.type]}${VS}</text></g>`;
       }
-      aspHTML += `<g class="nw-asp" data-tip="${esc(tip)}"><line x1="${r1(x0)}" y1="${r1(y0)}" x2="${r1(x1)}" y2="${r1(y1)}" stroke="transparent" stroke-width="10"/><line class="al" x1="${r1(x0)}" y1="${r1(y0)}" x2="${r1(x1)}" y2="${r1(y1)}" stroke="${col}" stroke-width="${r1(0.9 + st * 1.4)}" opacity="${r1(0.55 + st * 0.45)}" ${minor ? 'stroke-dasharray="4 3"' : ''}/></g>`;
+      aspHTML += `<g class="nw-asp" ${akA} data-tip="${esc(tip)}"><line x1="${r1(x0)}" y1="${r1(y0)}" x2="${r1(x1)}" y2="${r1(y1)}" stroke="transparent" stroke-width="10"/><line class="al" x1="${r1(x0)}" y1="${r1(y0)}" x2="${r1(x1)}" y2="${r1(y1)}" stroke="${col}" stroke-width="${r1(0.9 + st * 1.4)}" opacity="${r1(0.55 + st * 0.45)}" ${minor ? 'stroke-dasharray="4 3"' : ''}/></g>`;
       aspGly += g;
     }
     s += aspHTML + aspGly + hnum;
@@ -251,6 +254,10 @@
   // ---------- подсказки: наведение, фокус и касание ----------
   let tipEl = null;
   function bindTips(rootEl) {
+    if (!rootEl) return;
+    // один раз на элемент: колесо перерисовывается десятки раз в секунду (стрелки, «Пуск»), а слушатели живут на контейнере
+    if (rootEl.dataset.tipBound) return;
+    rootEl.dataset.tipBound = '1';
     if (!tipEl) {
       tipEl = document.createElement('div');
       tipEl.className = 'nw-tip'; tipEl.setAttribute('role', 'tooltip'); tipEl.hidden = true;
@@ -290,5 +297,56 @@
     document.addEventListener('click', (e) => { if (!rootEl.contains(e.target)) hide(); });
   }
 
-  root.NWheel = { svg, bindTips, spread, fmtDeg, GLYPH, SIGN_G, ASP_G, NAMES, SIGNS, ASP_N };
+  /**
+   * Наведение связывает колесо и таблицу аспектов (по просьбе Алины 14.10): навёл на клетку таблицы — на колесе загорается
+   * этот аспект и обе планеты, остальные линии бледнеют; навёл на линию аспекта на колесе — загорается клетка таблицы;
+   * навёл на планету — горят все её аспекты. scope — общий предок колеса (svg.nw) и таблицы (td[data-ak]).
+   * Ключи: data-ak — «a>b» у двойного колеса (a — внутренний круг) и «a~b» (по алфавиту) у одинарного; data-pa / data-pb — точки.
+   */
+  function linkAspects(scope) {
+    if (!scope || scope.dataset.akLinked) return;
+    scope.dataset.akLinked = '1';
+    let on = false;
+    const clear = () => {
+      if (!on) return; on = false;
+      scope.querySelectorAll('.has-hl').forEach((x) => x.classList.remove('has-hl'));
+      scope.querySelectorAll('.hl').forEach((x) => x.classList.remove('hl'));
+    };
+    const light = (match) => {
+      clear();
+      const svgs = scope.querySelectorAll('svg.nw');
+      let any = false;
+      scope.querySelectorAll('[data-ak]').forEach((el) => { if (match(el)) { el.classList.add('hl'); any = true; } });
+      if (!any) return;
+      on = true;
+      svgs.forEach((s) => {
+        s.classList.add('has-hl');
+        // планеты горящих аспектов: у двойного колеса a — во внутреннем круге, b — во внешнем
+        const bi = s.classList.contains('bi');
+        s.querySelectorAll('.nw-asp.hl').forEach((g) => {
+          const a = g.getAttribute('data-pa'), b = g.getAttribute('data-pb');
+          s.querySelectorAll(bi ? `.nw-pl.in[data-id="${a}"], .nw-pl.out[data-id="${b}"]` : `.nw-pl[data-id="${a}"], .nw-pl[data-id="${b}"]`).forEach((p) => p.classList.add('hl'));
+        });
+      });
+      // заголовки строки и столбца у горящих клеток
+      scope.querySelectorAll('td.hl[data-ak]').forEach((td) => {
+        const tr = td.parentElement, tbl = td.closest('table'); if (!tr || !tbl) return;
+        const th = tr.querySelector('th'); if (th) th.classList.add('hl');
+        const head = tbl.rows[0] && tbl.rows[0].cells[td.cellIndex]; if (head) head.classList.add('hl');
+      });
+    };
+    scope.addEventListener('pointerover', (e) => {
+      const el = e.target.closest && e.target.closest('[data-ak], .nw-pl[data-id]');
+      if (!el || !scope.contains(el)) { clear(); return; }
+      if (el.hasAttribute('data-ak')) { const k = el.getAttribute('data-ak'); light((x) => x.getAttribute('data-ak') === k); return; }
+      // планета: все её аспекты (у двойного колеса — только со своей стороны)
+      const id = el.getAttribute('data-id'), svg = el.closest('svg.nw'), bi = svg && svg.classList.contains('bi');
+      const side = el.classList.contains('out') ? 'b' : 'a';
+      light((x) => (bi ? x.getAttribute('data-p' + side) === id : x.getAttribute('data-pa') === id || x.getAttribute('data-pb') === id));
+    });
+    scope.addEventListener('pointerout', (e) => { if (!e.relatedTarget || !scope.contains(e.relatedTarget) || !e.relatedTarget.closest('[data-ak], .nw-pl[data-id]')) clear(); });
+    scope.addEventListener('pointerleave', clear);
+  }
+
+  root.NWheel = { svg, bindTips, linkAspects, spread, fmtDeg, GLYPH, SIGN_G, ASP_G, NAMES, SIGNS, ASP_N };
 })(typeof window !== 'undefined' ? window : globalThis);

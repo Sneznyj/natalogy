@@ -10,7 +10,7 @@
   const MAJOR = ['conj', 'sextile', 'square', 'trine', 'opp'];
   const IDS = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'node', 'chiron', 'lilith', 'fortune'];
   const SKY_IDS = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'node', 'chiron'];
-  const st = { mode: 'transit', at: null, over: {} }; // по умолчанию — два круга (натал + транзиты); over[id] — пробное время рождения (Date, с секундами)
+  const st = { mode: 'natal', at: null, over: {} }; // по умолчанию — натал (просьба Алины 14.10), дальше на выбор «Натал + транзиты» и «Небо на момент»; over[id] — пробное время рождения (Date, с секундами)
   const VS = '︎';
 
   function wheelOf(chart, opts) {
@@ -48,7 +48,7 @@
     el.innerHTML = `
       <div class="sec-head"><span class="eyebrow">${t('chart.eyebrow', 'Натальная карта')}</span><h1>${esc(p.name)}</h1>
         <p>${esc(UI.fmtDate(p.y, p.mo, p.d))}${p.timeKnown !== false ? ', ' + UI.pad(p.h) + ':' + UI.pad(p.mi) : ''} · ${esc(place)}${p.timeKnown === false ? ' · ' + t('noTimeNote', 'без времени: дома и Асцендент не считаются') : ''}</p></div>
-      <div class="row sb"><div class="seg" role="group" aria-label="${t('chart.mode', 'Что показать')}">${[['transit', t('chart.m.transit2', 'Два круга: натал + транзиты')], ['natal', t('chart.m.natal', 'Натал')], ['sky', t('chart.m.sky', 'Небо на момент')]].map(([k, n]) => `<button type="button" data-mode="${k}" aria-pressed="${st.mode === k}">${esc(n)}</button>`).join('')}</div>
+      <div class="row sb"><div class="seg" role="group" aria-label="${t('chart.mode', 'Что показать')}">${[['natal', t('chart.m.natal', 'Натал')], ['transit', t('chart.m.transit3', 'Натал + транзиты')], ['sky', t('chart.m.sky', 'Небо на момент')]].map(([k, n]) => `<button type="button" data-mode="${k}" aria-pressed="${st.mode === k}">${esc(n)}</button>`).join('')}</div>
         <div class="row"><a class="btn sm vip-btn" href="#rectify?id=${p.id}">${icon('crown', 'sm')} ${t('chart.rect', 'Ректификация')} <span class="vip-badge">VIP</span></a><a class="btn sm" href="#pro?id=${p.id}">${icon('pro', 'sm')} ${t('chart.pro', 'Профи-режим')}</a><a class="btn sm" href="#ask?topic=natal">${icon('ask', 'sm')} ${t('chart.ask', 'Спросить о карте')}</a></div></div>
       <p class="small muted" id="modeHint"></p>
       <div class="chart-layout">

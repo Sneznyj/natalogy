@@ -9,7 +9,7 @@
   const PG = (id) => (W.GLYPH[id] || '') + VS;
   const SG = (s) => W.SIGN_G[AC.SIGNS.indexOf(s)] + VS;
   const pad = UI.pad;
-  let st = { tab: 'moon', off: 0, filter: 'all' };
+  let st = { tab: 'moon', off: 0, filter: 'all', ry: 0 };
   const tick = () => new Promise((r) => setTimeout(r, 0));
   const SLOW = ['jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
   const RETRO_IDS = ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
@@ -41,7 +41,7 @@
         ${nextFull ? `<div class="sky-li"><span class="g">○</span><span>${esc(t('sky.fullM', 'Полнолуние {s}', { s: TX.S[AC.signOf(nextFull.lon)].in }))}</span><b>${UI.fmtDay(nextFull.date, tz, { hour: true })}</b><small>${esc(left(nextFull.date))}</small></div>` : ''}
         ${ecl ? `<div class="sky-li"><span class="g">◑</span><span>${esc(ecl.type === 'solar' ? t('sky.eclS', 'Солнечное затмение') : t('sky.eclL', 'Лунное затмение'))} ${esc(TX.S[AC.signOf(ecl.lon)].in)}</span><b>${UI.fmtDay(ecl.date, tz, { year: true })}</b><small>${esc(left(ecl.date))}</small></div>` : ''}</div>
       <div class="card stack"><span class="label">${esc(t('sky.retroNow', 'Ретроградны сейчас'))}</span>
-        ${retro.length ? `<div class="tags">${retro.map((id) => `<span class="tag ${['mercury', 'venus', 'mars'].includes(id) ? 'bad' : 'acc'}"><span class="g">${PG(id)}</span> ${esc(TX.P[id].name)} R</span>`).join('')}</div><p class="small muted">${esc(retro.filter((id) => TX.RETRO[id] && ['mercury', 'venus', 'mars'].includes(id)).map((id) => TX.RETRO[id].tip).join(' ') || t('sky.retroSlow', 'Медленные планеты в ретро — фон для внутренних перемен, на обычные дни влияют мало.'))}</p>` : `<p class="small muted">${esc(t('sky.retroNone', 'Сейчас ни одной планеты в ретро.'))}</p>`}</div></div>`;
+        ${retro.length ? `<div class="tags">${retro.map((id) => `<button type="button" class="tag ${['mercury', 'venus', 'mars'].includes(id) ? 'bad' : 'acc'}" data-rp="${id}" title="${esc(t('sky.tapR', 'Что значит и что делать'))}"><span class="g">${PG(id)}</span> ${esc(TX.P[id].name)} R</button>`).join('')}</div><p class="small muted">${esc(retro.filter((id) => TX.RETRO[id] && ['mercury', 'venus', 'mars'].includes(id)).map((id) => TX.RETRO[id].tip).join(' ') || t('sky.retroSlow', 'Медленные планеты в ретро — фон для внутренних перемен, на обычные дни влияют мало.'))}</p>` : `<p class="small muted">${esc(t('sky.retroNone', 'Сейчас ни одной планеты в ретро.'))}</p>`}</div></div>`;
   }
 
   // ---------- лунный календарь на месяц ----------
@@ -120,19 +120,45 @@
     draw();
   }
 
-  // ---------- ретро и затмения на 2 года ----------
+  // ---------- ретро и затмения: любые годы (стрелки), по нажатию — расшифровка (14.10, просьба Алины) ----------
+  const XK = () => ((root.NXT && (root.NXT[UI.lang()] || root.NXT.ru)) || {}).sky || {};
+  const list2 = (arr, cls) => `<ul class="sk-l ${cls}">${(arr || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+  /** Окно «ретро планеты»: что значит, когда (с тенями), где у тебя в карте, что делать и чего не делать. */
+  function openRetro(id, tz) {
+    const TX = UI.TX(), K = XK(), R = (K.retro || {})[id]; if (!R) return;
+    const now = new Date();
+    const per = AC.retrogradePeriods([id], new Date(+now - 400 * DAY), new Date(+now + 800 * DAY)).filter((r) => r.end >= new Date(+now - 30 * DAY)).slice(0, 3);
+    const cur = per.find((r) => r.start <= now && r.end >= now), nx = per.find((r) => r.start > now);
+    const focus = cur || nx;
+    const h = focus && focus.lonStart != null ? natalHouse(focus.lonStart) : null;
+    const row = (r) => `<div class="sk-per${r === cur ? ' now' : ''}"><b>${UI.fmtDay(r.start, tz, { year: true })} — ${UI.fmtDay(r.end, tz, { year: true })}</b>${r === cur ? ` <span class="tag acc">${esc(K.now)}</span>` : r === nx ? ` <span class="tag">${esc(K.next)}</span>` : ''}${r.lonStart != null ? `<small>${esc(W.fmtDeg(r.lonStart, UI.lang()))} → ${esc(W.fmtDeg(r.lonEnd, UI.lang()))}</small>` : ''}${r.shadowStart ? `<small>${esc(t('sky.shadow', 'тень'))}: ${UI.fmtDay(r.shadowStart, tz)} — ${UI.fmtDay(r.shadowEnd, tz, { year: true })}</small>` : ''}</div>`;
+    UI.popup(`<div class="stack"><p class="lead">${esc(R.what)}</p>
+      ${per.length ? `<span class="label">${esc(K.when)}</span><div class="stack s6">${per.map(row).join('')}</div>` : ''}
+      ${h ? `<p class="small sk-pers">${esc(K.personal.replace('{n}', h).replace('{a}', TX.H[h].area))}</p>` : ''}
+      <div class="grid2"><div class="stack s6"><span class="label ok">${esc(K.do)}</span>${list2(R.do, 'ok')}</div><div class="stack s6"><span class="label bad">${esc(K.dont)}</span>${list2(R.dont, 'no')}</div></div>
+      <p class="tiny muted">${esc(K.shadow)} ${esc(K.station)}</p></div>`, { title: t('sky.retroOf2', '{p} в ретро', { p: TX.P[id].name }), eyebrow: t('nav.sky', 'Небо и Луна') });
+  }
+  function eclBody(x) {
+    const TX = UI.TX(), K = XK(), E = (K.ecl || {})[x.type === 'solar' ? 'solar' : 'lunar'] || {}, h = natalHouse(x.lon);
+    return `<div class="sk-ecl-b"><p>${esc(E.what || '')}</p>${h ? `<p class="small sk-pers">${esc(K.eclPersonal.replace('{n}', h).replace('{a}', TX.H[h].area))}</p>` : ''}
+      <div class="grid2"><div class="stack s6"><span class="label ok">${esc(K.do)}</span>${list2(E.do, 'ok')}</div><div class="stack s6"><span class="label bad">${esc(K.dont)}</span>${list2(E.dont, 'no')}</div></div><p class="tiny muted">${esc(K.eclGeneral)}</p></div>`;
+  }
   function retroView(box, here) {
-    const TX = UI.TX(), tz = here.tz, now = new Date();
-    const y = now.getUTCFullYear(), s = new Date(Date.UTC(y, 0, 1)), e = new Date(Date.UTC(y + 1, 11, 31));
+    const TX = UI.TX(), tz = here.tz, now = new Date(), K = XK();
+    const y = now.getUTCFullYear() + (st.ry || 0), s = new Date(Date.UTC(y, 0, 1)), e = new Date(Date.UTC(y + 1, 11, 31));
     const list = AC.retrogradePeriods(RETRO_IDS, s, e);
     const span = e - s, X = (d) => Math.max(0, Math.min(100, (d - s) / span * 100));
-    const rows = RETRO_IDS.map((id) => `<div class="rt-row"><span class="rt-n"><span class="g">${PG(id)}</span> ${esc(TX.P[id].name)}</span><div class="rt-track">${list.filter((r) => r.id === id).map((r) => `${r.shadowStart ? `<i class="sh" style="left:${X(r.shadowStart)}%;width:${Math.max(0.4, X(r.shadowEnd) - X(r.shadowStart))}%"></i>` : ''}<i class="rt ${['mercury', 'venus', 'mars'].includes(id) ? 'fast' : ''}" style="left:${X(r.start)}%;width:${Math.max(0.6, X(r.end) - X(r.start))}%" data-tip="${esc(TX.P[id].name + ': ' + UI.fmtDay(r.start, tz, { year: true }) + ' — ' + UI.fmtDay(r.end, tz, { year: true }) + (r.shadowStart ? '\n' + t('sky.shadow', 'тень') + ': ' + UI.fmtDay(r.shadowStart, tz) + ' — ' + UI.fmtDay(r.shadowEnd, tz, { year: true }) : ''))}"></i>`).join('')}<b class="nowl" style="left:${X(now)}%"></b></div></div>`).join('');
+    const rows = RETRO_IDS.map((id) => `<div class="rt-row"><button type="button" class="rt-n rt-btn" data-rp="${id}" title="${esc(K.tapRetro || '')}"><span class="g">${PG(id)}</span> ${esc(TX.P[id].name)} ${icon('info', 'xs')}</button><div class="rt-track">${list.filter((r) => r.id === id).map((r) => `${r.shadowStart ? `<i class="sh" style="left:${X(r.shadowStart)}%;width:${Math.max(0.4, X(r.shadowEnd) - X(r.shadowStart))}%"></i>` : ''}<i class="rt ${['mercury', 'venus', 'mars'].includes(id) ? 'fast' : ''}" data-rp="${id}" style="left:${X(r.start)}%;width:${Math.max(0.6, X(r.end) - X(r.start))}%" data-tip="${esc(TX.P[id].name + ': ' + UI.fmtDay(r.start, tz, { year: true }) + ' — ' + UI.fmtDay(r.end, tz, { year: true }) + (r.shadowStart ? '\n' + t('sky.shadow', 'тень') + ': ' + UI.fmtDay(r.shadowStart, tz) + ' — ' + UI.fmtDay(r.shadowEnd, tz, { year: true }) : ''))}"></i>`).join('')}${now >= s && now <= e ? `<b class="nowl" style="left:${X(now)}%"></b>` : ''}</div></div>`).join('');
     const MN = TX.MONTHS_N || TX.MONTHS;
     const axis = Array.from({ length: 8 }, (_, i) => { const d = new Date(Date.UTC(y, i * 3, 1)); return `<span style="left:${X(d)}%">${esc(MN[d.getUTCMonth()].slice(0, 3))} ${String(d.getUTCFullYear()).slice(2)}</span>`; }).join('');
     const ecl = AC.eclipses(s, e);
-    box.innerHTML = `<div class="stack"><h3>${esc(t('sky.rtT', 'Ретроградные периоды {a}–{b}', { a: y, b: y + 1 }))}</h3><div class="rt-axis">${axis}</div><div class="rt-list">${rows}</div><p class="tiny muted">${esc(t('sky.rtLegend', 'Тёмная полоса — планета в ретро, светлая — тень до и после. Вертикальная черта — сегодня. Наведи — даты.'))}</p></div>
-      <div class="stack" style="margin-top:10px"><h3>${esc(t('sky.eclT', 'Затмения {a}–{b}', { a: y, b: y + 1 }))}</h3><div class="items">${ecl.map((x) => { const h = natalHouse(x.lon); const past = x.date < now; return `<div class="item${past ? ' past' : ''}"><span class="gl">${x.type === 'solar' ? '☉︎' : '☽︎'}</span><div><h4>${esc(x.type === 'solar' ? t('sky.eclS', 'Солнечное затмение') : t('sky.eclL', 'Лунное затмение'))} ${esc(TX.S[AC.signOf(x.lon)].in)} · ${UI.fmtDay(x.date, tz, { year: true, hour: true })}</h4><p>${esc(TX.ECLIPSE[x.type === 'solar' ? 'solar' : 'lunar'])}${h ? ' ' + esc(t('sky.eclH', 'У тебя — в {n} доме: {a}.', { n: h, a: TX.H[h].area })) : ''}</p><div class="why">${esc(({ total: t('ecl.total', 'полное'), partial: t('ecl.partial', 'частное'), annular: t('ecl.annular', 'кольцеобразное'), penumbral: t('ecl.penumbral', 'полутеневое'), hybrid: t('ecl.hybrid', 'гибридное') })[x.kind] || x.kind || '')}</div></div></div>`; }).join('')}</div></div>`;
+    const kind = (x) => ({ total: t('ecl.total', 'полное'), partial: t('ecl.partial', 'частное'), annular: t('ecl.annular', 'кольцеобразное'), penumbral: t('ecl.penumbral', 'полутеневое'), hybrid: t('ecl.hybrid', 'гибридное') })[x.kind] || x.kind || '';
+    const nav = `<div class="row sk-ynav"><button class="btn sm" type="button" data-ry="-1">${icon('left', 'sm')} ${esc(K.prevY || '')}</button><b class="sk-y">${y}–${y + 1}</b><button class="btn sm" type="button" data-ry="1">${esc(K.nextY || '')} ${icon('right', 'sm')}</button>${st.ry ? `<button class="btn sm ghost" type="button" data-ry="0">${esc(t('sky.thisY', 'Сейчас'))}</button>` : ''}</div>`;
+    box.innerHTML = `${nav}<div class="stack"><h3>${esc(t('sky.rtT', 'Ретроградные периоды {a}–{b}', { a: y, b: y + 1 }))}</h3><p class="tiny muted">${esc(K.tapRetro || '')}</p><div class="rt-axis">${axis}</div><div class="rt-list">${rows}</div><p class="tiny muted">${esc(t('sky.rtLegend', 'Тёмная полоса — планета в ретро, светлая — тень до и после. Вертикальная черта — сегодня. Наведи — даты.'))}</p></div>
+      <div class="stack" style="margin-top:10px"><h3>${esc(t('sky.eclT', 'Затмения {a}–{b}', { a: y, b: y + 1 }))}</h3><p class="tiny muted">${esc(K.tapEcl || '')}</p><div class="items sk-ecls">${ecl.map((x) => { const h = natalHouse(x.lon); const past = x.date < now; return `<details class="item sk-ecl${past ? ' past' : ''}"><summary><span class="gl">${x.type === 'solar' ? '☉︎' : '☽︎'}</span><div><h4>${esc(x.type === 'solar' ? t('sky.eclS', 'Солнечное затмение') : t('sky.eclL', 'Лунное затмение'))} ${esc(TX.S[AC.signOf(x.lon)].in)} · ${UI.fmtDay(x.date, tz, { year: true, hour: true })}</h4><p>${esc(TX.ECLIPSE[x.type === 'solar' ? 'solar' : 'lunar'])}${h ? ' ' + esc(t('sky.eclH', 'У тебя — в {n} доме: {a}.', { n: h, a: TX.H[h].area })) : ''}</p><div class="why">${esc(kind(x))}</div></div></summary>${eclBody(x)}</details>`; }).join('') || `<p class="muted">—</p>`}</div></div>`;
     root.NWheel.bindTips(box);
+    box.querySelectorAll('[data-rp]').forEach((b) => b.addEventListener('click', () => openRetro(b.dataset.rp, tz)));
+    box.querySelectorAll('[data-ry]').forEach((b) => b.addEventListener('click', () => { const k = +b.dataset.ry; st.ry = k === 0 ? 0 : (st.ry || 0) + k; retroView(box, here); }));
   }
 
   async function page(el) {
@@ -150,9 +176,11 @@
     };
     el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { st.tab = b.dataset.tab; el.querySelectorAll('[data-tab]').forEach((z) => z.setAttribute('aria-pressed', String(z === b))); draw(); }));
     root.NWheel.bindTips(el);
+    el.querySelectorAll('.sky-now [data-rp]').forEach((x) => x.addEventListener('click', () => openRetro(x.dataset.rp, here.tz)));
     UI.bindHomeChips(el, () => page(el));
     draw();
   }
 
+  root.NSky = { openRetro };
   (root.NPages = root.NPages || {}).sky = { render: page, open: true };
 })(window);

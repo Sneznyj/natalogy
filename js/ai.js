@@ -55,6 +55,7 @@
     opts = opts || {};
     const cfg = root.NCONFIG || {};
     const f = await facts(person, opts);
+    if (opts.extra) Object.assign(f, opts.extra); // доп. факты раздела (например, соляр на год)
     if (!cfg.aiEndpoint) return { answer: local(question, person, f), local: true };
     try {
       const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 45000);

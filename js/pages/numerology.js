@@ -5,7 +5,7 @@
   const UI = root.NUI, N = root.NNum;
   const { t, esc, icon } = UI;
   const NT = () => root.NNumTexts[UI.lang()] || root.NNumTexts.ru;
-  let st = { tab: 'main', who: null, manual: null, pairWith: null };
+  let st = { tab: 'main', who: null, manual: null, pairWith: null, pyear: null, pmonth: null };
 
   const pad = UI.pad;
   const numCls = (n) => 'nn-' + (n > 9 ? 'm' : n);
@@ -70,17 +70,21 @@
   function yearView(x, tz) {
     const T = NT(), TX = UI.TX();
     const today = UI.todayIn(tz);
-    const py = N.personalYear(x.mo, x.d, today.y), Y = T.years[py.value];
-    const pm = N.personalMonth(py.value, today.mo), pd = N.personalDay(pm, today.d), ud = N.universalDay(today.y, today.mo, today.d);
-    const days = UI.daysIn(today.y, today.mo), lead = (new Date(Date.UTC(today.y, today.mo - 1, 1)).getUTCDay() + 6) % 7;
+    // год и месяц можно менять (просьба Алины 14.10): по умолчанию — текущие
+    const YR = st.pyear || today.y, MO = st.pmonth || (YR === today.y ? today.mo : 1);
+    const isNow = YR === today.y && MO === today.mo;
+    const py = N.personalYear(x.mo, x.d, YR), Y = T.years[py.value];
+    const pm = N.personalMonth(py.value, MO), pd = N.personalDay(N.personalMonth(N.personalYear(x.mo, x.d, today.y).value, today.mo), today.d), ud = N.universalDay(today.y, today.mo, today.d);
+    const days = UI.daysIn(YR, MO), lead = (new Date(Date.UTC(YR, MO - 1, 1)).getUTCDay() + 6) % 7;
     const MN = TX.MONTHS_N || TX.MONTHS;
-    return `<div class="nyear"><div class="ntile big static"><span class="nbadge lg ${numCls(py.value)}">${py.value}</span><span class="ntxt"><span class="label">${esc(t('num.py', 'Личный год {y}', { y: today.y }))}</span><b>${esc(Y.title)}</b><small>${esc(Y.text)}</small>
+    const nav = `<div class="row ny-nav"><button class="iconbtn bd" type="button" data-pyr="-1" aria-label="${esc(t('num.prevY', 'Предыдущий год'))}">${icon('left', 'sm')}</button><b class="ny-y">${YR}</b><button class="iconbtn bd" type="button" data-pyr="1" aria-label="${esc(t('num.nextY', 'Следующий год'))}">${icon('right', 'sm')}</button>${YR !== today.y ? `<button class="btn sm" type="button" data-pyr="0">${esc(t('num.thisY', 'Этот год'))}</button>` : ''}<span class="tiny muted">${esc(t('num.pyHint', 'Личный год идёт с 1 января. Стрелки — посмотреть любой год.'))}</span></div>`;
+    return `<div class="nyear">${nav}<div class="ntile big static"><span class="nbadge lg ${numCls(py.value)}">${py.value}</span><span class="ntxt"><span class="label">${esc(t('num.py', 'Личный год {y}', { y: YR }))}</span><b>${esc(Y.title)}</b><small>${esc(Y.text)}</small>
         <span class="tags">${Y.do.map((z) => `<span class="tag ok">✓ ${esc(z)}</span>`).join('')}${Y.avoid.map((z) => `<span class="tag bad">✕ ${esc(z)}</span>`).join('')}</span></span></div>
       <div class="card stack"><div class="row sb"><span class="label">${esc(t('num.today', 'Сегодня, {d}', { d: UI.fmtDate(today.y, today.mo, today.d) }))}</span></div>
         <div class="row" style="gap:18px"><div class="row" style="gap:10px;flex-wrap:nowrap"><span class="nbadge ${numCls(pd)}">${pd}</span><div class="stack s6"><b>${esc(t('num.pd', 'Твой личный день: {k}', { k: T.dayKey[pd][0] }))}</b><span class="small muted">${esc(T.dayKey[pd][1])}</span></div></div>
         <div class="row" style="gap:10px;flex-wrap:nowrap"><span class="nbadge sm ${numCls(ud)}">${ud}</span><div class="stack s6"><b class="small">${esc(t('num.ud', 'Число дня для всех: {k}', { k: T.dayKey[ud][0] }))}</b><span class="tiny muted">${esc(T.dayKey[ud][1])}</span></div></div></div></div>
-      <div class="card stack"><span class="label">${esc(t('num.months', 'Личные месяцы'))}</span><div class="nmonths">${Array.from({ length: 12 }, (_, i) => { const n = N.personalMonth(py.value, i + 1); return `<div class="nm${i + 1 === today.mo ? ' now' : ''}" data-tip="${esc(MN[i] + ': ' + T.years[n].title)}"><span>${esc(MN[i].slice(0, 3))}</span><b class="${numCls(n)}">${n}</b><small>${esc(T.dayKey[n][0])}</small></div>`; }).join('')}</div></div>
-      <div class="card stack"><span class="label">${esc(t('num.days', 'Личные дни — {m}', { m: MN[today.mo - 1] }))}</span><div class="ndays">${[1, 2, 3, 4, 5, 6, 0].map((i) => `<span class="wdh">${esc(TX.WD[i])}</span>`).join('')}${'<span></span>'.repeat(lead)}${Array.from({ length: days }, (_, i) => { const n = N.personalDay(pm, i + 1); return `<div class="nd ${numCls(n)}${i + 1 === today.d ? ' now' : ''}" data-tip="${esc(pad(i + 1) + '.' + pad(today.mo) + ' · ' + T.dayKey[n][0] + ': ' + T.dayKey[n][1])}"><span>${i + 1}</span><b>${n}</b></div>`; }).join('')}</div>
+      <div class="card stack"><span class="label">${esc(t('num.monthsY', 'Личные месяцы {y} — нажми на месяц, покажу его дни', { y: YR }))}</span><div class="nmonths">${Array.from({ length: 12 }, (_, i) => { const n = N.personalMonth(py.value, i + 1); return `<button type="button" class="nm${i + 1 === MO ? ' now' : ''}" data-pmo="${i + 1}" data-tip="${esc(MN[i] + ': ' + T.years[n].title)}"><span>${esc(MN[i].slice(0, 3))}</span><b class="${numCls(n)}">${n}</b><small>${esc(T.dayKey[n][0])}</small></button>`; }).join('')}</div></div>
+      <div class="card stack"><span class="label">${esc(t('num.daysY', 'Личные дни — {m} {y}', { m: MN[MO - 1], y: YR }))}</span><div class="ndays">${[1, 2, 3, 4, 5, 6, 0].map((i) => `<span class="wdh">${esc(TX.WD[i])}</span>`).join('')}${'<span></span>'.repeat(lead)}${Array.from({ length: days }, (_, i) => { const n = N.personalDay(pm, i + 1); return `<div class="nd ${numCls(n)}${isNow && i + 1 === today.d ? ' now' : ''}" data-tip="${esc(pad(i + 1) + '.' + pad(MO) + '.' + YR + ' · ' + T.dayKey[n][0] + ': ' + T.dayKey[n][1])}"><span>${i + 1}</span><b>${n}</b></div>`; }).join('')}</div>
         <p class="tiny muted">${esc(t('num.daysHint', 'Наведи на день — подсказка. 1 — начинать, 4 и 8 — работа и деньги, 7 и 9 — отдых и завершение.'))}</p></div></div>`;
   }
 
@@ -98,14 +102,28 @@
       <div class="npair"><div class="ntile static"><span class="nbadge lg ${numCls(a)}">${a}</span><span class="ntxt"><span class="label">${esc(x.name || t('num.you', 'Ты'))}</span><b>${esc((T.numbers[a] || T.numbers[N.base(a)]).name)}</b><small>${esc((T.numbers[a] || T.numbers[N.base(a)]).love)}</small></span></div>
         <div class="np-mid">${UI.ringPts({ pts: sc, ptsF: sc, level: lev }, 92)}<b>${esc(t('num.pairScore', 'совместимость по числам'))}</b></div>
         <div class="ntile static"><span class="nbadge lg ${numCls(b)}">${b}</span><span class="ntxt"><span class="label">${esc(other.name)}</span><b>${esc((T.numbers[b] || T.numbers[N.base(b)]).name)}</b><small>${esc((T.numbers[b] || T.numbers[N.base(b)]).love)}</small></span></div></div>
-      <p class="lead">${esc(msg)}</p><a class="more" href="#pair">${esc(t('num.pairAstro', 'Подробная совместимость по картам — в разделе «Пара»'))} ${icon('arrow', 'xs')}</a></div>`;
+      <p class="lead">${esc(msg)}</p>${pairText(x, other, a, b, sc)}<a class="more" href="#pair">${esc(t('num.pairAstro', 'Подробная совместимость по картам — в разделе «Пара»'))} ${icon('arrow', 'xs')}</a></div>
+      ${root.NNumX ? root.NNumX.pairMatrix(x, other) : ''}`;
+  }
+  /** Расшифровка совместимости по числам (14.10): что даёт каждый, что ему важно, где трения, как быть вместе; другие числа; ритм года. */
+  function pairText(x, other, a, b, sc) {
+    const Z = root.NMX && (root.NMX[UI.lang()] || root.NMX.ru); if (!Z) return '';
+    const P = Z.numPair, na = N.base(a), nb = N.base(b);
+    const nameA = x.name ? x.name.split(' ')[0] : t('num.you', 'Ты'), nameB = other.name;
+    const lines = [P.line(nameA, na, nameB, nb, P),P.friction(P, na, nb), P.advice(P, na, nb)];
+    if (na === nb) lines.push(P.same);
+    const bdA = N.birthday(x.d).value, bdB = N.birthday(other.d).value;
+    const yr = UI.todayIn(UI.here().tz).y, pyA = N.personalYear(x.mo, x.d, yr).value, pyB = N.personalYear(other.mo, other.d, yr).value;
+    const exA = N.nameNumbers(x.name), exB = N.nameNumbers(other.fullName || other.name);
+    const more = [`${P.dayN}: ${bdA} · ${bdB} — ${N.pairScore(bdA, bdB)}/10`].concat(exA && exB ? [`${P.exprN}: ${exA.expression.value} · ${exB.expression.value} — ${N.pairScore(exA.expression.value, exB.expression.value)}/10`] : []).concat([P.sync(yr, pyA, pyB)]);
+    return `<div class="npair-txt">${lines.map((l) => `<p>${esc(l)}</p>`).join('')}<span class="label">${esc(P.byNum)}</span><ul>${more.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
   }
 
   async function page(el, params) {
     const p = root.NStore.active();
     const tz = UI.here().tz;
     const people = root.NStore.people();
-    if (params.tab && ['main', 'square', 'year', 'pair'].includes(params.tab)) st.tab = params.tab;
+    if (params.tab && ['main', 'square', 'matrix', 'chakras', 'year', 'pair'].includes(params.tab)) st.tab = params.tab;
     if (st.who && !root.NStore.person(st.who)) st.who = null;
     const cur = (st.who && root.NStore.person(st.who)) || p;
     const x0 = input(p);
@@ -115,7 +133,7 @@
         <div class="nf-grid"><div class="field"><label for="nd">${esc(t('f.dob', 'Дата рождения'))}</label>${UI.dateFieldHTML('id="nd"', x0 ? UI.fmtDMY({ y: x0.y, mo: x0.mo, d: x0.d }) : '')}<span class="hint"></span></div>
           <div class="field"><label for="nn">${esc(t('num.fullName', 'Полное имя'))}</label><input class="input" id="nn" autocomplete="name" placeholder="${esc(t('num.namePh', 'Имя Отчество Фамилия'))}" value="${esc(x0 ? x0.name : '')}"><span class="hint">${esc(t('num.nameHint', 'Для чисел судьбы, души и личности — как в паспорте'))}</span></div>
           <button class="btn primary" type="button" data-go>${icon('calc')} ${esc(t('num.go', 'Посчитать'))}</button></div></div>
-      <div class="seg ntabs" role="tablist">${[['main', t('num.tMain', 'Главные числа')], ['square', t('num.tSquare', 'Квадрат Пифагора')], ['year', t('num.tYear', 'Личный год')], ['pair', t('num.tPair', 'Совместимость')]].map(([k, n]) => `<button type="button" data-tab="${k}" aria-pressed="${st.tab === k}">${esc(n)}</button>`).join('')}</div>
+      <div class="seg ntabs" role="tablist">${[['main', t('num.tMain', 'Главные числа')], ['square', t('num.tSquare', 'Квадрат Пифагора')], ['matrix', t('num.tMatrix', 'Матрица судьбы')], ['chakras', t('num.tChakras', 'Чакры')], ['year', t('num.tYear', 'Личный год')], ['pair', t('num.tPair', 'Совместимость')]].map(([k, n]) => `<button type="button" data-tab="${k}" aria-pressed="${st.tab === k}">${esc(n)}</button>`).join('')}</div>
       <div id="numBody" class="numbody"></div>`;
     const body = el.querySelector('#numBody');
     const dIn = el.querySelector('#nd'), nIn = el.querySelector('#nn');
@@ -126,8 +144,13 @@
       if (!x) { body.innerHTML = `<div class="empty"><h3>${esc(t('num.enter', 'Введи дату рождения'))}</h3><p class="muted">${esc(t('num.enterP', 'Имя — по желанию: без него посчитаю числа по дате.'))}</p></div>`; return; }
       if (st.tab === 'main') { const r = mainView(x); calcs = r.calcs; body.innerHTML = r.html; }
       else if (st.tab === 'square') body.innerHTML = squareView(x);
+      else if (st.tab === 'matrix') body.innerHTML = root.NNumX.matrixView(x);
+      else if (st.tab === 'chakras') body.innerHTML = root.NNumX.chakraView(x);
       else if (st.tab === 'year') body.innerHTML = yearView(x, tz);
       else body.innerHTML = pairView(x, el);
+      if (root.NNumX) root.NNumX.bind(body, x);
+      body.querySelectorAll('[data-pyr]').forEach((b) => b.addEventListener('click', () => { const k = +b.dataset.pyr, ty = UI.todayIn(tz).y; st.pyear = k === 0 ? null : (st.pyear || ty) + k; st.pmonth = null; draw(); }));
+      body.querySelectorAll('[data-pmo]').forEach((b) => b.addEventListener('click', () => { st.pmonth = +b.dataset.pmo; draw(); }));
       body.classList.remove('fade-in'); void body.offsetWidth; body.classList.add('fade-in');
       root.NWheel.bindTips(body);
       body.querySelectorAll('[data-num]').forEach((b) => b.addEventListener('click', () => openNum(b.dataset.type, +b.dataset.num, calcs[b.dataset.type])));

@@ -60,9 +60,10 @@
   }
 
   // ---------- кэш событий неба на период ----------
-  function skyEvents(start, end) {
+  // opts.noVoc — без Луны без курса (для прогнозов на год: она даёт часы, а не месяцы, и считается дольше всего)
+  function skyEvents(start, end, opts) {
     const s = addDays(start, -3), e = addDays(end, 3);
-    let voc = []; try { voc = AC.voidOfCourse(s, e); } catch (err) { voc = []; }
+    let voc = []; if (!(opts && opts.noVoc)) try { voc = AC.voidOfCourse(s, e); } catch (err) { voc = []; }
     const retro = AC.retrogradePeriods(['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'], addDays(s, -120), addDays(e, 120));
     const ecl = AC.eclipses(addDays(s, -10), addDays(e, 10));
     const phases = AC.moonPhases(addDays(s, -30), addDays(e, 30));

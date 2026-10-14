@@ -155,15 +155,50 @@
   }
 
   /** Короткая панель дня (справа в календаре). */
+  // ключ календаря → баллы и название: сферы, дела, а с 14.10 — красота и спорт (NBeauty)
+  const isBK = (k) => !!(root.NBeauty && root.NBeauty.isKey(k));
+  const rateK = (day, k) => (isBK(k) ? root.NBeauty.rate(day, k) : NS.rateBy(day, k));
+  function keyLabel(k) {
+    const TX = UI.TX();
+    if (!k || k === 'overall') return '';
+    if (k.startsWith('act:')) return TX.ACT[k.slice(4)].name;
+    if (isBK(k)) { const B = beautyTX(); if (k === 'beauty') return B.beauty; if (k === 'sport') return B.sport; const [g, id] = k.split(':'); return ((g === 'bty' ? B.b : B.s)[id] || [id])[0]; }
+    return TX.SPH[k].name;
+  }
+  const beautyTX = () => ((root.NXT && (root.NXT[UI.lang()] || root.NXT.ru)) || {}).beauty || { b: {}, s: {}, why: {}, zone: {} };
+  /** Строка «Красота и спорт» в панели дня: что удачно сегодня; на ключе красоты/спорта — ещё что отложить и какую зону не трогать. */
+  function beautyRow(day, key) {
+    if (!root.NBeauty) return '';
+    const B = beautyTX(), r = root.NBeauty.day(day), TX = UI.TX();
+    const goodB = r.beauty.filter((x) => x.level > 0).slice(0, 4), goodS = r.sport.filter((x) => x.level > 0).slice(0, 2);
+    const full = isBK(key);
+    const badB = full ? r.beauty.filter((x) => x.level < 0).slice(-3) : [];
+    const chip = (x, ok) => `<span class="bty-c ${ok ? 'ok' : 'no'}" title="${esc(((x.kind === 'b' ? B.b : B.s)[x.id] || [])[0] || '')} · ${x.pts}/10">${ok ? '✓' : '✕'} ${esc(((x.kind === 'b' ? B.b : B.s)[x.id] || [, x.id])[1])}</span>`;
+    const sign = r.ctx.sign;
+    return `<section class="stack s6 bty-row"><div class="row sb"><span class="label">${icon('sparkles', 'xs')} ${esc(B.panelT || 'Красота и спорт')}</span><button class="linkbtn tiny" type="button" data-bty-more>${esc(B.more || '')} ${icon('right', 'xs')}</button></div>
+      <div class="bty-chips">${goodB.map((x) => chip(x, true)).join('') || `<span class="tiny muted">${esc(B.bad || '')}: ${esc(B.beauty || '')}</span>`}${goodS.map((x) => chip(x, true)).join('')}${badB.map((x) => chip(x, false)).join('')}</div>
+      ${full && sign && B.zone ? `<p class="tiny muted">${esc((B.zoneToday || '').replace('{s}', TX.S[sign].in).replace('{z}', B.zone[sign]))}</p>` : ''}</section>`;
+  }
+  /** Окно: все процедуры и тренировки дня — баллы и почему. */
+  function openBeauty(day) {
+    if (!root.NBeauty) return;
+    const B = beautyTX(), r = root.NBeauty.day(day), TX = UI.TX();
+    const row = (x) => { const nm = (x.kind === 'b' ? B.b : B.s)[x.id] || [x.id, x.id, '']; return `<div class="bty-i ${x.level > 0 ? 'ok' : x.level < 0 ? 'no' : ''}"><div class="row sb"><b>${esc(nm[0])}</b>${UI.ptsBadge({ pts: x.pts, ptsF: x.pts, level: x.pts <= 2 ? -2 : x.pts <= 4 ? -1 : x.pts <= 6 ? 0 : x.pts <= 8 ? 1 : 2 })}</div><p class="tiny muted">${esc(nm[2])}</p>${x.why.length ? `<p class="small">${x.why.map(([s, w]) => `<span class="${s === '+' ? 'okc' : 'noc'}">${s === '+' ? '✓' : '✕'} ${esc(w)}</span>`).join(' · ')}</p>` : ''}</div>`; };
+    const sign = r.ctx.sign;
+    UI.popup(`<div class="stack">${sign && B.zone ? `<p class="small">${UI.moonSVG(AC.moonState(new Date(day.start.getTime() + 13 * 3600000)).angle, 20)} ${esc((B.zoneToday || '').replace('{s}', TX.S[sign].in).replace('{z}', B.zone[sign]))}</p>` : ''}
+      <span class="label">${esc(B.beauty)}</span><div class="bty-list">${r.beauty.map(row).join('')}</div>
+      <span class="label">${esc(B.sport)}</span><div class="bty-list">${r.sport.map(row).join('')}</div></div>`, { title: B.title, eyebrow: UI.fmtDate(day.y, day.mo, day.d, { weekday: 'long', year: undefined }) });
+  }
+
   function panel(day, opts) {
     const p = opts.person, TX = UI.TX(), here = UI.here(), tz = here.tz;
-    const r = opts.key ? NS.rateBy(day, opts.key) : day.overall;
+    const r = opts.key ? rateK(day, opts.key) : day.overall;
     const evs = root.NCompute.dayEvents(p, day, tz);
     const ms = AC.moonState(new Date(day.start.getTime() + 13 * 3600000));
     const sph = opts.key && NS.SPHERES.includes(opts.key) ? opts.key : 'launch';
     const best = NS.bestHours(day, sph, here);
     const voc = day.flags.voc.length ? day.flags.voc.map((v) => `${UI.fmtTime(v.start, tz)}–${UI.fmtTime(v.end, tz)}`).join(', ') : '';
-    const keyName = !opts.key || opts.key === 'overall' ? '' : opts.key.startsWith('act:') ? TX.ACT[opts.key.slice(4)].name : TX.SPH[opts.key].name;
+    const keyName = keyLabel(opts.key);
     return `<div class="card stack" style="gap:14px">
       <div class="row sb"><span class="eyebrow" style="font-size:calc(19px*var(--fz))">${esc(UI.fmtDate(day.y, day.mo, day.d, { weekday: 'long', year: undefined }))}</span>${opts.isToday ? `<span class="tag acc">${t('today', 'Сегодня')}</span>` : ''}</div>
       <div class="dp-head">${UI.ringPts(r, 70)}<div class="stack s6" style="min-width:0"><h3>${esc(keyName ? keyName + ': ' + lvName(r.level) : TX.dayTitle(day))}</h3><p class="small muted">${esc(TX.headline(day))}</p></div></div>
@@ -171,6 +206,7 @@
       <section class="stack s6"><span class="label">${t('dd.spheres', 'Баллы по сферам')}</span>${sphereBars(day)}</section>
       ${evs.length ? `<section class="stack s6"><span class="label">${t('dd.keyEv', 'Главное по времени')}</span>${keyEvents(evs, 4).map((e) => evRow(e, tz, true)).join('')}</section>` : ''}
       <div class="row small" style="gap:8px">${UI.moonSVG(ms.angle, 22)}<span>${esc(TX.MOON_SIGN[ms.sign].split(':')[0])}${voc ? ` · <span style="color:var(--rose)">${t('voc.short2', 'без курса')} ${esc(voc)}</span>` : ''}</span></div>
+      ${beautyRow(day, opts.key)}
       ${best.length ? `<div class="stack s6"><span class="label">${t('bestHours', 'Лучшие часы для старта')}</span><div class="hours">${best.map((h) => `<span class="hour">${icon('clock', 'sm')} ${UI.fmtTime(h.start, tz)}–${UI.fmtTime(h.end, tz)}</span>`).join('')}</div></div>` : ''}
       <button class="btn primary block" type="button" data-open-day>${t('dd.open', 'Подробнее о дне')} ${icon('right', 'sm')}</button>
     </div>`;
@@ -179,11 +215,11 @@
   /** Подсказка при наведении на день. */
   function tipHTML(day, opts) {
     const TX = UI.TX(), tz = UI.here().tz;
-    const r = opts.key ? NS.rateBy(day, opts.key) : day.overall;
+    const r = opts.key ? rateK(day, opts.key) : day.overall;
     const list = Object.entries(day.spheres).sort((a, b) => b[1].ptsF - a[1].ptsF);
     const up = list.filter(([, v]) => v.level >= 1).slice(0, 2), down = list.filter(([, v]) => v.level <= -1).slice(-2);
     const ev = keyEvents(root.NCompute.dayEvents(opts.person, day, tz), 2);
-    const keyName = !opts.key || opts.key === 'overall' ? TX.dayTitle(day) : opts.key.startsWith('act:') ? TX.ACT[opts.key.slice(4)].name : TX.SPH[opts.key].name;
+    const keyName = !opts.key || opts.key === 'overall' ? TX.dayTitle(day) : keyLabel(opts.key);
     return `<div class="rt-h"><b>${esc(UI.fmtDate(day.y, day.mo, day.d, { weekday: 'short', year: undefined }))}</b>${UI.ptsBadge(r)}</div>
       <div class="row" style="gap:6px">${UI.dots(r.level)}<span class="small"><b>${esc(keyName)}</b> · ${esc(lvName(r.level))}</span></div>
       ${up.length ? `<div class="small"><span style="color:var(--mint);font-weight:800">↑</span> ${up.map(([k, v]) => `${esc(TX.SPH[k].name)} ${v.pts}`).join(' · ')}</div>` : ''}
@@ -323,6 +359,6 @@
     await fill();
   }
 
-  root.NDay = { render, panel, tipHTML, bindDay, openDay, openSphere, reasonList, keyEvents, evRow, evGlyph, evColor, importance, wheelBlock, SPH_ICON, pg, sg };
+  root.NDay = { render, panel, tipHTML, openBeauty, keyLabel, rateK, bindDay, openDay, openSphere, reasonList, keyEvents, evRow, evGlyph, evColor, importance, wheelBlock, SPH_ICON, pg, sg };
   (root.NPages = root.NPages || {}).today = { render: page };
 })(window);

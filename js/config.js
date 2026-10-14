@@ -2,7 +2,7 @@
 window.NCONFIG = {
   brand: 'Natalogy',              // рабочее название — меняется здесь и в manifest.webmanifest
   brandRu: 'Наталогия',
-  version: '0.4.0',
+  version: '0.5.0',
   // Адрес ИИ-помощника (Cloudflare Worker из server/ai-worker). Пусто — отвечает встроенный помощник по правилам, без интернета.
   aiEndpoint: '',
   freeAskPerDay: 5,               // показ в интерфейсе; настоящий лимит держит сервер

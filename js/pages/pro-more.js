@@ -11,97 +11,7 @@
   const iso = (d) => d.toISOString().slice(0, 10);
   const dmy = (d, tz) => UI.fmtDay(d, tz || UI.here().tz, { year: 'numeric' });
 
-  // ---------- Диспозиторы: граф «кто кем управляет» ----------
-  const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
-  const SEVEN = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn'];
-  const isHouse = (id) => /^h\d+$/.test(id);
-  /**
-   * Связи «планета → управитель её знака» (и «дом → управитель знака на куспиде»): у каждой точки ровно одна стрелка,
-   * поэтому граф — это петли (конечный диспозитор в своём знаке или взаимная рецепция) с деревьями, которые в них стекаются.
-   */
-  function dispModel(c, traditional, withHouses) {
-    const R = traditional ? AC.TRAD_RULER : AC.RULER;
-    const ids = (traditional ? SEVEN : AC.PLANETS).filter((id) => c.byId[id]);
-    const next = (id) => (isHouse(id) ? R[AC.signOf(c.houses.cusps[+id.slice(1) - 1])] : R[c.byId[id].sign]);
-    // петли: идём по стрелкам, пока не встретим уже пройденную точку
-    const cyc = new Map(); // id → номер петли
-    const cycles = [];
-    for (const id of ids) {
-      const path = []; let cur = id;
-      while (!path.includes(cur) && !cyc.has(cur)) { path.push(cur); cur = next(cur); }
-      if (!cyc.has(cur)) { const loop = path.slice(path.indexOf(cur)); const k = cycles.length; cycles.push(loop); loop.forEach((x) => cyc.set(x, k)); }
-    }
-    const kids = {}; ids.forEach((id) => { kids[id] = []; });
-    for (const id of ids) { if (cyc.has(id)) continue; kids[next(id)].push(id); }
-    const houses = withHouses && c.houses ? ROMAN.map((_, i) => 'h' + (i + 1)) : [];
-    for (const h of houses) { const r = next(h); if (kids[r]) kids[r].push(h); }
-    const chainOf = (start) => { const out = [start]; let cur = start; for (let k = 0; k < 14; k++) { const n = next(cur); if (out.includes(n)) { out.push(n); break; } out.push(n); cur = n; } return out; };
-    return { ids, next, cycles, cyc, kids, houses, chainOf };
-  }
-  function dispSVG(m, c, ctx, label) {
-    const TX = UI.TX(), G = ctx.G;
-    const U = 60, LV = 84, RP = 22, RH = 17, PAD = 30;
-    const wOf = {}; const width = (id) => { if (wOf[id] != null) return wOf[id]; const k = m.kids[id] || []; return (wOf[id] = Math.max(1, k.reduce((a, x) => a + width(x), 0))); };
-    const pos = {}; let maxLv = 0;
-    const place = (id, x0, lv) => { const w = width(id); pos[id] = { x: x0 + w / 2, lv }; maxLv = Math.max(maxLv, lv); let x = x0; for (const k of (m.kids[id] || [])) { place(k, x, lv + 1); x += width(k); } };
-    // петли — сверху, рядом; самые большие компоненты — левее
-    const comps = m.cycles.map((loop) => ({ loop, w: loop.reduce((a, x) => a + width(x), 0) })).sort((a, b) => b.w - a.w);
-    let x = 0;
-    for (const cp of comps) { for (const id of cp.loop) { place(id, x, 0); x += width(id); } x += 0.6; }
-    const W = Math.max(1, x - 0.6) * U + PAD * 2, H = maxLv * LV + PAD * 2 + 36;
-    const X = (id) => PAD + pos[id].x * U, Y = (id) => PAD + 26 + pos[id].lv * LV;
-    const nm = (id) => (isHouse(id) ? t('house.n', '{n} дом', { n: id.slice(1) }) : ctx.pName(id));
-    const signOfId = (id) => (isHouse(id) ? AC.signOf(c.houses.cusps[+id.slice(1) - 1]) : c.byId[id].sign);
-    const mk = 'dar' + Math.random().toString(36).slice(2, 7);
-    let s = `<svg class="disp-svg" viewBox="0 0 ${Math.round(W)} ${Math.round(H)}" width="${Math.round(W * 1.3)}" height="${Math.round(H * 1.3)}" role="img" aria-label="${esc(label)}"><defs>${[['l', 'var(--lav)'], ['g', 'var(--gold-2)'], ['r', 'var(--rose)']].map(([k, col]) => `<marker id="${mk}${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${col}"/></marker>`).join('')}</defs>`;
-    // стрелки к управителю (снизу вверх)
-    for (const id of Object.keys(pos)) {
-      if (pos[id].lv === 0) continue;
-      const par = m.next(id), r0 = isHouse(id) ? RH : RP;
-      const x0 = X(id), y0 = Y(id) - r0, x1 = X(par), y1 = Y(par) + RP + 2;
-      s += `<path d="M${x0.toFixed(1)} ${y0.toFixed(1)} C${x0.toFixed(1)} ${(y0 - LV * 0.35).toFixed(1)} ${x1.toFixed(1)} ${(y1 + LV * 0.35).toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}" fill="none" stroke="var(--lav)" stroke-width="1.6" opacity=".8" marker-end="url(#${mk}l)"/>`;
-    }
-    // петли: свой знак — дуга над планетой; взаимная рецепция и длиннее — дуги между соседями
-    for (const cp of comps) {
-      const L = cp.loop;
-      if (L.length === 1) { const id = L[0]; s += `<path d="M${X(id) - 9} ${Y(id) - RP - 1} C${X(id) - 24} ${Y(id) - RP - 28} ${X(id) + 24} ${Y(id) - RP - 28} ${X(id) + 9} ${Y(id) - RP - 1}" fill="none" stroke="var(--gold-2)" stroke-width="2" marker-end="url(#${mk}g)"/>`; continue; }
-      L.forEach((id, i) => { const n = L[(i + 1) % L.length]; const xa = X(id), xb = X(n), y = Y(id) - RP - 2, up = 18 + Math.min(40, Math.abs(xb - xa) * 0.12); s += `<path d="M${xa.toFixed(1)} ${y} C${xa.toFixed(1)} ${(y - up).toFixed(1)} ${xb.toFixed(1)} ${(y - up).toFixed(1)} ${xb.toFixed(1)} ${y}" fill="none" stroke="var(--rose)" stroke-width="1.8" marker-end="url(#${mk}r)"/>`; });
-    }
-    for (const id of Object.keys(pos)) {
-      const isH = isHouse(id), lv0 = pos[id].lv === 0, self = lv0 && m.cycles.some((l) => l.length === 1 && l[0] === id);
-      const sg = signOfId(id);
-      const tip = isH ? `${nm(id)} · ${TX.S[sg].name} → ${ctx.pName(m.next(id))}` : `${nm(id)} ${TX.S[sg].in} → ${ctx.pName(m.next(id))}${self ? ' · ' + t('t.selfT', 'в своём знаке — конечный диспозитор') : lv0 ? ' · ' + t('t.loopT', 'петля (рецепция)') : ''}`;
-      if (isH) s += `<g data-tip="${esc(tip)}"><rect x="${X(id) - 22}" y="${Y(id) - RH}" width="44" height="${RH * 2}" rx="9" fill="var(--surface-3)" stroke="var(--line-strong)"/><text x="${X(id)}" y="${Y(id) + 0.5}" text-anchor="middle" dominant-baseline="central" font-family="var(--f-ui)" font-weight="800" font-size="13" fill="var(--ink)">${ROMAN[+id.slice(1) - 1]}</text></g>`;
-      else s += `<g data-tip="${esc(tip)}"><circle cx="${X(id)}" cy="${Y(id)}" r="${RP}" fill="${self ? 'var(--gold-soft)' : 'var(--surface)'}" stroke="${self ? 'var(--gold-2)' : lv0 ? 'var(--rose)' : 'var(--lav)'}" stroke-width="${lv0 ? 2.4 : 1.5}"/><text x="${X(id)}" y="${Y(id) + 1}" text-anchor="middle" dominant-baseline="central" font-family="var(--f-glyph)" font-size="21" fill="var(--ink)">${G[id]}︎</text><text x="${X(id) + RP - 1}" y="${Y(id) + RP - 2}" text-anchor="middle" dominant-baseline="central" font-family="var(--f-glyph)" font-size="12" fill="var(--muted)" stroke="var(--surface)" stroke-width="3" paint-order="stroke">${root.NWheel.SIGN_G[AC.SIGNS.indexOf(sg)]}︎</text></g>`;
-    }
-    return s + '</svg>';
-  }
-  const dispState = { trad: false, houses: false };
-  function dispCard(c, ctx) {
-    const G = ctx.G;
-    const st = dispState;
-    if (!c.houses) st.houses = false;
-    const m = dispModel(c, st.trad, st.houses);
-    const glyph = (id) => (isHouse(id) ? `<b class="dh">${ROMAN[+id.slice(1) - 1]}</b>` : `<span class="g" title="${esc(ctx.pName(id))}">${G[id]}</span>`);
-    const chainTxt = (ch) => ch.map(glyph).join('<span class="da">→</span>');
-    const self = m.cycles.filter((l) => l.length === 1).map((l) => l[0]);
-    const loops = m.cycles.filter((l) => l.length > 1);
-    const final = self.length === 1 && loops.length === 0 ? self[0] : null;
-    const list = st.houses ? m.houses.map((h) => m.chainOf(h)) : m.ids.map((id) => m.chainOf(id));
-    return `<div class="card stack disp-card">
-      <div class="row sb"><h3>${t('t.disp', 'Цепочки диспозиторов')}</h3>
-        <div class="row" style="gap:8px"><div class="seg sm" role="group" aria-label="${esc(t('t.dispFrom', 'Откуда строить'))}"><button type="button" data-dsh="0" aria-pressed="${!st.houses}">${t('t.dispPl', 'От планет')}</button><button type="button" data-dsh="1" aria-pressed="${st.houses}" ${c.houses ? '' : 'disabled title="' + esc(t('t.noTime', 'Нужно время рождения')) + '"'}>${t('t.dispH', 'От домов')}</button></div>
-        <div class="seg sm" role="group" aria-label="${esc(t('t.rulers', 'Управители'))}"><button type="button" data-dtr="0" aria-pressed="${!st.trad}">${t('t.modern', 'Современные')}</button><button type="button" data-dtr="1" aria-pressed="${st.trad}">${t('t.tradS', 'Традиционные')}</button></div></div></div>
-      <p class="tiny muted">${st.houses ? t('t.dispHHint', 'Каждый дом ведёт к управителю знака на своём куспиде, дальше — к управителю знака этой планеты, и так до конечного диспозитора или петли. Стрелка — «кем управляется».') : t('t.dispHint2', 'Стрелка ведёт от планеты к управителю её знака. Наверху — конечный диспозитор (золотой, в своём знаке) или петля взаимной рецепции (розовая). Наведи на кружок — подробности.')}</p>
-      <div class="disp-graph scrollx">${dispSVG(m, c, ctx, t('t.disp', 'Цепочки диспозиторов'))}</div>
-      <p class="small">${final ? t('t.final', 'Конечный диспозитор: {p} — главная планета карты', { p: ctx.pName(final) }) : t('t.noFinal', 'Единого конечного диспозитора нет')}${loops.length ? ' · ' + t('t.loops', 'петли: {l}', { l: loops.map((l) => l.map((x) => G[x]).join('↔')).join(', ') }) : ''}${self.length ? ' · ' + t('t.self', 'в своём знаке: {l}', { l: self.map((x) => G[x]).join(' ') }) : ''}</p>
-      <details><summary class="small">${st.houses ? t('t.chainsH', 'Цепочки домов строками') : t('t.chainsP', 'Цепочки планет строками')}</summary><div class="disp-lines">${list.map((ch) => `<div>${chainTxt(ch)}</div>`).join('')}</div></details>
-    </div>`;
-  }
-  function bindDisp(box, c, ctx) {
-    box.querySelectorAll('[data-dsh]').forEach((b) => b.addEventListener('click', () => { dispState.houses = b.dataset.dsh === '1'; box.innerHTML = dispCard(c, ctx); bindDisp(box, c, ctx); root.NWheel.bindTips(box); }));
-    box.querySelectorAll('[data-dtr]').forEach((b) => b.addEventListener('click', () => { dispState.trad = b.dataset.dtr === '1'; box.innerHTML = dispCard(c, ctx); bindDisp(box, c, ctx); root.NWheel.bindTips(box); }));
-  }
+  // Диспозиторы — pro-disp.js (NDisp): схема как в Sotis, знаки и дома, расшифровка
 
   // ---------- Таблицы ----------
   function tables(body, p, ctx) {
@@ -110,7 +20,7 @@
     const pats = PRO.patterns(c), hs = PRO.houseStrength(c), stars = PRO.fixedStars(c), shape = PRO.jonesShape(c), rec = PRO.receptions(c);
     const asp = c.aspects.slice().sort((a, b) => a.orb - b.orb);
     body.innerHTML = `
-      <div data-disp-box>${dispCard(c, ctx)}</div>
+      <div data-disp-box>${root.NDisp.card(c)}</div>
       <div class="grid2">
         <div class="card stack"><h3>${t('t.shape', 'Фигуры и форма карты')}</h3>
           <p class="small">${t('t.jones', 'Форма по Джонсу')}: <b>${esc((TX.shapes || {})[shape.shape] || shape.shape)}</b></p>
@@ -124,7 +34,7 @@
         <div class="card stack"><h3>${t('t.asp', 'Все аспекты')}</h3><div class="tbl-wrap"><table class="tbl" style="min-width:0"><tbody>${asp.map((x) => `<tr class="asp-row ${aspCls(x)}"><td><span class="g">${G[x.a]} <span class="ag">${AG[x.type]}</span> ${G[x.b]}</span> ${esc(ctx.pName(x.a))} — ${esc(ctx.pName(x.b))}</td><td class="mono">${x.orb.toFixed(2)}°</td><td class="tiny">${x.applying == null ? '' : x.applying ? t('applyingS', 'сход.') : t('separatingS', 'расх.')}</td></tr>`).join('')}</tbody></table></div></div>
         <div class="card stack"><h3>${t('t.stars', 'Неподвижные звёзды')}</h3>${stars.length ? `<div class="tbl-wrap"><table class="tbl" style="min-width:0"><tbody>${stars.map((s) => `<tr><td>${esc(s.name)}</td><td><span class="g">${G[s.planet]}</span> ${esc(ctx.pName(s.planet))}</td><td class="mono">${s.orb.toFixed(2)}°</td></tr>`).join('')}</tbody></table></div>` : `<p class="muted small">${t('t.noStars', 'Тесных соединений со звёздами нет')}</p>`}</div>
       </div>`;
-    bindDisp(body.querySelector('[data-disp-box]'), c, ctx);
+    root.NDisp.bind(body.querySelector('[data-disp-box]'), c);
   }
 
   // ---------- Фирдарии: каждый большой период раскрывается, внутри — подпериоды с расшифровкой ----------
@@ -139,6 +49,7 @@
     const t0 = c.date.getTime(), span = 75 * YEAR;
     const big = f.periods.filter((x) => x.start.getTime() - t0 < span - DAY); // ровно 75 лет — следующий цикл не берём
     const cur = big.find((x) => x.current);
+    const curSub = cur && cur.subs ? cur.subs.find((x) => x.current) : null;
     const dm = (d) => UI.fmtDay(d, tz, { year: 'numeric' });
     const age = (d) => Math.max(0, Math.round((d - c.date) / YEAR));
     const pnm = (id) => (id === 'southNode' ? t('fd.sn', 'Южный узел') : ctx.pName(id));
@@ -157,8 +68,24 @@
       else if (b.dignity === 'detriment' || b.dignity === 'fall') s += ' ' + TX.firdarDig.weak;
       return s;
     };
+    // расшифровка подпериода (14.10, просьба Алины): смысл пары «период + подпериод», личная часть по карте, что делать и чего избегать
+    const XF = () => ((root.NXT && (root.NXT[UI.lang()] || root.NXT.ru)) || {}).fird || {};
+    const ruledBy = (id) => (c.houses ? c.houses.cusps.map((cu, i) => ({ n: i + 1, lord: AC.TRAD_RULER[AC.signOf(cu)] })).filter((x) => x.lord === id).map((x) => ({ n: x.n, a: TX.H[x.n].area })) : []);
+    const subText = (maj, sb) => {
+      const F = XF();
+      if ((maj.id === 'node' || maj.id === 'southNode') && F[maj.id]) return F[maj.id](sb.id, pnm(sb.id), TX.firdarSub[sb.id] || '');
+      return (F.pair && F.pair[maj.id] && F.pair[maj.id][sb.id]) || TX.firdarMix(maj.id, sb.id, pnm(maj.id), pnm(sb.id));
+    };
+    const personal = (id) => {
+      const b = c.byId[id], F = XF(); if (!b || id === 'node' || id === 'southNode' || !F.personal) return '';
+      let x = F.personal(TX.P[id].name, b.house, b.house ? TX.H[b.house].area : '', ruledBy(id));
+      if (b.dignity === 'domicile' || b.dignity === 'exaltation') x += ' ' + TX.firdarDig.strong;
+      else if (b.dignity === 'detriment' || b.dignity === 'fall') x += ' ' + TX.firdarDig.weak;
+      return x;
+    };
+    const doAvoid = (id) => { const F = XF(); return F.do && F.do[id] ? `<div class="fd-da"><span class="tag ok">✓ ${esc(F.doL)}: ${esc(F.do[id])}</span><span class="tag bad">✕ ${esc(F.avoidL)}: ${esc(F.avoid[id])}</span></div>` : ''; };
     const subRow = (maj, s) => `<details class="fd-sub${s.current ? ' cur' : ''}"${s.current ? ' open' : ''}><summary><span class="g fd-gl">${G[maj.id]}/${G[s.id]}</span><span class="fd-sn">${esc(pnm(s.id))}<small>${esc(TX.firdarSub[s.id] || '')}</small></span><span class="mono fd-dt">${dm(s.start)} — ${dm(s.end)}</span>${s.current ? `<span class="tag acc">${t('f.nowS', 'сейчас')}</span>` : ''}</summary>
-        <div class="fd-sbody"><p>${esc(TX.firdarMix(maj.id, s.id, pnm(maj.id), pnm(s.id)))}</p>${natalNote(s.id) ? `<p class="small muted">${esc(t('fd.inChart', 'В твоей карте: {x}', { x: natalNote(s.id) }))}</p>` : ''}
+        <div class="fd-sbody"><p>${esc(subText(maj, s))}</p>${personal(s.id) ? `<p class="small fd-pers">${esc(personal(s.id))}</p>` : ''}${doAvoid(s.id)}
           ${s.subs2 ? `<span class="label">${t('fd.subs2', 'Под-подпериоды (третий уровень)')}</span><div class="fd-s3">${s.subs2.map((z) => `<div class="fd-s3r${z.current ? ' cur' : ''}"><span class="g">${G[maj.id]}/${G[s.id]}/${G[z.id]}</span><span>${esc(pnm(z.id))}</span><span class="mono">${dm(z.start)} — ${dm(z.end)}</span>${z.current ? `<span class="tag acc">${t('f.nowS', 'сейчас')}</span>` : '<span></span>'}</div>`).join('')}</div>` : ''}</div></details>`;
     const majorBody = (x) => `<div class="fd-body"><p>${esc(TX.firdarLong[x.id] || '')}</p>${natalNote(x.id) ? `<p class="small muted">${esc(t('fd.ruler', 'Управитель периода в твоей карте: {x}', { x: natalNote(x.id) }))}</p>` : ''}
       ${x.subs.length ? `<span class="label">${t('fd.subs', 'Подпериоды — нажми, чтобы раскрыть')}${x.subs[0].nodeSub ? ' · ' + t('fd.nodeSubsL', 'узлы поделены на 7 (современный вариант)') : ''}</span><div class="fd-subs">${x.subs.map((s) => subRow(x, s)).join('')}</div>` : `<p class="tiny muted">${t('fd.noSubs2', 'В классике у периодов узлов подпериодов нет. Включи «Делить узлы на подпериоды» вверху — и они появятся.')}</p>`}</div>`;
@@ -169,11 +96,11 @@
         <span class="label">${t('fd.lvl1', 'Большие периоды')}</span>${bar(big, t0, span, true)}
         <span class="label">${t('fd.lvl2', 'Все подпериоды')}</span><div class="fd-bar fd-bar2">${big.flatMap((x) => x.subs.map((sb) => ({ sb, x }))).map(({ sb, x }) => { const l = (sb.start - t0) / span * 100, w = (Math.min(sb.end, t0 + span) - sb.start) / span * 100; return w > 0 ? `<i class="${sb.current ? 'cur' : ''}" style="left:${l}%;width:${w}%;background:${FIRD_COL[sb.id]}" data-tip="${esc(pnm(x.id) + ' / ' + pnm(sb.id) + '\n' + dm(sb.start) + ' — ' + dm(sb.end))}">${w > 1.6 ? G[sb.id] : ''}</i>` : ''; }).join('')}</div>
         <div class="row tiny muted"><span>0</span><span style="flex:1"></span><span>75 ${t('years', 'лет')}</span></div>
-        ${cur ? `<div class="night stack fd-now"><span class="eyebrow">${t('f.now', 'Сейчас')}</span><h3>${G[cur.id]} ${esc(TX.firdar[cur.id])}</h3><p class="small" style="color:var(--night-muted)">${dm(cur.start)} — ${dm(cur.end)} · ${t('fd.ages2', 'возраст {a}–{b}', { a: age(cur.start), b: age(cur.end) })}</p>${majorBody(cur)}</div>` : ''}
+        ${cur ? `<div class="night stack fd-now"><span class="eyebrow">${t('f.now', 'Сейчас')}</span><h3>${G[cur.id]} ${esc(TX.firdar[cur.id])}</h3><p class="small" style="color:var(--night-muted)">${dm(cur.start)} — ${dm(cur.end)} · ${t('fd.ages2', 'возраст {a}–{b}', { a: age(cur.start), b: age(cur.end) })}</p>${curSub ? `<div class="fd-cursub"><span class="label">${t('fd.curSub', 'Сейчас подпериод')}: ${G[cur.id]}/${G[curSub.id]} ${esc(pnm(curSub.id))} · ${dm(curSub.start)} — ${dm(curSub.end)}</span><p>${esc(subText(cur, curSub))}</p>${personal(curSub.id) ? `<p class="small">${esc(personal(curSub.id))}</p>` : ''}${doAvoid(curSub.id)}</div>` : ''}${majorBody(cur)}</div>` : ''}
       </div>
       <div class="card stack"><div class="row sb"><h3>${t('fd.all', 'Все периоды жизни')}</h3><span class="hint-click">${icon('info', 'xs')} ${t('fd.allHint', 'каждый период раскрывается — внутри подпериоды и расшифровка')}</span></div><div class="fd-list">${majors}</div></div>
       <details class="card stack fd-alltbl"${fdOpen.table ? ' open' : ''}><summary><h3 style="display:inline">${t('fd.allSubs', 'Таблица всех подпериодов')}</h3> <span class="tiny muted">${t('fd.allSubsHint', '{n} строк — все подпериоды всех периодов жизни', { n: big.reduce((a, x) => a + Math.max(1, x.subs.length), 0) })}</span></summary>
-        <div class="tbl-wrap" style="margin-top:10px"><table class="tbl" style="min-width:0"><thead><tr><th>${t('fd.colMaj', 'Период')}</th><th>${t('fd.colSub', 'Подпериод')}</th><th>${t('fd.colFrom', 'С')}</th><th>${t('fd.colTo', 'По')}</th><th>${t('fd.colAge', 'Возраст')}</th></tr></thead><tbody>${big.map((x) => (x.subs.length ? x.subs : [null]).map((sb, k) => `<tr class="${(sb ? sb.current : x.current) ? 'cur' : ''}${k === 0 ? ' fd-first' : ''}"><td>${k === 0 ? `<span class="g" style="color:${FIRD_COL[x.id]}">${G[x.id]}</span> ${esc(pnm(x.id))}` : ''}</td><td>${sb ? `<span class="g" style="color:${FIRD_COL[sb.id]}">${G[sb.id]}</span> ${esc(pnm(sb.id))}` : '—'}</td><td class="mono">${dm((sb || x).start)}</td><td class="mono">${dm((sb || x).end)}</td><td class="num">${(((sb || x).start - c.date) / YEAR).toFixed(1)}</td></tr>`).join('')).join('')}</tbody></table></div></details>
+        <div class="tbl-wrap" style="margin-top:10px"><table class="tbl" style="min-width:0"><thead><tr><th>${t('fd.colMaj', 'Период')}</th><th>${t('fd.colSub', 'Подпериод')}</th><th>${t('fd.colFrom', 'С')}</th><th>${t('fd.colTo', 'По')}</th><th>${t('fd.colAge', 'Возраст')}</th><th>${t('fd.colAbout', 'О чём')}</th></tr></thead><tbody>${big.map((x) => (x.subs.length ? x.subs : [null]).map((sb, k) => `<tr class="${(sb ? sb.current : x.current) ? 'cur' : ''}${k === 0 ? ' fd-first' : ''}"><td>${k === 0 ? `<span class="g" style="color:${FIRD_COL[x.id]}">${G[x.id]}</span> ${esc(pnm(x.id))}` : ''}</td><td>${sb ? `<span class="g" style="color:${FIRD_COL[sb.id]}">${G[sb.id]}</span> ${esc(pnm(sb.id))}` : '—'}</td><td class="mono">${dm((sb || x).start)}</td><td class="mono">${dm((sb || x).end)}</td><td class="num">${(((sb || x).start - c.date) / YEAR).toFixed(1)}</td><td class="tiny">${esc(sb ? TX.firdarSub[sb.id] || '' : TX.firdar[x.id] || '')}</td></tr>`).join('')).join('')}</tbody></table></div></details>
       <div class="card stack"><h3>${t('f.year', 'Годовые фирдарии')}</h3><p class="tiny muted">${esc(TX.firdarYearNote)}</p>${bar(annual, yearStart.getTime(), YEAR)}
         <div class="tbl-wrap"><table class="tbl" style="min-width:0"><tbody>${annual.map((x) => `<tr class="${x.current ? 'cur' : ''}"><td><span class="g">${G[x.id]}</span> ${esc(pnm(x.id))}</td><td class="mono">${dm(x.start)} — ${dm(x.end)}</td><td class="small">${esc(TX.firdar[x.id] || '')}</td></tr>`).join('')}</tbody></table></div></div>`;
     body.querySelectorAll('.fd-list > .fd-per').forEach((d) => d.addEventListener('toggle', () => { if (d.open) fdOpen.major = +d.dataset.fdi; }));
@@ -334,7 +261,7 @@
     for (let m = 0; m <= 24; m += 3) { const d = new Date(Date.UTC(y, m, 1)); svg += `<line x1="${x(d)}" y1="16" x2="${x(d)}" y2="${ids.length * 30 + 20}" stroke="var(--line-soft)"/><text x="${x(d) + 3}" y="12" font-family="var(--f-mono)" font-size="10.5" fill="var(--muted)">${UI.fmtDay(d, 'UTC', { month: 'short', year: '2-digit', day: undefined })}</text>`; }
     ids.forEach((id, i) => {
       const yy = 24 + i * 30;
-      svg += `<text x="0" y="${yy + 13}" font-family="var(--f-ui)" font-size="13" fill="var(--ink)">${ctx.G[id]} ${esc(ctx.pName(id))}</text>`;
+      svg += `<text x="0" y="${yy + 13}" font-family="var(--f-ui)" font-size="13" fill="var(--ink)" data-rp="${id}" style="cursor:pointer;text-decoration:underline dotted">${ctx.G[id]} ${esc(ctx.pName(id))}</text>`;
       for (const r of list.filter((q) => q.id === id)) {
         if (r.shadowStart) svg += `<rect x="${x(r.shadowStart)}" y="${yy + 3}" width="${Math.max(1, x(r.shadowEnd) - x(r.shadowStart))}" height="14" rx="4" fill="var(--lv-m1)" opacity=".6"/>`;
         svg += `<rect x="${x(r.start)}" y="${yy + 3}" width="${Math.max(2, x(r.end) - x(r.start))}" height="14" rx="4" fill="${['mercury', 'venus', 'mars'].includes(id) ? 'var(--lv-m2)' : 'var(--lilac)'}" data-tip="${esc(ctx.pName(id) + ': ' + dmy(r.start, tz) + ' — ' + dmy(r.end, tz) + (r.shadowStart ? '\n' + t('r.shadow', 'тень') + ': ' + dmy(r.shadowStart, tz) + ' — ' + dmy(r.shadowEnd, tz) : ''))}"/>`;
@@ -343,7 +270,9 @@
     const nowX = x(new Date());
     svg += `<line x1="${nowX}" y1="16" x2="${nowX}" y2="${ids.length * 30 + 20}" stroke="var(--amber-fill)" stroke-width="2"/></svg>`;
     body.innerHTML = `<div class="card stack"><h3>${t('r.title', 'Ретроградные периоды {a}–{b}', { a: y, b: y + 1 })}</h3><div class="scrollx">${svg}</div><p class="tiny muted">${t('r.legend', 'Тёмная полоса — планета в ретро, светлая — тень (до и после). Янтарная линия — сегодня.')}</p></div>
-      <div class="card"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>${t('pt.planet', 'Планета')}</th><th>${t('r.from', 'Ретро с')}</th><th>${t('r.to', 'Директно с')}</th><th>${t('r.deg', 'Градусы')}</th><th>${t('r.shadowH', 'Тень')}</th></tr></thead><tbody>${list.filter((r) => r.end > new Date(Date.UTC(y, 0, 1))).map((r) => `<tr class="${r.start <= new Date() && r.end >= new Date() ? 'cur' : ''}"><td><span class="g">${ctx.G[r.id]}</span> ${esc(ctx.pName(r.id))}</td><td class="mono">${dmy(r.start, tz)}</td><td class="mono">${dmy(r.end, tz)}</td><td class="mono">${ctx.fmtLon(r.lonStart)} → ${ctx.fmtLon(r.lonEnd)}</td><td class="mono tiny">${r.shadowStart ? dmy(r.shadowStart, tz) + ' — ' + dmy(r.shadowEnd, tz) : '—'}</td></tr>`).join('')}</tbody></table></div></div>`;
+      <div class="card"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>${t('pt.planet', 'Планета')}</th><th>${t('r.from', 'Ретро с')}</th><th>${t('r.to', 'Директно с')}</th><th>${t('r.deg', 'Градусы')}</th><th>${t('r.shadowH', 'Тень')}</th></tr></thead><tbody>${list.filter((r) => r.end > new Date(Date.UTC(y, 0, 1))).map((r) => `<tr class="${r.start <= new Date() && r.end >= new Date() ? 'cur' : ''} tr-click" data-rp="${r.id}" tabindex="0" role="button"><td><span class="g">${ctx.G[r.id]}</span> ${esc(ctx.pName(r.id))} ${icon('info', 'xs')}</td><td class="mono">${dmy(r.start, tz)}</td><td class="mono">${dmy(r.end, tz)}</td><td class="mono">${ctx.fmtLon(r.lonStart)} → ${ctx.fmtLon(r.lonEnd)}</td><td class="mono tiny">${r.shadowStart ? dmy(r.shadowStart, tz) + ' — ' + dmy(r.shadowEnd, tz) : '—'}</td></tr>`).join('')}</tbody></table></div></div>
+      <p class="tiny muted">${t('r.tap', 'Нажми на планету — что значит её ретро и что делать.')}</p>`;
+    body.querySelectorAll('[data-rp]').forEach((b) => { const go = () => root.NSky && root.NSky.openRetro(b.dataset.rp, tz); b.addEventListener('click', go); b.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); }); });
   }
 
   root.NProMore = { tables, firdaria, directions, acg, dynamics, moon, retro };

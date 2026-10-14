@@ -12,7 +12,12 @@
   const wdOf = (c) => (new Date(Date.UTC(c.y, c.mo - 1, c.d)).getUTCDay() + 6) % 7; // пн = 0
   const LVK = (l) => UI.lvCls(l);
   const canHover = () => !!(window.matchMedia && window.matchMedia('(hover: hover)').matches);
-  const keyName = (key) => { const TX = UI.TX(); return !key || key === 'overall' ? t('all', 'Всё вместе') : key.startsWith('act:') ? TX.ACT[key.slice(4)].name : TX.SPH[key].name; };
+  const keyName = (key) => (!key || key === 'overall' ? t('all', 'Всё вместе') : root.NDay.keyLabel(key));
+  // баллы дня под ключ: сферы и дела — NScore, красота и спорт — NBeauty
+  const isBK = (k) => !!(root.NBeauty && root.NBeauty.isKey(k));
+  const rateK = (d, k) => (isBK(k) ? root.NBeauty.rate(d, k) : NS.rateBy(d, k));
+  const bestK = (list, k, n) => (isBK(k) ? root.NBeauty.best(list, k, n) : NS.bestBy(list, k, n));
+  const BT = () => ((root.NXT && (root.NXT[UI.lang()] || root.NXT.ru)) || {}).beauty || { b: {}, s: {} };
 
   async function page(el, params) {
     const p = root.NStore.active();
@@ -42,11 +47,15 @@
 
   function drawFilters(ctx) {
     const TX = UI.TX(), box = ctx.el.querySelector('#flt');
-    const list = [['overall', t('all', 'Всё вместе'), 'grid']].concat(NS.SPHERES.map((s) => [s, TX.SPH[s].name, root.NDay.SPH_ICON[s]]));
+    const B = BT();
+    const list = [['overall', t('all', 'Всё вместе'), 'grid']].concat(NS.SPHERES.map((s) => [s, TX.SPH[s].name, root.NDay.SPH_ICON[s]]))
+      .concat(root.NBeauty ? [['beauty', B.beauty, 'sparkles'], ['sport', B.sport, 'energy']] : []);
     const act = state.key.startsWith('act:') ? state.key.slice(4) : null;
-    box.innerHTML = list.map(([k, n, ic]) => `<button class="chip" type="button" data-f="${k}" aria-pressed="${state.key === k}">${icon(ic)} ${esc(n)}</button>`).join('')
-      + (act ? `<button class="chip" type="button" data-f="${state.key}" aria-pressed="true">${icon(TX.ACT[act].icon)} ${esc(TX.ACT[act].name)} <span aria-hidden="true">✕</span></button>` : '');
-    box.querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => { const k = b.dataset.f; state.key = k.startsWith('act:') && state.key === k ? 'overall' : k; drawFilters(ctx); drawBody(ctx); }));
+    const one = /^(bty|spt):/.test(state.key) ? state.key : null; // одна процедура или тренировка
+    box.innerHTML = list.map(([k, n, ic]) => `<button class="chip${k === 'beauty' || k === 'sport' ? ' chip-bty' : ''}" type="button" data-f="${k}" aria-pressed="${state.key === k}">${icon(ic)} ${esc(n)}</button>`).join('')
+      + (act ? `<button class="chip" type="button" data-f="${state.key}" aria-pressed="true">${icon(TX.ACT[act].icon)} ${esc(TX.ACT[act].name)} <span aria-hidden="true">✕</span></button>` : '')
+      + (one ? `<button class="chip" type="button" data-f="${one}" aria-pressed="true">${icon(one.startsWith('bty') ? 'sparkles' : 'energy')} ${esc(keyName(one))} <span aria-hidden="true">✕</span></button>` : '');
+    box.querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => { const k = b.dataset.f; state.key = /^(act|bty|spt):/.test(k) && state.key === k ? 'overall' : k; drawFilters(ctx); drawBody(ctx); }));
   }
 
   // ---------- месяц ----------
@@ -65,6 +74,7 @@
         <aside class="dpanel" id="dpanel" aria-live="polite"><div class="card" style="opacity:.5"></div></aside>
       </div>
       <div class="grid2"><div class="card stack" id="actsBox"><h3>${t('acts.title', 'Что когда делать')}</h3><p class="muted small">…</p></div><div class="card stack" id="bestBox"><h3>${t('cal.best', 'Лучшие дни месяца')}</h3></div></div>
+      ${root.NBeauty ? '<div class="card stack" id="btyBox"></div>' : ''}
       <div class="card stack" id="heatBox"></div>`;
     box.querySelectorAll('[data-m]').forEach((b) => b.addEventListener('click', () => {
       const k = +b.dataset.m;
@@ -96,6 +106,7 @@
     drawPanel(ctx, list[state.sel.d - 1]);
     actsBox(ctx, box.querySelector('#actsBox'), list);
     bestBox(ctx, box.querySelector('#bestBox'), list);
+    if (box.querySelector('#btyBox')) beautyBox(ctx, box.querySelector('#btyBox'), list);
     heatBox(ctx, box.querySelector('#heatBox'), list);
   }
 
@@ -119,13 +130,18 @@
   }
 
   function cell(day, isToday, isSel) {
-    const TX = UI.TX(), f = day.flags, r = NS.rateBy(day, state.key);
+    const TX = UI.TX(), f = day.flags, r = rateK(day, state.key);
     const ms = AC.moonState(new Date(day.start.getTime() + 13 * 3600000));
     const title = state.key === 'overall' ? TX.dayTitle(day) : TX.LEVEL[r.level];
     const mk = [];
     if (f.phaseEvent) mk.push(`<span class="k e">${esc(TX.PHASE4[f.phaseEvent.phase])}</span>`);
     if (f.station) mk.push(`<span class="k r">${root.NDay.pg(f.station.id)}${f.station.kind === 'retro' ? 'R' : 'D'}</span>`);
     if (f.eclipse && Math.abs(f.eclipse.date - (day.start.getTime() + 43200000)) < DAY) mk.push(`<span class="k r">${t('eclipse', 'затмение')}</span>`);
+    // красота и спорт: в клетке — что удачно в этот день (две лучшие процедуры или тренировки)
+    if (isBK(state.key) && (state.key === 'beauty' || state.key === 'sport')) {
+      const B = BT(), br = root.NBeauty.day(day), L = state.key === 'beauty' ? br.beauty : br.sport, N = state.key === 'beauty' ? B.b : B.s;
+      for (const x of L.filter((z) => z.level > 0).slice(0, 2)) mk.push(`<span class="k b">${esc((N[x.id] || [, x.id])[1])}</span>`);
+    }
     const d0 = day.start.getTime();
     const voc = f.voc.map((v) => { const a = Math.max(0, (v.start - d0) / DAY), b = Math.min(1, (v.end - d0) / DAY); return b > a ? `<i style="left:${(a * 100).toFixed(1)}%;width:${((b - a) * 100).toFixed(1)}%"></i>` : ''; }).join('');
     const label = `${UI.fmtDate(day.y, day.mo, day.d, { weekday: 'long', year: undefined })}: ${r.pts} ${t('pts.from10', 'из 10')}, ${title}`;
@@ -152,6 +168,7 @@
     const box = ctx.el.querySelector('#dpanel'); if (!box || !day) return;
     box.innerHTML = root.NDay.panel(day, { person: ctx.p, key: state.key, isToday: same(day, ctx.now) });
     box.querySelectorAll('[data-sph]').forEach((b) => b.addEventListener('click', () => root.NDay.openSphere(day, b.dataset.sph, ctx.p)));
+    const bm = box.querySelector('[data-bty-more]'); if (bm) bm.addEventListener('click', () => root.NDay.openBeauty(day));
     const o = box.querySelector('[data-open-day]'); if (o) o.addEventListener('click', () => openDay(ctx, day));
     root.NWheel.bindTips(box);
   }
@@ -198,15 +215,36 @@
     const TX = UI.TX(), now = ctx.now, key = state.key;
     const future = list.filter((d) => d.y > now.y || (d.y === now.y && (d.mo > now.mo || (d.mo === now.mo && d.d >= now.d))));
     const pool = future.length >= 3 ? future : list;
-    const top = NS.bestBy(pool, key, 5), worst = NS.bestBy(pool, key, pool.length).slice(-3).reverse();
+    const top = bestK(pool, key, 5), worst = bestK(pool, key, pool.length).slice(-3).reverse();
     const chip = ({ day, r }) => `<button class="dchip" type="button" data-day="${day.d}">${esc(TX.monthDay(day.d, day.mo))}, ${esc(TX.WD[new Date(Date.UTC(day.y, day.mo - 1, day.d)).getUTCDay()].toLowerCase())} ${UI.ptsBadge(r, true)}</button>`;
-    const bars = list.map((d) => { const r = NS.rateBy(d, key); const td = same(d, now); return `<button class="c-${LVK(r.level)}" type="button" data-day="${d.d}" style="height:${Math.max(8, r.ptsF * 10)}%;${td ? 'outline:2px solid var(--lav-strong);outline-offset:1px' : ''}" data-tip="${esc(TX.monthDay(d.d, d.mo) + ': ' + r.pts + '/10 · ' + TX.LEVEL[r.level])}" aria-label="${esc(TX.monthDay(d.d, d.mo) + ': ' + r.pts)}"></button>`; }).join('');
+    const bars = list.map((d) => { const r = rateK(d, key); const td = same(d, now); return `<button class="c-${LVK(r.level)}" type="button" data-day="${d.d}" style="height:${Math.max(8, r.ptsF * 10)}%;${td ? 'outline:2px solid var(--lav-strong);outline-offset:1px' : ''}" data-tip="${esc(TX.monthDay(d.d, d.mo) + ': ' + r.pts + '/10 · ' + TX.LEVEL[r.level])}" aria-label="${esc(TX.monthDay(d.d, d.mo) + ': ' + r.pts)}"></button>`; }).join('');
     box.innerHTML = `<div class="row sb"><h3>${t('cal.bestFor2', 'Лучшие дни: {s}', { s: esc(keyName(key).toLowerCase()) })}</h3></div>
       <div class="tags">${top.map(chip).join('')}</div>
       <span class="label bad">${t('cal.avoid', 'Лучше избегать')}</span><div class="tags">${worst.map(chip).join('')}</div>
       <span class="label">${t('cal.rhythm', 'Ритм месяца по баллам')}</span>
       <div class="viz-bars" style="height:96px">${bars}</div><div class="viz-axis">${list.map((d) => `<span>${d.d % 5 === 0 || d.d === 1 ? d.d : ''}</span>`).join('')}</div>`;
     box.querySelectorAll('[data-day]').forEach((b) => b.addEventListener('click', () => { if (ctx.pick) ctx.pick(+b.dataset.day); }));
+  }
+
+  // красота и спорт: лучшие дни месяца для каждой процедуры и тренировки (как «Что когда делать»)
+  function beautyBox(ctx, box, list) {
+    const B = BT(), TX = UI.TX(), now = ctx.now;
+    const future = list.filter((d) => d.y > now.y || (d.y === now.y && (d.mo > now.mo || (d.mo === now.mo && d.d >= now.d))));
+    const pool = future.length >= 3 ? future : list;
+    const sec = (g, ids, N, ic) => `<div class="acts">${ids.map((id) => {
+      const k = g + ':' + id, top = root.NBeauty.best(pool, k, 3), on = state.key === k;
+      return `<div class="act${on ? ' on' : ''}"><button class="act-main" type="button" data-bk="${k}" aria-pressed="${on}"><span class="ic">${icon(ic)}</span><span style="min-width:0"><b>${esc(N[id][0])}</b><span class="tiny muted" style="display:block">${esc(N[id][2])}</span></span></button>
+        <span class="days">${top.map(({ day, r }) => `<button class="dchip" type="button" data-day="${day.d}" title="${esc(UI.fmtDate(day.y, day.mo, day.d, { weekday: 'long', year: undefined }))}">${esc(TX.monthDay(day.d, day.mo))} ${UI.ptsBadge(r, true)}</button>`).join('')}</span></div>`;
+    }).join('')}</div>`;
+    box.innerHTML = `<div class="row sb"><h3>${icon('sparkles')} ${esc(B.monthT)}</h3><span class="tag gold">${future.length >= 3 && future.length < list.length ? t('acts.fromToday', 'с сегодняшнего дня') : t('acts.month', 'весь месяц')}</span></div>
+      <p class="muted small">${esc(B.monthP)}</p>
+      <div class="bty-grid"><div class="stack s6"><span class="label">${esc(B.beauty)}</span>${sec('bty', root.NBeauty.B_IDS, B.b, 'sparkles')}</div><div class="stack s6"><span class="label">${esc(B.sport)}</span>${sec('spt', root.NBeauty.S_IDS, B.s, 'energy')}</div></div>`;
+    box.querySelectorAll('[data-bk]').forEach((b) => b.addEventListener('click', () => {
+      const k = b.dataset.bk; state.key = state.key === k ? 'overall' : k;
+      drawFilters(ctx); drawBody(ctx);
+      const lay = ctx.el.querySelector('#calBody'); if (lay) lay.scrollIntoView({ behavior: UI.reduceMotion() ? 'auto' : 'smooth', block: 'start' });
+    }));
+    box.querySelectorAll('[data-day]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); if (ctx.pick) ctx.pick(+b.dataset.day); }));
   }
 
   // карта баллов по сферам (или делам) на весь месяц
@@ -242,7 +280,7 @@
     const wk = box.querySelector('#week'); if (!wk) return;
     const tz = here.tz;
     wk.innerHTML = days.map((d) => {
-      const r = NS.rateBy(d, state.key), td = same(d, now), sl = same(d, sel);
+      const r = rateK(d, state.key), td = same(d, now), sl = same(d, sel);
       const evs = root.NDay.keyEvents(root.NCompute.dayEvents(p, d, tz), 3);
       const mh = d.flags.moonHouse;
       const ms = AC.moonState(new Date(d.start.getTime() + 13 * 3600000));
@@ -257,7 +295,7 @@
       </button>`;
     }).join('');
     UI.richTip(wk, '.wk[data-d]', (b) => root.NDay.tipHTML(days.find((x) => x.d === +b.dataset.d && x.mo === +b.dataset.m), { key: state.key, person: p, foot: t('tip.below', 'Нажми — подробности ниже') }));
-    const bestD = days.slice().sort((a, b) => NS.rateBy(b, state.key).ptsF - NS.rateBy(a, state.key).ptsF);
+    const bestD = days.slice().sort((a, b) => rateK(b, state.key).ptsF - rateK(a, state.key).ptsF);
     box.querySelector('#weekSum').textContent = t('week.sum', 'Лучшие дни недели: {a}. Осторожнее: {b}.', { a: bestD.slice(0, 2).map((d) => TX.WD_FULL[new Date(Date.UTC(d.y, d.mo - 1, d.d)).getUTCDay()]).join(', '), b: TX.WD_FULL[new Date(Date.UTC(bestD[6].y, bestD[6].mo - 1, bestD[6].d)).getUTCDay()] });
     const showDay = (d) => {
       const slot = box.querySelector('#wkDay'); if (!slot) return;
