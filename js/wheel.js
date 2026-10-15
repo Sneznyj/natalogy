@@ -1,11 +1,12 @@
 /* Колесо карты (SVG): зодиак, дома, планеты, аспекты; одиночное и двойное (внешний круг — транзиты, соляр, партнёр).
    Без зависимостей: NWheel.svg(chart, opts) → строка SVG; NWheel.bindTips(root) — подсказки при наведении и касании.
    chart: { points:[{id, lon, retro}], cusps:[12], asc, mc }   opts: { outer:{points, cusps?:[12], asc?, mc?}, aspects:[{a,b,type,nature,orb,strength, from?:'in'|'out'}],
-   show:[ids], labels:{in,out}, outerCusps:false — не рисовать дома внешней карты } */
+   show:[ids], labels:{in,out}, outerCusps:false — не рисовать дома внешней карты, cosmo — космограмма (без домов, 0° Овна слева),
+   rot — градус, который стоит слева (по умолчанию ASC внутренней карты; «главный АС» внешней карты — её ASC) } */
 (function (root) {
   'use strict';
   const VS = '︎';
-  const GLYPH = { sun: '☉', moon: '☽', mercury: '☿', venus: '♀', mars: '♂', jupiter: '♃', saturn: '♄', uranus: '♅', neptune: '♆', pluto: '♇', node: '☊', snode: '☋', chiron: '⚷', lilith: '⚸', fortune: '⊗', asc: 'AC', mc: 'MC', dsc: 'DC', ic: 'IC' };
+  const GLYPH = { sun: '☉', moon: '☽', mercury: '☿', venus: '♀', mars: '♂', jupiter: '♃', saturn: '♄', uranus: '♅', neptune: '♆', pluto: '⯓', node: '☊', snode: '☋', chiron: '⚷', lilith: '⚸', fortune: '⊗', asc: 'AC', mc: 'MC', dsc: 'DC', ic: 'IC' };
   const SIGN_G = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
   const ELEM = ['fire', 'earth', 'air', 'water'];
   const ASP_G = { conj: '☌', sextile: '⚹', square: '□', trine: '△', opp: '☍', quincunx: '⚻', semisextile: '⚺', semisquare: '∠', sesquisquare: '⚼', quintile: 'Q' };
@@ -71,8 +72,11 @@
       : { in: 31, out: 31, deg: 15, bg: 17, sign: 18, hl: 16, hlAx: 16.5, hd: 12 };
     const GS = Object.fromEntries(Object.entries(GS0).map(([k, v]) => [k, Math.round(v * K * 10) / 10]));
     const PADV = (bi ? 28 : 12) + Math.ceil(36 * (K - 1)); // поля вокруг — под подписи куспидов снаружи пояса (крупнее подписи — шире поля)
+    // космограмма — без домов и осей, 0° Овна слева; opts.rot — какой градус поставить слева (ASC внешней карты, если «главный АС» — её)
+    const cosmo = !!opts.cosmo;
     const asc = chart.asc != null ? chart.asc : 0;
-    const ang = (lon) => 180 + norm(lon - asc); // ASC слева, против часовой
+    const rot = cosmo ? 0 : opts.rot != null ? opts.rot : asc;
+    const ang = (lon) => 180 + norm(lon - rot); // главный ASC слева, против часовой
     const xy = (r, a) => [C + r * Math.cos(a * Math.PI / 180), C - r * Math.sin(a * Math.PI / 180)];
     const P = (r, a) => { const [x, y] = xy(r, a); return `${r1(x)} ${r1(y)}`; };
     const L = (ra, rb, a, attrs) => { const [x0, y0] = xy(ra, a), [x1, y1] = xy(rb, a); return `<line x1="${r1(x0)}" y1="${r1(y0)}" x2="${r1(x1)}" y2="${r1(y1)}" ${attrs}/>`; };
@@ -87,10 +91,10 @@
     const inItems = layout(ptsIn.filter(noAxis), bi ? sep(R.pl, R.plDeg, 30 * K, 26 * K) : sep(R.pl, R.plDeg, 34 * K, 28 * K));
     const outItems = bi ? layout(opts.outer.points.filter((p) => noAxis(p) && (!opts.showOuter || opts.showOuter.includes(p.id))), sep(R.opl, R.oplDeg, 30 * K, 26 * K)) : [];
 
-    let s = `<svg class="nw${bi ? ' bi' : ''}" viewBox="${-PADV} ${-PADV} ${S + 2 * PADV} ${S + 2 * PADV}" role="img" aria-label="${esc(opts.label || (lang === 'ru' ? 'Колесо карты' : 'Chart wheel'))}" xmlns="http://www.w3.org/2000/svg">`;
-    // поле внутри пояса; у двойного — внешний круг чуть тонирован, чтобы два круга планет читались отдельно
-    s += `<circle cx="${C}" cy="${C}" r="${R.zodIn}" fill="${bi ? 'var(--w-ring2)' : 'var(--w-paper)'}"/>`;
-    if (bi) s += `<circle cx="${C}" cy="${C}" r="${R.ring}" fill="var(--w-paper)" stroke="var(--w-ring-line)" stroke-width="1.6"/>`;
+    let s = `<svg class="nw${bi ? ' bi' : ''}${cosmo ? ' cosmo' : ''}" data-rin="${R.zodIn}" viewBox="${-PADV} ${-PADV} ${S + 2 * PADV} ${S + 2 * PADV}" role="img" aria-label="${esc(opts.label || (lang === 'ru' ? 'Колесо карты' : 'Chart wheel'))}" xmlns="http://www.w3.org/2000/svg">`;
+    // поле внутри пояса; у двойного внутренний круг (натал) — сиреневый, внешний — без фона, чтобы планеты в нём читались чётко (15.10, Алина)
+    s += `<circle cx="${C}" cy="${C}" r="${R.zodIn}" fill="var(--w-paper)"/>`;
+    if (bi) s += `<circle cx="${C}" cy="${C}" r="${R.ring}" fill="var(--w-ring-in)" stroke="var(--w-ring-line)" stroke-width="1.6"/>`;
     s += `<circle cx="${C}" cy="${C}" r="${R.asp}" fill="var(--w-inner)" stroke="${bi ? 'var(--w-ring-line)' : 'var(--w-line2)'}" stroke-width="${bi ? 1.4 : 1}"/>`;
     // пояс знаков: пастельные сектора с просветами, значки знаков — чёрные (контрастно)
     for (let i = 0; i < 12; i++) {
@@ -109,31 +113,26 @@
     s += `<path d="${ticks}" stroke="var(--w-tick)" stroke-width=".7" fill="none"/>`;
     s += `<circle cx="${C}" cy="${C}" r="${R.zodIn}" fill="none" stroke="var(--w-line2)" stroke-width=".8"/>`;
 
-    // ---- дома внутренней карты: линии через оба круга до пояса, оси, номер и градус снаружи пояса (как в Sotis) ----
-    const AX = { 0: ['AC', 'var(--w-angle)'], 3: ['IC', 'var(--w-angle2)'], 6: ['DC', 'var(--w-angle)'], 9: ['MC', 'var(--w-angle2)'] };
+    // ---- дома внутренней карты: линии только в своём круге (через внешний круг не идут — там планеты второй карты), ----
+    // оси цветом (AC — красная, IC — салатовая, DC — синяя, MC — жёлтая), номер и градус — снаружи пояса (как в Sotis)
+    const AX = { 0: ['AC', 'var(--w-ax-asc)', 'var(--w-ax-asc-ink)'], 3: ['IC', 'var(--w-ax-ic)', 'var(--w-ax-ic-ink)'], 6: ['DC', 'var(--w-ax-dsc)', 'var(--w-ax-dsc-ink)'], 9: ['MC', 'var(--w-ax-mc)', 'var(--w-ax-mc-ink)'] };
     const HOUSE = lang === 'ru' ? 'Дом ' : 'House ';
     let hnum = '', axes = '';
-    if (chart.cusps) {
+    if (chart.cusps && !cosmo) {
+      const rEnd = bi ? R.ring : R.zodIn;
       for (let i = 0; i < 12; i++) {
         const c = chart.cusps[i], ax = AX[i];
         const a = ang(c);
-        if (ax) {
-          // оси — поверх линий внешней карты, но под планетами
-          axes += L(R.asp, R.zodOut + 7, a, `stroke="${ax[1]}" stroke-width="2.6" stroke-linecap="round"`);
-          if (i === 0 || i === 9) { const [hx, hy] = xy(R.zodOut + 8, a); axes += `<circle cx="${r1(hx)}" cy="${r1(hy)}" r="3.8" fill="${ax[1]}"/>`; }
-        } else {
-          // во внутреннем круге — в полную силу, во внешнем — приглушённо (по ней видно, в каком доме натала внешняя планета)
-          s += L(R.asp, bi ? R.ring : R.zodIn, a, `stroke="var(--w-cusp)" stroke-width="1.2"`);
-          if (bi) s += L(R.ring, R.zodIn, a, `stroke="var(--w-cusp)" stroke-width="1" opacity=".5"`);
-          s += L(R.zodOut, R.zodOut + 9, a, `stroke="var(--w-cusp)" stroke-width="1.2"`);
-        }
+        // оси — поверх линий внешней карты, но под планетами
+        if (ax) axes += L(R.asp, rEnd, a, `stroke="${ax[1]}" stroke-width="3.2" stroke-linecap="round"`);
+        else s += L(R.asp, rEnd, a, `stroke="var(--w-cusp)" stroke-width="1.2"`);
         const tip = (bi && opts.labels && opts.labels.in ? opts.labels.in + ' · ' : '') + (ax ? ax[0] + ' · ' : '') + HOUSE + (i + 1) + ' · ' + fmtDeg(c, lang);
         const label = ax ? ax[0] : ROMAN[i], dg = String(Math.floor(norm(c) % 30));
         const fs = ax ? GS.hlAx : GS.hl;
-        // подпись прижата к поясу: её край — сразу за риской, как бы ни была повёрнута линия
+        // подпись прижата к поясу снаружи, на продолжении линии
         const w = textW(label, fs) + textW(dg, GS.hd) + 1;
-        const [hx, hy] = xy(R.zodOut + (ax ? 13 : 11) + extR(a, w, fs), a);
-        s += `<text x="${r1(hx)}" y="${r1(hy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${fs}" font-weight="800" fill="${ax ? 'var(--w-ink)' : 'var(--w-cusp-ink)'}" data-tip="${esc(tip)}">${label}<tspan font-size="${GS.hd}" font-weight="800" dy="-6">${dg}</tspan></text>`;
+        const [hx, hy] = xy(R.zodOut + (ax ? 8 : 6) + extR(a, w, fs), a);
+        s += `<text x="${r1(hx)}" y="${r1(hy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${fs}" font-weight="800" fill="${ax ? ax[2] : 'var(--w-cusp-ink)'}" data-tip="${esc(tip)}">${label}<tspan font-size="${GS.hd}" font-weight="800" dy="-6">${dg}</tspan></text>`;
         if (bi) { // номер дома — внутри круга аспектов, посередине дома
           const next = chart.cusps[(i + 1) % 12], mid = c + norm(next - c) / 2;
           const [nx, ny] = xy(R.hNum, ang(mid));
@@ -147,21 +146,22 @@
     // если там стоит планета — подпись уходит на другую сторону линии или чуть дальше. Оси внешней карты — пунктиром.
     let ocusps = '', olabels = '';
     const ob = bi ? opts.outer : null;
-    if (ob && opts.outerCusps !== false && (ob.cusps || ob.asc != null || ob.mc != null)) {
+    if (ob && !cosmo && opts.outerCusps !== false && (ob.cusps || ob.asc != null || ob.mc != null)) {
       const list = ob.cusps ? ob.cusps.map((c, i) => [c, i])
         : [[ob.asc, 0], [ob.mc, 9], [ob.asc != null ? ob.asc + 180 : null, 6], [ob.mc != null ? ob.mc + 180 : null, 3]].filter((x) => x[0] != null);
       const busy = outItems.map((it) => { const [x, y] = xy(R.opl, it.ang); return { x, y, r: GS.bg + 1.5 }; })
         .concat(outItems.map((it) => { const [x, y] = xy(R.oplDeg, it.ang); return { x, y, r: 11 }; }));
       const placed = [];
-      const axAng = chart.cusps ? [0, 3, 6, 9].map((k) => ang(chart.cusps[k])) : []; // оси натала проходят через внешний круг — на них подписи не ставим
+      const axAng = []; // оси натала больше не проходят через внешний круг — подписям мешают только планеты и соседние подписи
       // штраф места: налезть на планету или другую подпись — плохо, лечь на линию оси — терпимо (у подписи есть подложка)
       const cost = (b) => 3 * busy.filter((g) => { const dx = Math.max(Math.abs(g.x - b.x) - b.w / 2, 0), dy = Math.max(Math.abs(g.y - b.y) - b.h / 2, 0); return dx * dx + dy * dy < g.r * g.r; }).length
         + 3 * placed.filter((q) => Math.abs(q.x - b.x) < (q.w + b.w) / 2 + 1 && Math.abs(q.y - b.y) < (q.h + b.h) / 2 + 1).length
         + axAng.filter((x) => Math.abs(d180(b.a - x)) < (extT(b.a, b.w, b.h) + 2) / b.r * 180 / Math.PI).length;
       for (const [c, i] of list) {
         const ax = AX[i], a = ang(c);
+        // оси внешней карты — тем же цветом, что у натала, но пунктиром
         ocusps += ax
-          ? L(R.ring, R.zodIn, a, `stroke="var(--w-cusp2)" stroke-width="2.4" stroke-dasharray="7 4" stroke-linecap="round"`)
+          ? L(R.ring, R.zodIn, a, `stroke="${ax[1]}" stroke-width="2.8" stroke-dasharray="7 4" stroke-linecap="round"`)
           : L(R.ring, R.zodIn, a, `stroke="var(--w-cusp2)" stroke-width="1.4"`);
         const lab = ax ? ax[0] : String(i + 1), deg = String(Math.floor(norm(c) % 30));
         const fs = ax ? GS.ocAx : GS.oc, w = textW(lab, fs) + textW(deg, GS.od) + 1, h = fs + 2;
@@ -175,7 +175,7 @@
         }
         placed.push(best);
         const tip = (opts.labels && opts.labels.out ? opts.labels.out + ' · ' : '') + (ax ? ax[0] + ' · ' : '') + HOUSE + (i + 1) + ' · ' + fmtDeg(c, lang);
-        olabels += `<text class="nw-oc" x="${r1(best.x)}" y="${r1(best.y)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${fs}" font-weight="800" fill="var(--w-cusp2-ink)" stroke="var(--w-ring2)" stroke-width="3" paint-order="stroke" data-tip="${esc(tip)}">${lab}<tspan font-size="${GS.od}" dy="-5">${deg}</tspan></text>`;
+        olabels += `<text class="nw-oc" x="${r1(best.x)}" y="${r1(best.y)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${fs}" font-weight="800" fill="${ax ? ax[2] : 'var(--w-cusp2-ink)'}" stroke="var(--w-paper)" stroke-width="3" paint-order="stroke" data-tip="${esc(tip)}">${lab}<tspan font-size="${GS.od}" dy="-5">${deg}</tspan></text>`;
       }
     }
     s += ocusps + axes + olabels; // подписи внешних куспидов — поверх осей натала, чтобы линии их не перечёркивали
@@ -232,7 +232,7 @@
         if (Math.abs(it.ang - a0) > 1.2) { const lr = rGlyph + GS.bg - 1; h += `<line x1="${r1(xy(tickTo, a0)[0])}" y1="${r1(xy(tickTo, a0)[1])}" x2="${r1(xy(lr, it.ang)[0])}" y2="${r1(xy(lr, it.ang)[1])}" stroke="var(--w-line2)" stroke-width=".8"/>`; }
         const [px, py] = xy(R.asp, a0);
         h += `<circle cx="${r1(px)}" cy="${r1(py)}" r="${out ? 2.3 : 2.7}" fill="${tickCol}"/>`;
-        h += `<circle class="pl-bg" cx="${r1(gx)}" cy="${r1(gy)}" r="${GS.bg}" fill="${out ? 'var(--w-plbg2)' : 'var(--w-plbg)'}" stroke="transparent"/>`;
+        h += `<circle class="pl-bg" cx="${r1(gx)}" cy="${r1(gy)}" r="${GS.bg}" fill="${!bi ? 'var(--w-plbg)' : out ? 'var(--w-paper)' : 'var(--w-ring-in)'}" stroke="transparent"/>`;
         h += isTxt
           ? `<text x="${r1(gx)}" y="${r1(gy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${r1(13 * K)}" font-weight="800" fill="var(--w-ink)">${g}</text>`
           : `<text x="${r1(gx)}" y="${r1(gy + 0.5)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_G}" font-size="${gSize}" font-weight="700" fill="var(--w-ink)">${g}${VS}</text>`;

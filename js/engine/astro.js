@@ -235,15 +235,18 @@
   function aspectBetween(a, b, opts) {
     opts = opts || {};
     const list = ASPECTS.filter((x) => (opts.minor ? true : x.major));
-    const fa = ORB_FACTOR[a.id] || 1, fb = ORB_FACTOR[b.id] || 1;
-    const pointOnly = (x) => ['node', 'lilith', 'fortune', 'chiron'].includes(x.id);
+    // куспиды домов (c2…c12) — как оси: орбис уже, только мажорные аспекты
+    const isCusp = (id) => /^c\d+$/.test(id);
+    const fa = ORB_FACTOR[a.id] || (isCusp(a.id) ? 0.6 : 1), fb = ORB_FACTOR[b.id] || (isCusp(b.id) ? 0.6 : 1);
+    const pointOnly = (x) => ['node', 'lilith', 'fortune', 'chiron'].includes(x.id) || isCusp(x.id);
     const mult = opts.orbMult || 1;
+    const orbs = opts.orbs || null; // свои орбисы по аспектам (Настройки → Орбисы аспектов): { conj: 8, trine: 7, … }
     const diff = d180(b.lon - a.lon);
     const sep = Math.abs(diff);
     let best = null;
     for (const asp of list) {
       if (!asp.major && (pointOnly(a) || pointOnly(b))) continue;
-      const orbMax = asp.orb * Math.sqrt(fa * fb) * mult;
+      const orbMax = (orbs && orbs[asp.id] != null ? +orbs[asp.id] : asp.orb) * Math.sqrt(fa * fb) * mult;
       const orb = Math.abs(sep - asp.angle);
       if (orb <= orbMax && (!best || orb < best.orb)) best = { type: asp.id, angle: asp.angle, nature: asp.nature, orb, orbMax };
     }
@@ -258,11 +261,13 @@
     return best;
   }
 
+  const isHousePt = (id) => id === 'asc' || id === 'mc' || /^c\d+$/.test(id);
   function aspectsWithin(points, opts) {
     const out = [];
     for (let i = 0; i < points.length; i++)
       for (let j = i + 1; j < points.length; j++) {
-        if ((points[i].id === 'asc' && points[j].id === 'mc') || (points[i].id === 'mc' && points[j].id === 'asc')) continue;
+        // оси и куспиды между собой не сравниваем: их углы задаёт система домов
+        if (isHousePt(points[i].id) && isHousePt(points[j].id)) continue;
         if ((points[i].id === 'node' && points[j].id === 'lilith') || (points[i].id === 'lilith' && points[j].id === 'node')) continue;
         const x = aspectBetween(points[i], points[j], opts);
         if (x) out.push(x);

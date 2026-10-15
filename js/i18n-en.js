@@ -260,3 +260,26 @@ Object.assign(window.NI18N.en, {
   'pdy.back': 'One step back', 'pdy.fwd': 'One step forward', 'pdy.zero2': 'Reset', 'pro.gridHint2': 'hover a cell — the aspect lights up on the chart', 'pdy.off': 'shift {x}', 'pdy.pick': 'Tick the circle you want to move',
   'pro.t.solar': 'Solar return', 'sky.tapR': 'What it means and what to do', 'sky.retroOf2': '{p} retrograde', 'sky.thisY': 'Now',
 });
+// 15.10.2026 (Alina's list): work mode, cosmogram, house cusps in the aspect grid, aspect hints, orb table, solar houses, back to top
+Object.assign(window.NI18N.en, {
+  'toTop': 'Back to top',
+  'ac.k.natal': 'Aspect in the chart', 'ac.k.transit': 'Transit to natal', 'ac.k.solar': 'Solar / lunar return → natal', 'ac.k.own': 'Within the return chart', 'ac.k.syn': 'Synastry', 'ac.k.dir': 'Direction to natal', 'ac.k.prog': 'Progression to natal',
+  'ac.vSoft': 'support the themes', 'ac.vHard': 'clash with the themes', 'ac.vConj': 'merge with the themes', 'ac.more': 'More about this transit',
+  'orb.k.natal': 'Natal', 'orb.k.transit': 'Transits', 'orb.k.solar': 'Solar, lunar', 'orb.k.syn': 'Synastry', 'orb.k.dir': 'Directions', 'orb.k.prog': 'Progressions',
+  'orb.title': 'Aspect orbs', 'orb.reset': 'Restore defaults', 'orb.hint': 'The largest orb in degrees — for each aspect and chart type. The Sun and Moon get a quarter more, the nodes, Chiron, Lilith and house cusps get less. The “Orbs” slider in Pro multiplies these numbers. Changed numbers are highlighted.',
+  'orb.asp': 'Aspect', 'orb.def': 'default {d}°', 'orb.bad': 'An orb is a number from 0 to 20, e.g. 2.5', 'orb.saved': 'Orb saved — Pro uses it now', 'orb.resetDone': 'Orbs are back to defaults',
+  'sol.ph': 'Solar return planets by house', 'sol.phHint': 'what each planet brings in its solar house', 'sol.asp': 'Solar return aspects', 'sol.aspHint': 'all aspects, minor ones too · tap a cell to see what it means',
+  'sol.noHouses': 'Without a birth time the solar houses can’t be calculated.', 'sol.phT': '{p} in solar house {h}', 'sol.phRule': 'rules house {n}', 'sol.aspSN': 'Solar → natal',
+  'sol.aspLeg': 'Small numbers: next to natal planets (left) — which natal houses the planet rules; next to solar planets (top) — which natal house it falls in; in the second table — which solar houses the planet rules.',
+  'pro.numRule': 'rules house: {n}', 'pro.numIn': 'in house {n}', 'pro.numGo': 'moving through house {n}', 'pro.inSolar': 'Aspects within the solar return', 'pro.inLunar': 'Aspects within the lunar return', 'pro.clickAsp': 'tap — what it means',
+  'pro.withNatal': 'with natal', 'pro.alone': 'on its own', 'pro.edit': 'Change', 'pro.overlay2': 'Together with natal (natal inside)', 'pro.fold': 'Collapse',
+  'pro.houses2': 'House cusps — aspects to them', 'pro.cuspN': 'Cusp of house {n}', 'pro.qHouses': 'All houses', 'pro.qNoHouses': 'No houses', 'pro.orbTable': 'Orbs for every aspect — in Settings',
+  'pro.cosmoT': 'Cosmogram — a chart without houses: only planets and aspects, 0° Aries on the left', 'pro.cosmo': 'Cosmogram', 'pro.cosmoSub': 'cosmogram — no houses',
+  'pro.workOther': 'Open the other chart in work mode', 'pro.workOff': 'Leave work mode', 'pro.workOn': 'Work mode',
+  'pro.mainAsc': 'main ASC — {x}', 'pro.outer': 'outer chart', 'pro.rotHint': 'Click an empty spot inside the wheel to switch the main ASC', 'pro.rotDone': 'Main ASC — {x}',
+  'pro.rotCosmo': 'A cosmogram has no houses — nothing to switch', 'pro.rotNo': 'The main ASC switches when there is a second chart with houses',
+  'pro.numLegT': 'Small numbers by the glyphs: natal planets (left) — which natal house the planet rules; transiting planets (top) — which natal house it is moving through now.',
+  'pro.numLegB': 'Small numbers by the glyphs: planets on the left ({a}) — which houses the planet rules; planets on top ({b}) — which house ({a}) it falls in.',
+  'pro.numLeg1': 'Small numbers by the glyphs — which house of the chart the planet rules (its sign is on the house cusp).',
+  'pro.gridHint3': 'hover — lights up on the chart, tap — what it means',
+});

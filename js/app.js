@@ -116,10 +116,24 @@
     const v = document.createElement('div'); v.className = 'view';
     main.innerHTML = ''; main.appendChild(v);
     UI.closeSheet();
+    if (root.NExplain) root.NExplain.closeCard();
     window.scrollTo(0, 0);
     try { await P.render(v, params); } catch (e) { console.error(e); v.innerHTML = `<div class="empty"><h3>${t('err.page', 'Что-то пошло не так')}</h3><p class="muted small">${esc(e.message)}</p><a class="btn" href="#today">${t('nav.today', 'Сегодня')}</a></div>`; }
     root.NWheel.bindTips(v);
     document.title = `${root.NCONFIG.brand} · ${(NAV().concat(EXTRA()).find(([k]) => k === page) || [0, t('onb.short', 'Начало')])[1]}`;
+  }
+
+  /** Стрелка «наверх» (15.10, Алина): появляется, когда страницу пролистали вниз; нажал — плавно к началу. */
+  function toTop() {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'to-top'; b.setAttribute('aria-label', t('toTop', 'Наверх')); b.title = t('toTop', 'Наверх');
+    b.innerHTML = UI.icon('arrow-up');
+    document.body.appendChild(b);
+    let on = false;
+    const upd = () => { const v = window.scrollY > Math.max(400, window.innerHeight * 0.6); if (v !== on) { on = v; b.classList.toggle('on', v); } };
+    window.addEventListener('scroll', upd, { passive: true });
+    b.addEventListener('click', () => window.scrollTo({ top: 0, behavior: UI.reduceMotion() ? 'auto' : 'smooth' }));
+    upd();
   }
 
   function boot() {
@@ -128,6 +142,7 @@
     if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
     window.addEventListener('hashchange', () => route());
     root.NStore.on((w) => { if (w === 'active') lastShellFor = null; });
+    toTop();
     route(true);
     if (root.NAccount) root.NAccount.boot();
     if ('serviceWorker' in navigator && location.protocol === 'https:' && !root.NCONFIG.noSW) navigator.serviceWorker.register('sw.js').catch(() => {});

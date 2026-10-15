@@ -32,6 +32,8 @@
   --w-planet:#2B2140; --w-plbg:#FFFFFF; --w-planet2:#6B3FB8; --w-plbg2:#EEE6FA; --w-deg:#2E2640; --w-deg2:#4B2F8C;
   --w-ink:#111018; --w-sign:#111018; --w-ring2:#F7F2FD; --w-ring-line:#9C8CC0;
   --w-cusp:#8F84A6; --w-cusp-ink:#3A3050; --w-cusp2:#8A5AD8; --w-cusp2-ink:#5A2CAB; /* куспиды: внутренняя карта — графит, внешняя — фиолетовые */
+  /* 15.10 (Алина): натал (внутренний круг) — сиреневый фон, внешний круг — без фона; оси: AC красная, IC салатовая, DC синяя, MC жёлтая */
+  --w-ring-in:#EBE1FA; --w-ax-asc:#E2312A; --w-ax-asc-ink:#C42A23; --w-ax-ic:#7CC241; --w-ax-ic-ink:#3F8A12; --w-ax-dsc:#2B67D9; --w-ax-dsc-ink:#2257BC; --w-ax-mc:#EDB400; --w-ax-mc-ink:#A87A00;
   --w-fire:#F5B7AA; --w-earth:#C6E2B8; --w-air:#CBCDF3; --w-water:#B3DEEC;
   --w-fire-g:#A8402F; --w-earth-g:#3E6E2E; --w-air-g:#4F48A8; --w-water-g:#226F8C;
   --w-soft:#1B1724; --w-hard:#E0605A; --w-conj:#C08A2E; --w-minor:#9A86D8; --w-asp-bg:#FFFFFF;
@@ -60,7 +62,7 @@
     --tip-bg:#F5F0FF; --tip-fg:#1C1530;
     --shadow:0 12px 30px -14px rgba(0,0,0,.65); --shadow-lg:0 30px 70px -25px rgba(0,0,0,.75); --glow:0 0 0 4px rgba(180,154,240,.25);
     --w-paper:#18122A; --w-inner:#140F24; --w-line:#4A3F6E; --w-line2:#6E6299; --w-tick:#8D82B5; --w-muted:#C9C0E6; --w-angle:#FF8FA8; --w-angle2:#C6B0FF;
-    --w-planet:#FFFFFF; --w-plbg:#231B3D; --w-planet2:#E2C9FF; --w-plbg2:#3A2A5E; --w-deg:#EEE8FF; --w-deg2:#E2C9FF; --w-ink:#FFFFFF; --w-sign:#FFFFFF; --w-ring2:#211A38; --w-ring-line:#8C7FC0; --w-cusp:#9A90C4; --w-cusp-ink:#EEE8FF; --w-cusp2:#C7A3FF; --w-cusp2-ink:#E4CCFF;
+    --w-planet:#FFFFFF; --w-plbg:#231B3D; --w-planet2:#E2C9FF; --w-plbg2:#3A2A5E; --w-deg:#EEE8FF; --w-deg2:#E2C9FF; --w-ink:#FFFFFF; --w-sign:#FFFFFF; --w-ring2:#211A38; --w-ring-line:#8C7FC0; --w-cusp:#9A90C4; --w-cusp-ink:#EEE8FF; --w-cusp2:#C7A3FF; --w-cusp2-ink:#E4CCFF; --w-ring-in:#2E2350; --w-ax-asc:#FF5A50; --w-ax-asc-ink:#FF8A82; --w-ax-ic:#9BE35E; --w-ax-ic-ink:#B6F08A; --w-ax-dsc:#5C8FFF; --w-ax-dsc-ink:#93B5FF; --w-ax-mc:#FFD23F; --w-ax-mc-ink:#FFE07A;
     --w-fire:#7A3A3A; --w-earth:#355437; --w-air:#3E3F7E; --w-water:#245466;
     --w-fire-g:#FFC2B5; --w-earth-g:#CBEFB9; --w-air-g:#D6D8FF; --w-water-g:#B9ECFF;
     --w-soft:#F1EDFF; --w-hard:#FF8A80; --w-conj:#F5C76E; --w-minor:#C2B0FF; --w-asp-bg:#140F24; --at-soft:#F4F1FF; --at-soft-bg:rgba(255,255,255,.13); --at-hard:#FF928A; --at-hard-bg:rgba(255,90,80,.22); --at-conj:#FFD57E; --at-conj-bg:rgba(255,190,70,.2); --at-minor:#D2C2FF; --at-minor-bg:rgba(165,135,255,.22); --at-line:rgba(180,154,240,.3); --at-head:#EDE6FF; --moon-lit:#F3E3B8; --moon-dark:#3A2D5C; --moon-ring:rgba(230,194,122,.55);
@@ -83,7 +85,7 @@
   --tip-bg:#F5F0FF; --tip-fg:#1C1530;
   --shadow:0 12px 30px -14px rgba(0,0,0,.65); --shadow-lg:0 30px 70px -25px rgba(0,0,0,.75); --glow:0 0 0 4px rgba(180,154,240,.25);
   --w-paper:#18122A; --w-inner:#140F24; --w-line:#4A3F6E; --w-line2:#6E6299; --w-tick:#8D82B5; --w-muted:#C9C0E6; --w-angle:#FF8FA8; --w-angle2:#C6B0FF;
-  --w-planet:#FFFFFF; --w-plbg:#231B3D; --w-planet2:#E2C9FF; --w-plbg2:#3A2A5E; --w-deg:#EEE8FF; --w-deg2:#E2C9FF; --w-ink:#FFFFFF; --w-sign:#FFFFFF; --w-ring2:#211A38; --w-ring-line:#8C7FC0; --w-cusp:#9A90C4; --w-cusp-ink:#EEE8FF; --w-cusp2:#C7A3FF; --w-cusp2-ink:#E4CCFF;
+  --w-planet:#FFFFFF; --w-plbg:#231B3D; --w-planet2:#E2C9FF; --w-plbg2:#3A2A5E; --w-deg:#EEE8FF; --w-deg2:#E2C9FF; --w-ink:#FFFFFF; --w-sign:#FFFFFF; --w-ring2:#211A38; --w-ring-line:#8C7FC0; --w-cusp:#9A90C4; --w-cusp-ink:#EEE8FF; --w-cusp2:#C7A3FF; --w-cusp2-ink:#E4CCFF; --w-ring-in:#2E2350; --w-ax-asc:#FF5A50; --w-ax-asc-ink:#FF8A82; --w-ax-ic:#9BE35E; --w-ax-ic-ink:#B6F08A; --w-ax-dsc:#5C8FFF; --w-ax-dsc-ink:#93B5FF; --w-ax-mc:#FFD23F; --w-ax-mc-ink:#FFE07A;
   --w-fire:#7A3A3A; --w-earth:#355437; --w-air:#3E3F7E; --w-water:#245466;
   --w-fire-g:#FFC2B5; --w-earth-g:#CBEFB9; --w-air-g:#D6D8FF; --w-water-g:#B9ECFF;
   --w-soft:#F1EDFF; --w-hard:#FF8A80; --w-conj:#F5C76E; --w-minor:#C2B0FF; --w-asp-bg:#140F24; --at-soft:#F4F1FF; --at-soft-bg:rgba(255,255,255,.13); --at-hard:#FF928A; --at-hard-bg:rgba(255,90,80,.22); --at-conj:#FFD57E; --at-conj-bg:rgba(255,190,70,.2); --at-minor:#D2C2FF; --at-minor-bg:rgba(165,135,255,.22); --at-line:rgba(180,154,240,.3); --at-head:#EDE6FF; --moon-lit:#F3E3B8; --moon-dark:#3A2D5C; --moon-ring:rgba(230,194,122,.55);
@@ -1606,3 +1608,96 @@ button.tag{cursor:pointer;border:0}
 .pro-dyn{grid-template-columns:minmax(0,1fr)}
 .pdy-row > .pdy-what{min-width:0}
 .pdy-what .pdy-over{min-width:0;max-width:100%;flex:0 1 auto;text-overflow:ellipsis}
+
+/* ---------- 15.10 (список Алины): шапка карты с инструментами, свёрнутые данные, рабочий режим, цифры домов, подсказка аспекта, «наверх» ---------- */
+.pro-wheel .ph-head{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between}
+.pro-wheel .ph-t{min-width:0;flex:1 1 220px}
+.ph-tools{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:flex-end}
+.ph-tools .btn.sm{min-height:34px;padding:6px 12px}
+.check.sm{font-size:calc(13px*var(--fz));font-weight:600;align-items:center;gap:7px;white-space:nowrap}
+.check.sm input{margin-top:0}
+.ph-other{display:none}
+.pro-panel.work .ph-other{display:inline-flex}
+/* окошко данных свёрнуто в строку */
+.pd-sum{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;padding:10px 14px}
+.pd-sum-t{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;min-width:0;font-size:calc(14px*var(--fz))}
+.pd-sum-t .mono{font:600 calc(13.5px*var(--fz)) var(--f-mono)}
+.pd-sum .btn.sm{min-height:34px}
+.pro-panel.compact .pd-sum .pd-savebtn .lbl{display:none}
+.pro-panel.compact .pd-sum{padding:8px 12px}
+/* таблица аспектов: текстовые заголовки (оси, куспиды), маленькие цифры домов в правом нижнем углу значка */
+.asp-grid th{position:relative}
+.asp-grid th.t{font:800 calc(var(--ag,31px)*.34) var(--f-ui);letter-spacing:-.02em}
+.asp-grid th .hn{position:absolute;right:1px;bottom:0;font:700 max(calc(9.5px*var(--fz)),calc(var(--ag,31px)*.3))/1 var(--f-ui);color:var(--lav-ink);letter-spacing:-.03em;white-space:nowrap;pointer-events:none}
+.asp-grid tr:first-child th .hn{position:static;display:block;text-align:right;margin:-1px 1px 1px 0}
+.asp-grid tr:first-child th{vertical-align:top;padding-top:2px}
+.asp-grid tr.cu th{background:var(--surface-2)}
+.asp-grid td[data-ak]{cursor:pointer}
+.pro-own-h{margin-top:12px;padding-top:10px;border-top:1px solid var(--line-soft)}
+.pro-own-h h3{font:600 calc(17px*var(--fz))/1.15 var(--f-display)}
+.pro-numleg{margin-top:8px;line-height:1.4}
+/* динамика: строки кругов — в одну строку (без кружка, только галочка) */
+@media (min-width:641px){
+  .pdy-row{flex-wrap:nowrap}
+  .pdy-row > .pdy-what{flex:1 1 auto}
+  .pdy-row > .pdy-when{flex:0 0 auto;flex-wrap:nowrap}
+  .pdy-when .pdy-pl{max-width:11ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pdy-what .pdy-over{max-width:min(210px,100%)}
+}
+.pro-panel.compact .pdy-dt .dfield{width:calc(132px*var(--fz))}
+.pro-panel.compact .pdy-dt .pdy-tm{width:calc(92px*var(--fz))}
+.pro-panel.compact .pdy-when .pdy-pl{display:none}
+@media (min-width:641px){.pdy-what .pdy-over{min-width:calc(118px*var(--fz))}}
+/* рабочий режим: панель на весь экран, колесо + динамика слева, таблица аспектов справа — крупно */
+body.pro-working{overflow:hidden}
+.pro-panel.work{position:fixed;inset:0;z-index:60;background:var(--bg);overflow:auto;padding:10px 14px 14px;margin:0;display:block !important;grid-row:auto !important}
+.pro-panel.work > .pp-label,.pro-panel.work > .pro-data,.pro-panel.work > [data-dyn="pos"]{display:none}
+.pro-panel.work .pro-main,.pro-panel.compact.work .pro-main{grid-template-columns:minmax(0,1fr) min-content;gap:14px;align-items:start;min-height:calc(100vh - 24px)}
+.pro-panel.work .pdy-head .tiny{display:none}
+.pro-panel.work .pro-side .pd-disp{min-width:calc(300px*var(--fz))}
+.pro-panel.work .pro-main .pro-wheel .wheel-box{width:auto}
+.pro-panel.work .pro-side{position:static;max-height:calc(100vh - 24px);overflow:auto;max-width:56vw;scrollbar-width:thin}
+.pro-panel.work .ph-title h3{font-size:calc(22px*var(--fz))}
+@media (max-width:1100px){.pro-panel.work .pro-main,.pro-panel.compact.work .pro-main{grid-template-columns:minmax(0,1fr)}.pro-panel.work .pro-side{max-width:none;max-height:none}}
+/* короткая подсказка по нажатию на аспект */
+.asp-card{position:fixed;z-index:93;width:min(calc(380px*var(--fz)),calc(100vw - 16px));background:var(--surface);color:var(--ink);border:1px solid var(--line-strong);border-radius:18px;box-shadow:var(--shadow-lg);padding:12px 14px 14px;display:grid;gap:8px;font-size:calc(13.5px*var(--fz));line-height:1.45;animation:fade .14s ease-out}
+.asp-card .ac-h{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start}
+.asp-card .ac-gl{display:inline-flex;gap:3px;align-items:center;padding:6px 9px;border-radius:12px;background:var(--surface-2);font:400 calc(18px*var(--fz))/1 var(--f-glyph);white-space:nowrap}
+.asp-card .ac-gl .g.t{font:800 calc(12px*var(--fz)) var(--f-ui)}
+.asp-card .ac-gl.soft{background:var(--at-soft-bg)} .asp-card .ac-gl.hard{background:var(--at-hard-bg)} .asp-card .ac-gl.conj{background:var(--at-conj-bg)}
+.asp-card .ac-t{display:grid;gap:2px;min-width:0}
+.asp-card .ac-t b{font:600 calc(17px*var(--fz))/1.2 var(--f-display)}
+.asp-card .ac-t small{color:var(--muted);font-size:calc(12px*var(--fz))}
+.asp-card .ac-who{margin:0}
+.asp-card .ac-who .g{font-family:var(--f-glyph)}
+.asp-card .hb{color:var(--lav-ink);font-weight:600;font-size:calc(12.5px*var(--fz))}
+.asp-card .ac-sum{margin:0;padding:8px 10px;border-radius:12px;background:var(--surface-2)}
+.asp-card .ac-sum.soft{background:var(--at-soft-bg)} .asp-card .ac-sum.hard{background:var(--at-hard-bg)} .asp-card .ac-sum.conj{background:var(--at-conj-bg)}
+.asp-card .ac-houses{margin:0}
+.asp-card .btn.sm{justify-self:start;min-height:32px}
+/* кнопка «наверх» */
+.to-top{position:fixed;right:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:45;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--surface);color:var(--lav-strong);border:1px solid var(--line-strong);box-shadow:var(--shadow);cursor:pointer;opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .2s,transform .2s}
+.to-top.on{opacity:1;transform:none;pointer-events:auto}
+.to-top:hover{background:var(--lav-soft)}
+.to-top .ico{width:24px;height:24px}
+body.pro-working .to-top{display:none}
+@media (max-width:979px){.to-top{bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom,0px));right:14px;width:44px;height:44px}}
+/* соляр: планеты по домам и все аспекты */
+.sol-ph{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(300px*var(--fz)),1fr));gap:10px 18px}
+.sol-ph .sp{display:grid;grid-template-columns:calc(34px*var(--fz)) minmax(0,1fr);gap:10px;align-items:start;padding:10px 12px;border-radius:14px;background:var(--surface-2)}
+.sol-ph .sp-g{width:calc(34px*var(--fz));height:calc(34px*var(--fz));border-radius:11px;display:grid;place-items:center;background:var(--lav-soft);color:var(--lav-ink);font:400 calc(19px*var(--fz))/1 var(--f-glyph)}
+.sol-ph .sp-b{display:grid;gap:2px;min-width:0}
+.sol-ph .sp-b b{font:600 calc(16.5px*var(--fz))/1.2 var(--f-display)}
+.sol-ph .sp-b p{margin:4px 0 0;line-height:1.45}
+.sol-asp{display:flex;flex-wrap:wrap;gap:16px 26px;align-items:flex-start}
+.sol-asp .asp-grid{--ag:calc(30px*var(--fz))}
+.sol-asp .asp-grid td,.sol-asp .asp-grid th{width:calc(var(--ag)*.94);height:var(--ag)}
+/* настройки: таблица орбисов */
+#orbCard{scroll-margin-top:84px}
+.orb-tbl{min-width:0}
+.orb-tbl td,.orb-tbl th{padding:5px 8px;vertical-align:middle}
+.orb-tbl .orb-a{white-space:nowrap;font-weight:600}
+.orb-tbl .orb-a .g{display:inline-block;min-width:1.4em;font-size:calc(17px*var(--fz));color:var(--lav-strong)}
+.orb-tbl .orb-in{width:calc(74px*var(--fz));min-height:34px;padding:4px 10px;font:600 calc(14px*var(--fz)) var(--f-mono);text-align:center}
+.orb-tbl .orb-in.ch{border-color:var(--lav-strong);background:var(--lav-soft);color:var(--lav-ink)}
+.orb-tbl .orb-in.bad{border-color:var(--coral,#E0605A)}

@@ -50,7 +50,7 @@
     aspect: {
       conj: 'Conjunction — fusion: the planet’s energy enters this theme directly. The strongest aspect; plus or minus depends on the planets.', sextile: 'Sextile — an opportunity: it helps if you take a step towards it.',
       trine: 'Trine — flow and ease: things fall into place, just use it.', square: 'Square — tension and challenge: it pushes you to act and change something.',
-      opp: 'Opposition — standoff: events come through other people, look for balance.', quincunx: 'Quincunx — awkwardness: you have to adjust and correct things.',
+      opp: 'Opposition — standoff: events come through other people, look for balance.', quincunx: 'Quincunx — awkwardness: you have to adjust and correct things.', semisextile: 'Semi-sextile — a light link between neighbouring themes: a small hint or a reason to look closer.', semisquare: 'Semi-square — minor friction: irritation and haste that push you to put things in order.', sesquisquare: 'Sesquiquadrate — hidden tension: unexpected snags that call for flexibility.', quintile: 'Quintile — a creative gift: a special talent that opens up through skill.',
     },
     combo: {
       sun: { soft: 'strength and confidence — a good time to show yourself', hard: 'clashes with plans and egos — don’t push', conj: 'the theme is in the spotlight, new goals' },

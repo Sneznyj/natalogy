@@ -6,7 +6,7 @@
   const UI = root.NUI, AC = root.AstroCore;
   const { t, esc, icon } = UI;
   const SPH = { attraction: ['Притяжение', 'Attraction'], emotion: ['Чувства', 'Feelings'], communication: ['Общение', 'Communication'], stability: ['Надёжность', 'Stability'], growth: ['Рост вместе', 'Growth'] };
-  const G = { sun: '☉', moon: '☽', mercury: '☿', venus: '♀', mars: '♂', jupiter: '♃', saturn: '♄', uranus: '♅', neptune: '♆', pluto: '♇', node: '☊', chiron: '⚷', asc: 'AC', mc: 'MC' };
+  const G = { sun: '☉', moon: '☽', mercury: '☿', venus: '♀', mars: '♂', jupiter: '♃', saturn: '♄', uranus: '♅', neptune: '♆', pluto: '⯓', node: '☊', chiron: '⚷', asc: 'AC', mc: 'MC' };
   const AG = { conj: '☌', sextile: '⚹', trine: '△', square: '□', opp: '☍', quincunx: '⚻' };
   const ORDER = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'node', 'chiron', 'asc', 'mc'];
   const XP = () => ((root.NXT && (root.NXT[UI.lang()] || root.NXT.ru)) || {}).pair || {};

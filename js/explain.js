@@ -114,5 +114,89 @@
     UI.modal(html, { title: `${tp.name} ${an} ${np.name}`, eyebrow: t('trx.eyebrow', 'Транзит') });
   }
 
-  root.NExplain = { transit, tone, short, phrase, rulesOf, natalHouse, transitHouse, houseLine, houseStory };
+  // ---------- короткая подсказка по нажатию на аспект (Профи: клетка таблицы аспектов или линия на колесе; 15.10, Алина) ----------
+  // что даёт аспект — по характеру планет (тон задаёт более медленная планета или внешняя карта) и с учётом домов: где стоят и чем управляют
+  const SLOW = ['moon', 'mercury', 'venus', 'sun', 'mars', 'jupiter', 'saturn', 'chiron', 'uranus', 'neptune', 'pluto', 'node'];
+  const natureOf = (type) => { if (type === 'conj') return 'conj'; const a = (root.AstroCore.ASPECTS || []).find((x) => x.id === type); return a && a.nature === 'soft' ? 'soft' : 'hard'; };
+  const cuspN = (id) => (/^c(\d+)$/.test(id) ? +id.slice(1) : id === 'asc' ? 1 : id === 'mc' ? 10 : null);
+  let card = null, cardOff = null;
+  function closeCard() { if (card) { card.remove(); card = null; } if (cardOff) { cardOff(); cardOff = null; } }
+  /**
+   * info: { a, b, type, orb, applying, kind: natal | transit | solar | lunar | own | synastry | directions | progressions,
+   *         chart — карта с домами, по которой считаем дома (внутренний круг), bLon — долгота точки b, если она из второй карты,
+   *         labels: { in, out }, at — момент (для транзита), person }
+   * at: { x, y } — где нажали (подсказка встаёт рядом).
+   */
+  function aspectCard(info, at) {
+    closeCard();
+    $$hide();
+    const TX = UI.TX(), X = TX.trx || {}, H = TX.H, en = UI.lang() === 'en', AC = root.AstroCore;
+    const ch = info.chart && info.chart.houses ? info.chart : null;
+    const bi = info.bLon != null;
+    const nm = (id) => (TX.P[id] ? TX.P[id].name : /^c\d+$/.test(id) ? ({ c4: 'IC', c7: 'DC' }[id] || (en ? 'Cusp ' : 'Куспид ') + id.slice(1)) + (['c4', 'c7'].includes(id) ? (en ? ` (${id.slice(1)}th house)` : ` (${id.slice(1)} дом)`) : '') : id);
+    const area = (id) => (TX.P[id] ? TX.P[id].area : cuspN(id) && H[cuspN(id)] ? H[cuspN(id)].area : '');
+    const gl = (id) => (W.GLYPH[id] ? `<span class="g">${W.GLYPH[id]}${/^[A-Z]/.test(W.GLYPH[id]) ? '' : VS}</span>` : /^c\d+$/.test(id) ? `<span class="g t">${{ c4: 'IC', c7: 'DC' }[id] || id.slice(1)}</span>` : '');
+    // дома: где стоит точка и какими домами управляет (по знакам на куспидах той же карты)
+    const houseOf = (id, lon) => { if (!ch) return null; const n = cuspN(id); if (n) return null; if (lon != null) return AC.houseOf(lon, ch.houses.cusps); const p = ch.byId && ch.byId[id]; return p ? p.house || AC.houseOf(p.lon, ch.houses.cusps) : null; };
+    const hA = houseOf(info.a), hB = bi ? houseOf(info.b, info.bLon) : houseOf(info.b);
+    const rA = ch ? rulesOf(info.a, ch) : [], rB = ch ? rulesOf(info.b, ch) : [];
+    const moving = info.kind === 'transit';
+    // кто задаёт тон: у двух карт — внешняя (транзит, соляр, партнёр), в одной карте — более медленная планета
+    const actor = bi ? info.b : (SLOW.indexOf(info.a) > SLOW.indexOf(info.b) ? info.a : info.b);
+    const other = actor === info.a ? info.b : info.a;
+    const n = natureOf(info.type);
+    const tn = n === 'conj' ? tone(actor, 'conj') : n;
+    const combo = (X.combo && X.combo[actor] ? X.combo[actor][n] : '') || (X.combo && X.combo[other] ? X.combo[other][n] : '') || '';
+    const an = (TX.ASP[info.type] && TX.ASP[info.type].name) || (W.ASP_N[UI.lang()] || W.ASP_N.ru)[info.type] || info.type;
+    const aspTxt = (X.aspect || {})[info.type] || '';
+    const uniq = (a) => a.filter((x, i) => x && a.indexOf(x) === i).slice(0, 3);
+    const and = (list, w) => (list.length > 1 ? list.slice(0, -1).join(', ') + ' ' + w + ' ' + list[list.length - 1] : list[0] || '');
+    const fromH = uniq([actor === info.a ? (cuspN(info.a) || hA) : (cuspN(info.b) || hB)].concat(actor === info.a ? rA : rB));
+    const toH = uniq([other === info.a ? (cuspN(info.a) || hA) : (cuspN(info.b) || hB)].concat(other === info.a ? rA : rB));
+    const kindL = {
+      natal: t('ac.k.natal', 'Аспект в карте'), transit: t('ac.k.transit', 'Транзит к наталу'), solar: t('ac.k.solar', 'Соляр / лунар → натал'), own: t('ac.k.own', 'Внутри карты возвращения'),
+      synastry: t('ac.k.syn', 'Синастрия'), directions: t('ac.k.dir', 'Дирекция к наталу'), progressions: t('ac.k.prog', 'Прогрессия к наталу'),
+    }[info.kind] || '';
+    const who = (id, h, r, isB) => {
+      const parts = [];
+      if (r.length) parts.push(en ? `rules ${r.join(', ')}` : `упр. ${r.join(', ')} д.`);
+      if (h) parts.push(en ? `in ${ord(h)}` : (isB && moving ? `идёт по ${h} д.` : `в ${h} д.`));
+      const lbl = bi && info.labels ? (isB ? info.labels.out : info.labels.in) : '';
+      return `<p class="ac-who">${gl(id)} <b>${esc(nm(id))}</b>${lbl ? ` <span class="muted small">${esc(lbl)}</span>` : ''}${parts.length ? ` <span class="hb">(${esc(parts.join(' · '))})</span>` : ''} — ${esc(area(id))}</p>`;
+    };
+    let houses = '';
+    if (ch && fromH.length && toH.length && fromH.join() !== toH.join()) {
+      const verb = tn === 'soft' ? t('ac.vSoft', 'помогают темам') : tn === 'hard' ? t('ac.vHard', 'спорят с темами') : t('ac.vConj', 'сливаются с темами');
+      houses = en
+        ? `<p class="ac-houses"><b>Through the houses:</b> matters connected ${and(fromH.map((h) => H[h].with), 'and')} ${tn === 'soft' ? 'support' : tn === 'hard' ? 'clash with' : 'merge with'} ${and(toH.map((h) => `“${H[h].area}”`), 'and')}.</p>`
+        : `<p class="ac-houses"><b>Через дома:</b> дела, связанные ${esc(and(fromH.map((h) => H[h].with), 'и'))}, ${esc(verb)} ${esc(and(toH.map((h) => `«${H[h].area}»`), 'и'))}.</p>`;
+    }
+    const orbTxt = info.orb != null ? `${t('orb', 'орбис')} ${info.orb.toFixed(1).replace('.', en ? '.' : ',')}°${info.applying != null ? ' · ' + (info.applying ? t('applying', 'сходящийся') : t('separating', 'расходящийся')) : ''}` : '';
+    card = document.createElement('div');
+    card.className = 'asp-card'; card.setAttribute('role', 'dialog');
+    card.innerHTML = `<div class="ac-h"><span class="ac-gl ${tn}">${gl(info.a)}<span class="g">${W.ASP_G[info.type] || ''}${VS}</span>${gl(info.b)}</span><div class="ac-t"><b>${esc(nm(info.a))} ${esc(an)} ${esc(nm(info.b))}</b><small>${esc([kindL, orbTxt].filter(Boolean).join(' · '))}</small></div><button class="iconbtn" type="button" data-acx aria-label="${esc(t('close', 'Закрыть'))}">${UI.icon('close', 'sm')}</button></div>
+      ${who(info.a, hA, rA, false)}${who(info.b, hB, rB, true)}
+      <p class="ac-sum ${tn}">${aspTxt ? esc((aspTxt.match(/^.*?[.!?](?:\s|$)/) || [aspTxt])[0].trim()) + ' ' : ''}${combo ? `<b>${esc(cap(combo))}.</b>` : ''}</p>
+      ${houses}
+      ${moving && root.NExplain ? `<button class="btn sm" type="button" data-acmore>${t('ac.more', 'Подробнее о транзите')}</button>` : ''}`;
+    document.body.appendChild(card);
+    const tw = card.offsetWidth, th = card.offsetHeight;
+    let left = at.x - tw / 2, top = at.y + 14;
+    if (top + th > window.innerHeight - 8) top = at.y - th - 14;
+    top = Math.max(8, Math.min(top, window.innerHeight - th - 8));
+    left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+    card.style.left = left + 'px'; card.style.top = top + 'px';
+    card.querySelector('[data-acx]').addEventListener('click', closeCard);
+    const more = card.querySelector('[data-acmore]');
+    if (more) more.addEventListener('click', () => { const e = { T: info.b, N: info.a, type: info.type, orb: info.orb, applying: info.applying, at: info.at }; closeCard(); transit(e, { natal: info.chart, person: info.person }); });
+    const outside = (e) => { if (card && !card.contains(e.target) && !(e.target.closest && e.target.closest('td[data-ak], .nw-asp'))) closeCard(); };
+    const onKey = (e) => { if (e.key === 'Escape' && card) { e.stopPropagation(); closeCard(); } };
+    const onScroll = (e) => { if (card && !card.contains(e.target)) closeCard(); };
+    document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', onKey, true); document.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    cardOff = () => { document.removeEventListener('pointerdown', outside, true); document.removeEventListener('keydown', onKey, true); document.removeEventListener('scroll', onScroll, { capture: true }); };
+    return card;
+  }
+  function $$hide() { document.querySelectorAll('.nw-tip').forEach((x) => { x.hidden = true; }); }
+
+  root.NExplain = { transit, tone, short, phrase, rulesOf, natalHouse, transitHouse, houseLine, houseStory, aspectCard, closeCard, natureOf };
 })(window);

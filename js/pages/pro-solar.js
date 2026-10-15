@@ -198,12 +198,17 @@
     const S = solarOf(p, natal);
     const tz = S.place.zone;
     const sol = S.sol;
-    // колесо: соляр отдельно или соляр внутри + натал снаружи
+    // колесо: натал всегда внутри (сиреневый круг), соляр — внешним кругом, главный АС — соляра; или соляр отдельно.
+    // Аспекты — все (и минорные), орбисы — из «Настроек» (15.10, Алина: «рассматривай все аспекты в соляре и лунаре»)
     const toWheel = (c) => ({ points: c.points, cusps: c.houses ? c.houses.cusps : null, asc: c.houses ? c.houses.asc : 0, mc: c.houses ? c.houses.mc : null });
     const pts = (c) => c.points.filter((x) => TEN.concat(['node', 'asc', 'mc']).includes(x.id));
-    const wheel = () => root.NWheel.svg(toWheel(sol), st.overlay
-      ? { outer: { points: pts(natal).filter((x) => !['asc', 'mc'].includes(x.id)), cusps: natal.houses ? natal.houses.cusps : null }, aspects: AC.aspectsBetween(pts(sol), pts(natal).filter((x) => !['asc', 'mc'].includes(x.id)), { orbMult: 0.5 }).filter((a) => ['conj', 'sextile', 'square', 'trine', 'opp'].includes(a.type)), labels: { in: t('sol.lIn', 'соляр'), out: t('natal', 'натал') }, lang: UI.lang(), label: t('sol.wheelA', 'Соляр и натал'), scale: 1.1 }
-      : { aspects: AC.aspectsWithin(pts(sol)).filter((a) => ['conj', 'sextile', 'square', 'trine', 'opp'].includes(a.type)), lang: UI.lang(), label: t('sol.wheelA1', 'Карта соляра'), scale: 1.1 });
+    const noAx = (list) => list.filter((x) => !['asc', 'mc'].includes(x.id));
+    const orbs = (k) => (root.NOrbs ? root.NOrbs.get(k) : undefined);
+    const aspSN = AC.aspectsBetween(pts(natal), noAx(pts(sol)), { minor: true, orbs: orbs('solar') }); // натал (строки) × соляр (столбцы)
+    const aspSS = AC.aspectsWithin(pts(sol), { minor: true, orbs: orbs('natal') }); // внутри соляра
+    const wheel = () => (st.overlay
+      ? root.NWheel.svg(toWheel(natal), { outer: { points: noAx(pts(sol)), cusps: sol.houses ? sol.houses.cusps : null }, aspects: aspSN.map((x) => Object.assign({}, x)), rot: sol.houses ? sol.houses.asc : undefined, labels: { in: t('natal', 'натал'), out: t('sol.lIn', 'соляр') }, lang: UI.lang(), label: t('sol.wheelA', 'Соляр и натал'), scale: 1.1 })
+      : root.NWheel.svg(toWheel(sol), { aspects: aspSS.map((x) => Object.assign({}, x)), lang: UI.lang(), label: t('sol.wheelA1', 'Карта соляра'), scale: 1.1 }));
     const ind = indicators(sol, natal);
     body.innerHTML = `<div class="card solar-head">
         <div class="row sb"><div class="row" style="gap:8px;flex-wrap:nowrap"><button class="iconbtn bd" type="button" data-soff="-1" aria-label="${esc(t('sol.prev', 'Предыдущий год'))}">${icon('left', 'sm')}</button><h3 class="sol-y">${esc(t('sol.title', 'Соляр {a}–{b}', { a: S.year, b: S.year + 1 }))}</h3><button class="iconbtn bd" type="button" data-soff="1" aria-label="${esc(t('sol.next', 'Следующий год'))}">${icon('right', 'sm')}</button></div>
@@ -215,6 +220,8 @@
         <div class="wheel-card"><div class="wheel-box" data-swheel>${wheel()}</div></div>
         <div class="card stack sol-main"><h3>${esc(t('sol.main', 'Главное в соляре'))}</h3>${ind.map((x) => `<div class="sol-ind"><b>${esc(x.title)}</b><p>${esc(x.text || '')}</p></div>`).join('')}</div>
       </div>
+      <div class="card stack"><div class="row sb"><h3>${esc(t('sol.ph', 'Планеты соляра по домам'))}</h3><span class="tiny muted">${esc(t('sol.phHint', 'что даёт каждая планета в своём доме соляра'))}</span></div>${planetsByHouse(sol)}</div>
+      <div class="card stack sol-asp-card"><div class="row sb"><h3>${esc(t('sol.asp', 'Аспекты соляра'))}</h3><span class="tiny muted">${esc(t('sol.aspHint', 'все аспекты, и минорные · нажми на клетку — что это значит'))}</span></div>${aspTables(natal, sol, aspSN, aspSS, pts, noAx)}</div>
       <div class="card stack"><div class="row sb"><h3>${esc(t('sol.sph', 'Прогноз года по сферам'))}</h3><span class="tiny muted">${esc(t('sol.sphHint', 'соляр + транзиты всего года · нажми на сферу — подробно'))}</span></div><div data-ssph><div class="sol-wait"><span class="spin"></span> ${esc(t('sol.calc', 'Считаю транзиты на весь год…'))} <b data-sprog>0%</b></div></div></div>
       <div class="card stack"><div class="row sb"><h3>${esc(t('sol.year', 'Год по месяцам'))}</h3><span class="tiny muted">${esc(t('sol.yearHint', 'баллы 1–10 по транзитам · наведи — подробности'))}</span></div><div data-smon></div><div data-sev></div></div>
       <div class="card stack solar-ask"><h3>${icon('ask')} ${esc(t('sol.ask', 'Спросить про этот год'))}</h3><p class="small muted">${esc(t('sol.askP', 'Ответ строится по соляру, транзитам и твоей карте. Можно спросить про сферу, событие или месяц.'))}</p>
@@ -222,6 +229,19 @@
         <form class="sa-form" data-sform><input class="input" data-sin autocomplete="off" maxlength="300" placeholder="${esc(t('sol.askPh', 'Например: когда лучше подписывать договор? как будет в марте?'))}"><button class="btn primary" type="submit">${icon('send', 'sm')} ${esc(t('ask.send', 'Спросить'))}</button></form>
         <div class="sa-list" data-salist></div></div>`;
     root.NWheel.bindTips(body);
+    root.NWheel.linkAspects(body);
+    // нажатие на аспект — короткая подсказка (что даёт по характеру планет и домам)
+    if (body._solClick) body.removeEventListener('click', body._solClick); // страница перерисовывается на том же месте (листание лет)
+    body.addEventListener('click', body._solClick = (e) => {
+      const ae = e.target.closest('.sol-asp-card td[data-ak], [data-swheel] .nw-asp[data-ak]');
+      if (!ae || !root.NExplain) return;
+      const inner = !!ae.closest('[data-swheel]');
+      const own = ae.dataset.own === '1' || (inner && !st.overlay);
+      const list = own ? aspSS : aspSN, a = ae.getAttribute('data-pa'), b = ae.getAttribute('data-pb');
+      const x = list.find((y) => y.a === a && y.b === b) || list.find((y) => y.a === b && y.b === a); if (!x) return;
+      const ob = own ? null : sol.byId[x.b];
+      root.NExplain.aspectCard({ a: x.a, b: x.b, type: x.type, orb: x.orb, applying: x.applying, kind: own ? 'own' : 'solar', chart: own ? sol : natal, bLon: ob ? ob.lon : null, labels: { in: t('natal', 'натал'), out: t('sol.lIn', 'соляр') }, person: p }, { x: e.clientX, y: e.clientY });
+    });
     body.querySelectorAll('[data-soff]').forEach((b) => b.addEventListener('click', () => { st.off += +b.dataset.soff; st.qa = []; page(body, p); }));
     body.querySelector('[data-splace]').addEventListener('change', (e) => { st.place = e.target.value; st.qa = []; page(body, p); });
     body.querySelectorAll('[data-sov]').forEach((b) => b.addEventListener('click', () => { st.overlay = b.dataset.sov === '1'; body.querySelectorAll('[data-sov]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); body.querySelector('[data-swheel]').innerHTML = wheel(); }));
@@ -233,6 +253,33 @@
     const slow = root.NCompute.slow(p, S.start, S.end);
     const ctx = { S, natal, months, sph, slow, p };
     drawSpheres(body, ctx); drawMonths(body, ctx); bindAsk(body, ctx);
+  }
+
+  /** Планеты соляра по домам: что даёт каждая планета в своём доме соляра (Солнце и Луна — свои тексты, остальные — NXT.*.solar.plHouse). */
+  function planetsByHouse(sol) {
+    const X = XS(), TX = UI.TX(), G = root.NWheel.GLYPH;
+    if (!sol.houses) return `<p class="small muted">${esc(t('sol.noHouses', 'Без времени рождения дома соляра не считаются.'))}</p>`;
+    return `<div class="sol-ph">${TEN.map((id) => {
+      const b = sol.byId[id]; if (!b || !b.house) return '';
+      const h = b.house;
+      const txt = id === 'sun' ? X.sunHouse[h] : id === 'moon' ? X.moonHouse[h] : X.plHouse && X.plHouse[id] ? X.plHouse[id][h] : '';
+      const rules = root.NExplain ? root.NExplain.rulesOf(id, sol) : [];
+      return `<div class="sp"><span class="sp-g">${G[id]}︎</span><div class="sp-b"><b>${esc(t('sol.phT', '{p} в {h} доме соляра', { p: TX.P[id].name, h }))}</b><span class="tiny muted">${esc(TX.S[b.sign].in)}${b.retro ? ' · R' : ''}${rules.length ? ' · ' + esc(t('sol.phRule', 'управляет {n} домом', { n: rules.join(', ') })) : ''}</span><p class="small">${esc(txt || '')}</p></div></div>`;
+    }).join('')}</div>`;
+  }
+  /** Все аспекты соляра: к наталу (строки — натал, столбцы — соляр) и внутри самого соляра; маленькие цифры — дома. */
+  function aspTables(natal, sol, aspSN, aspSS, pts, noAx) {
+    const grid = root.NPro && root.NPro.grid; if (!grid) return '';
+    const ids = (list) => list.map((x) => x.id);
+    const rules = (c) => (id) => (root.NExplain && c ? root.NExplain.rulesOf(id, { houses: { cusps: c } }).join(',') : '');
+    const nRule = (n) => t('pro.numRule', 'управляет домом: {n}', { n });
+    const nc = natal.houses ? natal.houses.cusps : null, sc = sol.houses ? sol.houses.cusps : null;
+    const numsSN = nc ? { row: rules(nc), col: (id) => (sol.byId[id] ? String(AC.houseOf(sol.byId[id].lon, nc)) : ''), rowNote: nRule, colNote: (n) => t('pro.numIn', 'стоит в {n} доме', { n }) } : null;
+    const numsSS = sc ? { row: rules(sc), col: rules(sc), rowNote: nRule, colNote: nRule } : null;
+    return `<div class="sol-asp">
+      <div class="stack s6"><span class="label">${esc(t('sol.aspSN', 'Соляр → натал'))} · ${aspSN.length}</span>${grid(ids(pts(natal)), ids(noAx(pts(sol))), aspSN, false, numsSN)}</div>
+      <div class="stack s6"><span class="label">${esc(t('pro.inSolar', 'Аспекты внутри соляра'))} · ${aspSS.length}</span>${grid(ids(pts(sol)), ids(pts(sol)), aspSS, true, numsSS, true)}</div>
+    </div><p class="tiny muted">${esc(t('sol.aspLeg', 'Маленькие цифры: у планет натала (слева) — какими домами натала управляет планета; у планет соляра (сверху) — в каком доме натала она стоит; во второй таблице — какими домами соляра управляет планета.'))}</p>`;
   }
 
   function drawSpheres(body, ctx) {

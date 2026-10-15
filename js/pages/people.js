@@ -58,7 +58,40 @@
     }));
   }
 
-  function settings(el) {
+  // ---------- орбисы аспектов (15.10, Алина): для каждого аспекта и типа карты — свой наибольший орбис в градусах ----------
+  const ORB_KIND_N = () => ({ natal: t('orb.k.natal', 'Натал'), transit: t('orb.k.transit', 'Транзиты'), solar: t('orb.k.solar', 'Соляр, лунар'), synastry: t('orb.k.syn', 'Синастрия'), directions: t('orb.k.dir', 'Дирекции'), progressions: t('orb.k.prog', 'Прогрессии') });
+  function orbCard() {
+    const O = root.NOrbs, KN = ORB_KIND_N(), TX = UI.TX(), W = root.NWheel;
+    const own = root.NStore.settings().orbTable || {};
+    const fmt = (x) => String(x).replace('.', UI.lang() === 'en' ? '.' : ',');
+    return `<div class="card stack" id="orbCard"><div class="row sb"><h3>${icon('filter')} ${t('orb.title', 'Орбисы аспектов')}</h3><button class="btn sm ghost" type="button" data-orbreset>${icon('refresh', 'sm')} ${t('orb.reset', 'Вернуть как было')}</button></div>
+      <p class="small muted">${t('orb.hint', 'Наибольший орбис в градусах — для каждого аспекта и типа карты. У Солнца и Луны орбис на четверть шире, у узлов, Хирона, Лилит и куспидов домов — уже. Ползунок «Орбисы» в Профи ещё умножает эти числа. Изменённые числа выделены.')}</p>
+      <div class="tbl-wrap"><table class="tbl orb-tbl"><thead><tr><th>${t('orb.asp', 'Аспект')}</th>${O.KINDS.map((k) => `<th>${esc(KN[k])}</th>`).join('')}</tr></thead><tbody>
+      ${O.ASP.map((a) => `<tr><td class="orb-a"><span class="g">${W.ASP_G[a]}</span> ${esc((TX.ASP[a] && TX.ASP[a].name) || (W.ASP_N[UI.lang()] || W.ASP_N.ru)[a])}</td>${O.KINDS.map((k) => { const d = O.defaults(k)[a], v = O.get(k)[a], ch = own[k] && own[k][a] != null; return `<td><input class="input orb-in${ch ? ' ch' : ''}" type="text" inputmode="decimal" data-ok="${k}" data-oa="${a}" value="${fmt(v)}" title="${esc(t('orb.def', 'по умолчанию {d}°', { d: fmt(d) }))}" aria-label="${esc(KN[k] + ' · ' + a)}"></td>`; }).join('')}</tr>`).join('')}
+      </tbody></table></div></div>`;
+  }
+  function bindOrbs(el, redraw) {
+    const card = el.querySelector('#orbCard'); if (!card) return;
+    const O = root.NOrbs;
+    card.querySelectorAll('[data-ok]').forEach((inp) => inp.addEventListener('change', () => {
+      const k = inp.dataset.ok, a = inp.dataset.oa;
+      const v = parseFloat(String(inp.value).replace(',', '.'));
+      const tbl = JSON.parse(JSON.stringify(root.NStore.settings().orbTable || {}));
+      if (!isFinite(v) || v < 0 || v > 20) { inp.classList.add('bad'); UI.toast(t('orb.bad', 'Орбис — число от 0 до 20, например 2,5')); return; }
+      inp.classList.remove('bad');
+      const r = Math.round(v * 100) / 100;
+      tbl[k] = tbl[k] || {};
+      if (Math.abs(r - O.defaults(k)[a]) < 1e-9) delete tbl[k][a]; else tbl[k][a] = r;
+      if (!Object.keys(tbl[k]).length) delete tbl[k];
+      root.NStore.set('orbTable', Object.keys(tbl).length ? tbl : null);
+      inp.value = String(r).replace('.', UI.lang() === 'en' ? '.' : ',');
+      inp.classList.toggle('ch', !!(tbl[k] && tbl[k][a] != null));
+      UI.toast(t('orb.saved', 'Орбис сохранён — Профи считает с ним'));
+    }));
+    card.querySelector('[data-orbreset]').addEventListener('click', () => { root.NStore.set('orbTable', null); UI.toast(t('orb.resetDone', 'Орбисы — как по умолчанию')); redraw(); });
+  }
+
+  function settings(el, params) {
     const S = root.NStore.settings(), TX = UI.TX();
     const here = UI.here(), act = root.NStore.active();
     el.innerHTML = `<div class="sec-head"><span class="eyebrow">${t('set.eyebrow', 'Настройки')}</span><h1>${t('set.title', 'Под себя')}</h1></div>
@@ -70,6 +103,7 @@
         <div class="field"><span class="lbl">${act ? esc(t('set.hereP', 'Где живёт сейчас: {n}', { n: act.name })) : t('set.here', 'Где я сейчас')}</span><div>${UI.homeChipHTML(act ? act.id : null)}</div><span class="hint">${t('set.hereHint2', 'От этого зависят границы суток, Луна без курса и лучшие часы. Пояс: {tz}. У каждого человека свой город — его можно поменять и в окне «Чья карта».', { tz: here.tz })}</span></div>
         <div class="field"><label for="hs2">${t('set.hs', 'Система домов')}</label><select class="select" id="hs2">${Object.entries(TX.houseSystems || { placidus: 'Placidus' }).map(([k, v]) => `<option value="${k}" ${S.houseSystem === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
       </div>
+      ${root.NOrbs ? orbCard() : ''}
       <div class="card stack"><h3>${icon('shield')} ${t('set.data', 'Данные и приватность')}</h3>
         <p class="small muted">${root.NAccount && root.NAccount.loggedIn() ? t('set.dataPacc', 'Карты и настройки хранятся в этом браузере и в вашем аккаунте (на сервере — в зашифрованном виде). К ИИ уходит только вопрос с расчётами, без имени и города.') : t('set.dataP', 'Карты и настройки хранятся только в этом браузере. На сервер уходит только вопрос к ИИ — с расчётами, без имени и города.')}</p>
         <label class="check"><input type="checkbox" id="aic" ${S.aiConsent ? 'checked' : ''}> ${t('set.ai', 'Разрешаю отправлять расчёты карты ИИ-сервису для ответов')}</label>
@@ -77,6 +111,8 @@
         <div class="row tiny"><a href="privacy.html">${t('privacy', 'Конфиденциальность')}</a> · <a href="terms.html">${t('terms', 'Условия')}</a> · <span class="muted">${esc(root.NCONFIG.brand)} ${esc(root.NCONFIG.version)}</span></div>
       </div>`;
     if (root.NAccount) root.NAccount.settingsCard(el.querySelector('#acctCard'));
+    bindOrbs(el, () => settings(el, params));
+    if (params && params.orbs) requestAnimationFrame(() => { const c = el.querySelector('#orbCard'); if (c) c.scrollIntoView({ block: 'start', behavior: 'auto' }); });
     el.querySelectorAll('[data-lang]').forEach((b) => b.addEventListener('click', () => { root.NStore.set('lang', b.dataset.lang); location.reload(); }));
     el.querySelectorAll('[data-fz]').forEach((b) => b.addEventListener('click', () => { root.NStore.set('textSize', b.dataset.fz); root.NApp.applySize(); settings(el); }));
     el.querySelectorAll('[data-th]').forEach((b) => b.addEventListener('click', () => { root.NStore.set('theme', b.dataset.th); root.NApp.applyTheme(); settings(el); }));
