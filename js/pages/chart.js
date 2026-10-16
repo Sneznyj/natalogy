@@ -147,7 +147,7 @@
       }
     };
     const jumpTo = (d) => { st.at = Math.abs(d - Date.now()) < 60000 ? null : d; if (tb && tb.set) tb.set(d); drawWheel(); };
-    el.addEventListener('natalogy:jump', (e) => jumpTo(e.detail));
+    el.addEventListener('saliastro:jump', (e) => jumpTo(e.detail));
     el.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { st.mode = b.dataset.mode; el.querySelectorAll('[data-mode]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); setHint(); mountBar(); drawWheel(); if (st.mode === 'natal') drawPortrait(el, p, natalFor(p)); }));
     // «Рабочий режим»: та же карта (с тем же моментом и пробным временем) в Профи — на весь экран
     el.querySelector('[data-work]').addEventListener('click', () => {
@@ -227,7 +227,7 @@
     }));
     el.querySelectorAll('#posBox [data-sd]').forEach((g) => g.addEventListener('click', () => {
       const d = new Date(mom.getTime() + (+g.dataset.sd) * 86400000);
-      el.dispatchEvent(new CustomEvent('natalogy:jump', { detail: d }));
+      el.dispatchEvent(new CustomEvent('saliastro:jump', { detail: d }));
     }));
   }
 

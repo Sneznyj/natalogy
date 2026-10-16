@@ -1,7 +1,7 @@
 /* Настройки проекта: всё, что меняется без правки кода. */
 window.NCONFIG = {
-  brand: 'Salistro',              // название (16.10.2026: было рабочее Natalogy) — меняется здесь, в manifest.webmanifest, заголовках *.html и в privacy/terms
-  brandRu: 'Наталогия',
+  brand: 'Saliastro',              // название (16.10.2026) — меняется здесь, в manifest.webmanifest, заголовках *.html и в privacy/terms
+  brandRu: 'Салиастро',
   version: '0.5.0',
   // Адрес ИИ-помощника (Cloudflare Worker из server/ai-worker). Пусто — отвечает встроенный помощник по правилам, без интернета.
   aiEndpoint: '',
@@ -22,8 +22,8 @@ window.NCONFIG = {
   pro: { paid: false, priceMonth: '$7.99', priceYear: '$49' }, // платная подписка — после выхода Венеры из тени (15.12.2026)
   // Аккаунты (необязательный вход): сервер server/account-worker. guestLimit — сколько карточек можно сохранить без входа.
   // Пусто в api — кнопки «Войти» нет, всё только на устройстве.
-  account: { api: 'https://natalogy-account.sneznyjpavel.workers.dev', guestLimit: 1 },
+  account: { api: 'https://natalogy-account.sneznyjpavel.workers.dev', guestLimit: 1 }, // адрес сервера прежний: на него настроены входы Google, Яндекс, VK, Telegram
   contact: '',
   searchIndex: false,             // false — сайт закрыт от поисковиков (noindex), открывают только по ссылке. true — когда будет публичный запуск
-  siteUrl: 'https://sneznyj.github.io/natalogy/',
+  siteUrl: 'https://sneznyj.github.io/saliastro/',
 };

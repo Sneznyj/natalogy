@@ -4,14 +4,14 @@
    Чтение и запись обёрнуты в try/catch: в приватном режиме хранилище может быть недоступно. */
 (function (root) {
   'use strict';
-  const KEY = 'natalogy:v1';
+  const KEY = 'saliastro:v1', OLD_KEY = 'natalogy:v1'; // до 16.10.2026 данные лежали под старым рабочим названием — переносим при первом открытии
   let mem = null;
   const empty = () => ({ people: [], activeId: null, settings: { lang: null, theme: 'system', houseSystem: 'placidus', here: null, aiConsent: false, mode: 'simple', orbs: 1 }, saved: [], ask: { day: '', used: 0 }, deviceId: null, deleted: {}, settingsAt: 0 });
   // настройки, которые едут вместе с аккаунтом на другие устройства
   const SYNC_SETTINGS = ['lang', 'theme', 'houseSystem', 'here', 'aiConsent', 'mode', 'orbs', 'horoSign', 'orbTable'];
   function load() {
     if (mem) return mem;
-    try { const raw = localStorage.getItem(KEY); mem = raw ? Object.assign(empty(), JSON.parse(raw)) : empty(); } catch (e) { mem = empty(); }
+    try { let raw = localStorage.getItem(KEY); if (!raw && (raw = localStorage.getItem(OLD_KEY))) localStorage.setItem(KEY, raw); mem = raw ? Object.assign(empty(), JSON.parse(raw)) : empty(); } catch (e) { mem = empty(); }
     mem.settings = Object.assign(empty().settings, mem.settings || {});
     if (!mem.deleted || typeof mem.deleted !== 'object') mem.deleted = {};
     if (!mem.deviceId) mem.deviceId = rid() + rid();
@@ -56,10 +56,10 @@
     askUsed(day) { const a = load().ask; return a.day === day ? a.used : 0; },
     askInc(day) { const s = load(); if (s.ask.day !== day) s.ask = { day, used: 0 }; s.ask.used++; save(); },
     deviceId() { return load().deviceId; },
-    exportJSON() { const s = load(); return JSON.stringify({ app: 'natalogy', v: 1, people: s.people, saved: s.saved, settings: s.settings }, null, 1); },
+    exportJSON() { const s = load(); return JSON.stringify({ app: 'saliastro', v: 1, people: s.people, saved: s.saved, settings: s.settings }, null, 1); },
     importJSON(text) {
       const d = JSON.parse(text);
-      if (!d || d.app !== 'natalogy' || !Array.isArray(d.people)) throw new Error('bad file');
+      if (!d || (d.app !== 'saliastro' && d.app !== 'natalogy') || !Array.isArray(d.people)) throw new Error('bad file');
       const s = load();
       for (const p of d.people) { if (!s.people.some((x) => x.id === p.id)) s.people.push(p); }
       for (const c of d.saved || []) { if (!s.saved.some((x) => x.id === c.id)) s.saved.push(c); }
@@ -72,7 +72,7 @@
     syncDoc() {
       const s = load(), set = {};
       for (const k of SYNC_SETTINGS) if (s.settings[k] !== undefined) set[k] = s.settings[k];
-      return { app: 'natalogy', v: 1, people: s.people, saved: s.saved, deleted: s.deleted, settings: set, settingsAt: s.settingsAt || 0, activeId: s.activeId };
+      return { app: 'saliastro', v: 1, people: s.people, saved: s.saved, deleted: s.deleted, settings: set, settingsAt: s.settingsAt || 0, activeId: s.activeId };
     },
     /** Применить слитый снимок (после входа или с другого устройства). Без записи в историю правок. */
     applyDoc(d) {

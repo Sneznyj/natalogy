@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Salistro — твоя карта как инструкция к себе</title>
+<title>Saliastro — твоя карта как инструкция к себе</title>
 <meta name="description" content="Личный астрологический календарь: баллы дня для любви, денег, работы и запусков. Натальная карта простым языком, совместимость, ИИ-помощник и профи-инструменты.">
-<meta property="og:title" content="Salistro — твоя карта как инструкция к себе">
+<meta property="og:title" content="Saliastro — твоя карта как инструкция к себе">
 <meta property="og:description" content="Нажми кнопку — и увидишь баллы своих дней: любовь, деньги, работа, запуски. Без астрологических терминов.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://sneznyj.github.io/natalogy/assets/brand/og-1200x630.jpg">
+<meta property="og:image" content="https://sneznyj.github.io/saliastro/assets/brand/og-1200x630.jpg">
 <meta name="theme-color" content="#FDFAF5">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icons/favicon.ico" sizes="any">
@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Manrope:wght@400;500;600;700;800&family=Caveat:wght@600&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Symbols&family=Noto+Sans+Symbols+2&display=swap&text=%E2%98%89%E2%98%BD%E2%98%BF%E2%99%80%E2%99%82%E2%99%83%E2%99%84%E2%99%85%E2%99%86%E2%99%87%E2%AF%93%E2%98%8A%E2%98%8B%E2%9A%B7%E2%9A%B8%E2%8A%97%E2%99%88%E2%99%89%E2%99%8A%E2%99%8B%E2%99%8C%E2%99%8D%E2%99%8E%E2%99%8F%E2%99%90%E2%99%91%E2%99%92%E2%99%93%E2%98%8C%E2%9A%B9%E2%96%A1%E2%96%B3%E2%98%8D%EF%B8%8E">
 <link rel="stylesheet" href="css/app.css">
-<script>try{var s=JSON.parse(localStorage.getItem('natalogy:v1')||'{}').settings||{};if(s.theme==='dark'||s.theme==='light')document.documentElement.setAttribute('data-theme',s.theme)}catch(e){}</script>
+<script>try{var s=JSON.parse(localStorage.getItem('saliastro:v1')||localStorage.getItem('natalogy:v1')||'{}').settings||{};if(s.theme==='dark'||s.theme==='light')document.documentElement.setAttribute('data-theme',s.theme)}catch(e){}</script>
 <style>
 /* Витрина: та же система, что в кабинете, — кремовый лист, лаванда, золото. Каждая карточка ведёт прямо в раздел кабинета. */
 .lw{max-width:1180px;margin:0 auto;padding-inline:20px}
@@ -111,7 +111,7 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
 </head>
 <body>
 <header class="lnav"><div class="lw">
-  <a class="brand" href="./"><span class="brand-mark" aria-hidden="true"></span>Salistro</a>
+  <a class="brand" href="./"><span class="brand-mark" aria-hidden="true"></span>Saliastro</a>
   <span class="sp"></span>
   <a class="lk lk-hot" href="app.html#horoscope" data-i="nav.horo">★ Гороскоп</a>
   <a class="lk" href="app.html#calendar" data-i="nav.cal">Календарь</a>
@@ -215,7 +215,7 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
   </section>
 </main>
 <footer class="foot"><div class="lw cols">
-  <div><a class="brand" href="./" style="color:var(--ink)"><span class="brand-mark" aria-hidden="true"></span>Salistro</a><p style="margin-top:10px" data-i="foot.note">Для самопознания. Не медицинский, юридический или финансовый совет.</p><p style="margin-top:8px">© 2026 Natalogy · <a href="privacy.html" data-i="privacy">Конфиденциальность</a> · <a href="terms.html" data-i="terms">Условия</a></p></div>
+  <div><a class="brand" href="./" style="color:var(--ink)"><span class="brand-mark" aria-hidden="true"></span>Saliastro</a><p style="margin-top:10px" data-i="foot.note">Для самопознания. Не медицинский, юридический или финансовый совет.</p><p style="margin-top:8px">© 2026 Saliastro · <a href="privacy.html" data-i="privacy">Конфиденциальность</a> · <a href="terms.html" data-i="terms">Условия</a></p></div>
   <div><span class="label" data-i="foot.lk">Кабинет</span><ul><li><a href="app.html#horoscope" data-i="l.horo">Гороскоп</a></li><li><a href="app.html#numerology" data-i="l.num">Нумерология</a></li><li><a href="app.html#sky" data-i="l.sky">Небо и Луна</a></li><li><a href="app.html#today" data-i="l.today">Сегодня</a></li><li><a href="app.html#calendar" data-i="l.cal">Календарь</a></li><li><a href="app.html#calendar?v=week" data-i="l.week">Неделя по часам</a></li><li><a href="app.html#chart" data-i="l.chart">Моя карта</a></li><li><a href="app.html#pair" data-i="l.pair">Совместимость</a></li><li><a href="app.html#ask" data-i="l.ask">Спросить ИИ</a></li></ul></div>
   <div><span class="label" data-i="foot.pro">Профи</span><ul><li><a href="app.html#pro?type=transit" data-i="l.tr">Транзиты</a></li><li><a href="app.html#pro?type=solar" data-i="l.sol">Соляр</a></li><li><a href="app.html#pro?type=directions" data-i="l.dir">Дирекции</a></li><li><a href="app.html#pro?tab=firdaria" data-i="l.fird">Фирдарии</a></li><li><a href="app.html#pro?tab=acg" data-i="l.acg">Астрокартография</a></li><li><a href="app.html#people" data-i="l.people">Мои люди</a></li></ul></div>
 </div></footer>
@@ -266,7 +266,7 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
   };
   const lang = UI.lang();
   document.documentElement.lang = lang;
-  if (lang === 'en') { document.querySelectorAll('[data-i]').forEach((el) => { const v = EN[el.dataset.i]; if (v == null) return; if (el.hasAttribute('data-html')) el.innerHTML = v; else el.textContent = v; }); document.title = 'Salistro — your chart as a guide to yourself'; }
+  if (lang === 'en') { document.querySelectorAll('[data-i]').forEach((el) => { const v = EN[el.dataset.i]; if (v == null) return; if (el.hasAttribute('data-html')) el.innerHTML = v; else el.textContent = v; }); document.title = 'Saliastro — your chart as a guide to yourself'; }
   const sw = document.getElementById('langsw'); sw.textContent = lang === 'en' ? 'RU' : 'EN';
   sw.addEventListener('click', () => { window.NStore.set('lang', lang === 'en' ? 'ru' : 'en'); location.reload(); });
   // уже есть карта — приветствие и ссылки сразу в кабинет
@@ -307,7 +307,7 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
     document.getElementById('horoSigns').innerHTML = AC.SIGNS.map((s, i) => { const r = H.scoreDay(i, st, { voc }).r.overall; return `<a class="sg${s === mySign ? ' me' : ''}" href="app.html#horoscope?sign=${s}"><span class="g">${window.NWheel.SIGN_G[i]}︎</span><b>${TX.S[s].name}</b><small>${DATES[i]}</small><span class="pt pts ${UI.lvCls(r.level)}">${r.pts}<small>/10</small></span></a>`; }).join('');
   } catch (e) { console.error(e); }
   // уже вошёл в аккаунт — кнопка «Войти» не нужна
-  try { if (JSON.parse(localStorage.getItem('natalogy:acct') || '{}').token) document.getElementById('loginLk').hidden = true; } catch (e) { /* пусто */ }
+  try { if (JSON.parse(localStorage.getItem('saliastro:acct') || localStorage.getItem('natalogy:acct') || '{}').token) document.getElementById('loginLk').hidden = true; } catch (e) { /* пусто */ }
   document.getElementById('tools').innerHTML = TOOLS.map(([g, r, e, h]) => `<a href="app.html#${h}"><b>${g}︎</b>${lang === 'en' ? e : r}</a>`).join('');
   // демо
   const dd = document.getElementById('dd');

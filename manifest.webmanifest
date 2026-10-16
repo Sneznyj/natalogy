@@ -1,6 +1,6 @@
 {
-  "name": "Salistro — личный астрокалендарь",
-  "short_name": "Salistro",
+  "name": "Saliastro — личный астрокалендарь",
+  "short_name": "Saliastro",
   "description": "Какие дни хороши для любви, денег, работы и запусков. Натальная карта простым языком.",
   "start_url": "app.html#today",
   "scope": "./",

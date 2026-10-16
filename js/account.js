@@ -1,4 +1,4 @@
-/* Аккаунт Natalogy (необязательный). Без входа всё хранится в браузере, и сохранить можно одну карточку (NCONFIG.account.guestLimit).
+/* Аккаунт Saliastro (необязательный). Без входа всё хранится в браузере, и сохранить можно одну карточку (NCONFIG.account.guestLimit).
    Вход: Google, Яндекс ID, VK ID (ВКонтакте, Одноклассники, Mail.ru), Telegram или почта + пароль. После входа карточки
    с устройства сливаются с карточками аккаунта и дальше синхронизируются (сервер — server/account-worker, данные там зашифрованы).
    Пароль не уходит на сервер: браузер отправляет только его хэш (PBKDF2, 210 000 повторов), сервер хэширует ещё раз со своей солью. */
@@ -7,12 +7,12 @@
   const UI = root.NUI, S = root.NStore;
   const { t, esc, icon } = UI;
   const CFG = () => (root.NCONFIG && root.NCONFIG.account) || {};
-  const KEY = 'natalogy:acct', AFTER = 'natalogy:afterLogin';
+  const KEY = 'saliastro:acct', AFTER = 'saliastro:afterLogin';
   let A = readA();
   let status = A.token ? (A.dirty ? 'dirty' : 'ok') : 'guest';
   let applying = false, timer = null, pushing = null, provCache = null, pendingCode = null, pendingErr = null, pendingOpen = false, linkedNote = null;
 
-  function readA() { try { return JSON.parse(localStorage.getItem(KEY) || 'null') || {}; } catch (e) { return {}; } }
+  function readA() { try { return JSON.parse(localStorage.getItem(KEY) || localStorage.getItem('natalogy:acct') || 'null') || {}; } catch (e) { return {}; } } // natalogy:acct — вход до переименования 16.10.2026
   function saveA() { try { localStorage.setItem(KEY, JSON.stringify(A)); } catch (e) { /* без хранилища — до перезагрузки */ } }
   const loggedIn = () => !!(A && A.token);
   const enabled = () => !!CFG().api;
@@ -36,7 +36,7 @@
   }
   async function pwHash(email, pw) {
     const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
-    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode('natalogy|' + String(email).trim().toLowerCase()), iterations: 210000 }, k, 256);
+    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode('natalogy|' /* соль не менять: от неё зависят уже заданные пароли */ + String(email).trim().toLowerCase()), iterations: 210000 }, k, 256);
     let s = ''; new Uint8Array(bits).forEach((b) => { s += String.fromCharCode(b); }); return btoa(s);
   }
 
@@ -50,7 +50,7 @@
     for (const k of Object.keys(del)) if (del[k] < cutoff) delete del[k];
     const pick = (a, b) => { const m = new Map(); for (const x of (a || []).concat(b || [])) { if (!x || !x.id) continue; const q = m.get(x.id); if (!q || stamp(x) > stamp(q)) m.set(x.id, x); } return Array.from(m.values()).filter((x) => !(del[x.id] && del[x.id] >= stamp(x))); };
     const newer = (local.settingsAt || 0) >= (remote.settingsAt || 0);
-    return { app: 'natalogy', v: 1, people: pick(remote.people, local.people), saved: pick(remote.saved, local.saved).sort((a, b) => (b.at || 0) - (a.at || 0)), deleted: del, settings: newer ? local.settings : remote.settings, settingsAt: Math.max(local.settingsAt || 0, remote.settingsAt || 0), activeId: local.activeId || remote.activeId };
+    return { app: 'saliastro', v: 1, people: pick(remote.people, local.people), saved: pick(remote.saved, local.saved).sort((a, b) => (b.at || 0) - (a.at || 0)), deleted: del, settings: newer ? local.settings : remote.settings, settingsAt: Math.max(local.settingsAt || 0, remote.settingsAt || 0), activeId: local.activeId || remote.activeId };
   }
   const norm = (d) => JSON.stringify(d ? [(d.people || []).map((p) => [p.id, stamp(p)]).sort(), (d.saved || []).map((c) => [c.id, stamp(c)]).sort(), Object.keys(d.deleted || {}).sort(), d.settingsAt || 0] : null);
   function apply(doc) {
@@ -174,7 +174,7 @@
       denied: t('acc.e.denied', 'Вход отменён.'),
       provider: t('acc.e.provider', 'Сервис входа не ответил. Попробуйте ещё раз или другой способ.'),
       unavailable: t('acc.e.unavail', 'Этот способ входа пока недоступен — выберите другой.'),
-      already_linked: t('acc.e.linked', 'Этот вход уже привязан к другому аккаунту Salistro.'),
+      already_linked: t('acc.e.linked', 'Этот вход уже привязан к другому аккаунту Saliastro.'),
       last_login: t('acc.e.last', 'Нельзя отвязать единственный способ входа.'),
     })[c] || t('acc.e.other', 'Что-то пошло не так. Попробуйте ещё раз.');
   }

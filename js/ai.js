@@ -39,7 +39,7 @@
       .map((r) => ({ planet: r.id, from: r.start.toISOString().slice(0, 10), to: r.end.toISOString().slice(0, 10) }));
     const age = now.y - person.y - ((now.mo < person.mo || (now.mo === person.mo && now.d < person.d)) ? 1 : 0);
     const f = {
-      app: 'natalogy', today: dstr(now), timezone: tz, person: { gender: person.gender === 'f' ? 'female' : 'male', age, birth_time_known: person.timeKnown !== false },
+      app: 'saliastro', today: dstr(now), timezone: tz, person: { gender: person.gender === 'f' ? 'female' : 'male', age, birth_time_known: person.timeKnown !== false },
       natal: natalFacts(natal), day: summarizeDay(day0), day_reasons: reasons, next_days: days.slice(1, 15).map(summarizeDay), best_days_45: best, slow_transits: slow, retrogrades: retro,
       profection: (() => { try { const pr = AC.profection(natal, new Date()); return { house: pr.house, sign: pr.sign, lord: pr.lord }; } catch (e) { return undefined; } })(),
     };
