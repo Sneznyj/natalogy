@@ -139,7 +139,8 @@ button{font:inherit;color:inherit}
 .iconbtn:hover{background:var(--surface);border-color:var(--line)}
 .iconbtn.bd{border-color:var(--line);background:var(--surface)}
 .main{max-width:1280px;width:100%;margin:0 auto;padding:18px 16px calc(var(--nav-h) + 28px + env(safe-area-inset-bottom,0px))}
-.view{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;animation:viewIn .3s ease both;min-width:0}
+/* fill: backwards, не both — анимация с transform, оставшаяся «в силе» после конца, делает .view опорой для position:fixed (рабочий режим карты съёживался до колонки страницы) */
+.view{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;animation:viewIn .3s ease backwards;min-width:0}
 @keyframes viewIn{from{opacity:.001;transform:translateY(6px)}to{opacity:1;transform:none}}
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:color-mix(in srgb,var(--surface) 94%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 .nav-in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);height:var(--nav-h)}
@@ -1736,15 +1737,29 @@ button.tag{cursor:pointer;border:0}
 .pro-panel.compact .pdy-dt .pdy-tm{width:calc(92px*var(--fz))}
 .pro-panel.compact .pdy-when .pdy-pl{display:none}
 @media (min-width:641px){.pdy-what .pdy-over{min-width:calc(118px*var(--fz))}}
-/* рабочий режим: панель на весь экран, колесо + динамика слева, таблица аспектов справа — крупно */
+/* рабочий режим: панель на весь экран, колесо + динамика слева, таблица аспектов справа — крупно.
+   16.10: шапка карты (название, «Космограмма», «Карта 2», «Выйти») — закреплённая полоса сверху во всю ширину, кнопка «Выйти» видна всегда;
+   высоту полосы fit() кладёт в --wbar */
 body.pro-working{overflow:hidden}
-.pro-panel.work{position:fixed;inset:0;z-index:60;background:var(--bg);overflow:auto;padding:10px 14px 14px;margin:0;display:block !important;grid-row:auto !important}
+.pro-panel.work{position:fixed;inset:0;z-index:60;background:var(--bg);overflow:auto;padding:calc(var(--wbar,58px) + 10px) 14px 14px;margin:0;display:block !important;grid-row:auto !important}
 .pro-panel.work > .pp-label,.pro-panel.work > .pro-data,.pro-panel.work > [data-dyn="pos"]{display:none}
-.pro-panel.work .pro-main,.pro-panel.compact.work .pro-main{grid-template-columns:minmax(0,1fr) min-content;gap:14px;align-items:start;min-height:calc(100vh - 24px)}
+.pro-panel.work .pro-wheel .ph-head{position:fixed;top:0;left:0;right:0;z-index:3;padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:0 8px 20px -16px rgba(30,18,50,.55)}
+.pro-panel.work .ph-work{min-height:40px;padding:8px 16px}
+.ph-work .kb{font:700 calc(11px*var(--fz))/1 var(--f-ui);padding:3px 6px;border-radius:6px;background:rgba(255,255,255,.24);letter-spacing:.02em}
+@media (hover:none){.ph-work .kb{display:none}}
+.pro-panel.work .pro-main,.pro-panel.compact.work .pro-main{grid-template-columns:minmax(0,1fr) min-content;gap:14px;align-items:start;min-height:calc(100vh - var(--wbar,58px) - 24px)}
 .pro-panel.work .pdy-head .tiny{display:none}
 .pro-panel.work .pro-side .pd-disp{min-width:calc(300px*var(--fz))}
 .pro-panel.work .pro-main .pro-wheel .wheel-box{width:auto}
-.pro-panel.work .pro-side{position:static;max-height:calc(100vh - 24px);overflow:auto;max-width:56vw;scrollbar-width:thin}
+.pro-panel.work .pro-side{position:static;max-height:calc(100vh - var(--wbar,58px) - 24px);overflow:auto;max-width:56vw;scrollbar-width:thin}
+/* правая колонка — по ширине таблицы аспектов при клетках --ag (раньше колонка была по min-content и клетки сжимались до ~19 px);
+   заголовок и подписи в ширину колонки не вмешиваются, а переносятся под неё */
+@media (min-width:1101px){
+  .pro-panel.work .pro-asp{grid-template-columns:max-content;min-width:min-content}
+  .pro-panel.work .pro-asp > :not(.tbl-wrap){contain:inline-size}
+  .pro-panel.work .pro-asp .asp-grid{width:max-content}
+  .pro-panel.work .pro-asp .tbl-wrap{overflow:clip}
+}
 .pro-panel.work .ph-title h3{font-size:calc(22px*var(--fz))}
 @media (max-width:1100px){.pro-panel.work .pro-main,.pro-panel.compact.work .pro-main{grid-template-columns:minmax(0,1fr)}.pro-panel.work .pro-side{max-width:none;max-height:none}}
 /* короткая подсказка по нажатию на аспект */

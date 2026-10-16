@@ -427,7 +427,7 @@
             <div class="ph-tools">
               <label class="check sm ph-cosmo" title="${esc(t('pro.cosmoT', 'Космограмма — карта без домов: только планеты и аспекты, 0° Овна слева'))}"><input type="checkbox" data-cosmo ${spec.view.cosmo ? 'checked' : ''}> ${t('pro.cosmo', 'Космограмма')}</label>
               ${other ? `<button class="btn sm ghost ph-other" type="button" data-wother="${other}" title="${esc(t('pro.workOther', 'Открыть в рабочем режиме другую карту'))}">${icon('swap', 'sm')} ${other === 'right' ? t('pro.card2', 'Карта 2') : t('pro.card1', 'Карта 1')}</button>` : ''}
-              <button class="btn sm ph-work" type="button" data-work aria-pressed="${workSlot === slot}">${workSlot === slot ? `${icon('minimize', 'sm')} ${t('pro.workOff', 'Выйти из рабочего режима')}` : `${icon('maximize', 'sm')} ${t('pro.workOn', 'Рабочий режим')}`}</button>
+              <button class="btn sm ph-work${workSlot === slot ? ' primary' : ''}" type="button" data-work aria-pressed="${workSlot === slot}">${workBtn(workSlot === slot)}</button>
             </div></div>
           <div class="wheel-box" data-dyn="wheel"></div>
           ${dynBox(spec, slot)}
@@ -815,23 +815,32 @@
   function fit() {
     const stick0 = stickyBottom();
     const fz = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fz')) || 1;
-    document.querySelectorAll('.pro-panel:not(.compact), .pro-panel.work').forEach((panel) => {
+    document.querySelectorAll('.pro-panel').forEach((panel) => {
       const work = panel.classList.contains('work'); // рабочий режим: панель на весь экран, шапки сайта над ней нет, клетки таблицы крупнее
-      const stick = work ? 0 : stick0;
-      panel.style.setProperty('--pro-stick', stick + 'px');
-      const card = panel.querySelector('.pro-wheel'), wb = card && card.querySelector('[data-dyn="wheel"]'); if (!wb) return;
+      const card = panel.querySelector('.pro-wheel'), wb = card && card.querySelector('[data-dyn="wheel"]');
       const asp = panel.querySelector('.pro-asp'), tbl = asp && asp.querySelector('table.asp-grid');
+      if (!work && panel.classList.contains('compact')) {
+        // «Две карты»: колесо по ширине своей колонки — снять размеры рабочего режима, иначе после выхода колесо огромное и наезжает на соседнюю карту
+        if (wb) wb.style.width = ''; if (asp) asp.style.removeProperty('--ag');
+        panel.style.removeProperty('--pro-stick'); panel.style.removeProperty('--wbar'); return;
+      }
+      // в рабочем режиме сверху закреплена полоса с названием и кнопками (шапка карты) — место под ней
+      const bar = work && card && card.querySelector('.ph-head'), barH = bar ? Math.ceil(bar.getBoundingClientRect().height) : 0;
+      if (work) panel.style.setProperty('--wbar', barH + 'px'); else panel.style.removeProperty('--wbar');
+      const stick = work ? barH : stick0, gap = work ? 26 : 16; // в рабочем режиме ещё поля панели сверху и снизу
+      panel.style.setProperty('--pro-stick', stick + 'px');
+      if (!wb) return;
       if (window.innerWidth < 700) { wb.style.width = ''; if (asp) asp.style.removeProperty('--ag'); return; }
       const rest = card.getBoundingClientRect().height - wb.getBoundingClientRect().height;
       const colW = card.clientWidth - 28;
       // строка «чья карта · Изменить» над колесом тоже должна быть видна
       const sum = !work && panel.querySelector('.pd-sum'), sumH = sum ? sum.getBoundingClientRect().height + 12 : 0;
-      wb.style.width = Math.round(Math.max(300, Math.min(colW, window.innerHeight - stick - rest - sumH - 16))) + 'px';
+      wb.style.width = Math.round(Math.max(300, Math.min(colW, window.innerHeight - stick - rest - sumH - gap))) + 'px';
       if (tbl && window.innerWidth > 1100) {
         // таблица важнее: если вместе с «Что показывать» клетки выходят мельче 27 px — таблица по высоте окна, а настройки ниже (листаются)
         const disp = panel.querySelector('.pd-disp');
         const head = asp.getBoundingClientRect().height - tbl.getBoundingClientRect().height;
-        const avail = window.innerHeight - stick - 16 - head, n = tbl.rows.length;
+        const avail = window.innerHeight - stick - gap - head, n = tbl.rows.length;
         let cell = Math.floor((avail - (disp && !work ? disp.getBoundingClientRect().height + 12 : 0)) / n);
         if (cell < 27) cell = Math.floor(avail / n);
         asp.style.setProperty('--ag', Math.max(work ? 30 : 22, Math.min((work ? 50 : 32) * fz, cell)) + 'px');
@@ -844,6 +853,7 @@
    * Браузер тоже переходит в полноэкранный режим (если разрешает); Esc или кнопка — обратно. slot = null — выйти.
    */
   let fsMine = false, workBound = false;
+  const workBtn = (on) => (on ? `${icon('close', 'sm')} ${t('pro.workOff', 'Выйти из рабочего режима')} <kbd class="kb">Esc</kbd>` : `${icon('maximize', 'sm')} ${t('pro.workOn', 'Рабочий режим')}`);
   function setWork(slot) {
     const prev = workSlot;
     workSlot = slot;
@@ -851,7 +861,9 @@
       const on = p.dataset.panel === slot;
       p.classList.toggle('work', on);
       const b = p.querySelector('[data-work]');
-      if (b) { b.setAttribute('aria-pressed', String(on)); b.innerHTML = on ? `${icon('minimize', 'sm')} ${t('pro.workOff', 'Выйти из рабочего режима')}` : `${icon('maximize', 'sm')} ${t('pro.workOn', 'Рабочий режим')}`; }
+      if (b) { b.setAttribute('aria-pressed', String(on)); b.classList.toggle('primary', on); b.innerHTML = workBtn(on); }
+      // панель на весь экран считается от экрана, только если у предков нет transform: снять остаток анимации появления страницы
+      if (on) for (let e = p.parentElement; e && e !== document.body; e = e.parentElement) if (e.getAnimations) e.getAnimations().forEach((a) => a.cancel());
     });
     document.body.classList.toggle('pro-working', !!slot);
     const de = document.documentElement;
