@@ -124,8 +124,6 @@ Object.assign(window.NI18N.en, {
 });
 // 4-я волна (12.10.2026, вечер): размер текста, календарь без окна по нажатию, колесо крутится мышью, стрелки у ползунков
 Object.assign(window.NI18N.en, {
-  'fz.m': 'Normal', 'fz.l': 'Large', 'fz.xl': 'Extra large', 'fz.tg': 'Text size: {n}. Click — larger', 'fz.toastM': 'Normal text size', 'fz.toastL': 'Large text', 'fz.toastXL': 'Extra large text',
-  'set.fz': 'Text size', 'set.fzHint': 'You can also change it with the «Aa» button at the top.',
   'cal.how2': 'Hover a day for a summary, click to show it on the right', 'cal.howTouch2': 'Tap a day — details below the calendar', 'tip.pick': 'Click — show on the right', 'tip.below': 'Click — details below',
   'acts.lead2': 'The best days for activities, by score. Tap an activity to recolour the calendar; tap a date to show that day in the calendar.',
   'heat.lead2': 'Each cell is a day’s score. You see at once when love, money or a launch go better. Tap a cell to show the day in the calendar.',

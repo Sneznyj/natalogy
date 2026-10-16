@@ -40,11 +40,9 @@
   /* таблицы аспектов: насыщенные цвета + подложка ячейки */
   --at-soft:#17141F; --at-soft-bg:#ECEAF1; --at-hard:#C9271F; --at-hard-bg:#FFE2DE; --at-conj:#8F5A00; --at-conj-bg:#FFEDC2; --at-minor:#5A3BBE; --at-minor-bg:#ECE4FF; --at-line:rgba(91,58,158,.22); --at-head:#3A2B5C;
   --nav-h:64px;
-  --fz:1; /* размер текста: обычный 1, крупный 1.12 (по умолчанию в приложении), очень крупный 1.25 */
+  --fz:1; /* масштаб текста: 16.10.2026 оставлен один, обычный (кнопку «Aa» и выбор в Настройках убрали) */
   color-scheme:light;
 }
-:root[data-fz="l"]{--fz:1.12}
-:root[data-fz="xl"]{--fz:1.25}
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#120D20; --bg-2:#181229; --surface:#1C1530; --surface-2:#231A3B; --surface-3:#2A2046;
@@ -269,7 +267,8 @@ hr.soft{border:0;border-top:1px solid var(--line-soft);margin:4px 0}
 .ring-pts{position:relative;display:grid;place-items:center;flex:none}
 .ring-pts svg{display:block}
 .ring-pts b{position:absolute;inset:0;display:grid;place-items:center;font:800 calc(24px*var(--fz))/1 var(--f-ui);font-variant-numeric:tabular-nums}
-.ring-pts b small{font:600 calc(11.5px*var(--fz)) var(--f-ui);color:var(--faint);margin-left:1px;align-self:center}
+.ring-pts b > span{white-space:nowrap} /* «4/10» одной строкой по центру круга, «/10» на одной линии с цифрой */
+.ring-pts b small{font:600 max(9px,.4em) var(--f-ui);color:var(--faint);margin-left:1px}
 .bar5{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
 .pbar{position:relative;height:8px;border-radius:5px;background:var(--line-soft);overflow:hidden}
 .pbar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
@@ -440,8 +439,6 @@ details > summary.more::-webkit-details-marker{display:none}
 #calBody{container:calbody/inline-size}
 @container calbody (max-width:1060px){.cal-layout{grid-template-columns:minmax(0,1fr) calc(320px*var(--fz))}}
 @container calbody (max-width:860px){.cal-layout{grid-template-columns:1fr}}
-@container calbody (max-width:960px){:root[data-fz="l"] .cal-layout{grid-template-columns:1fr}}
-@container calbody (max-width:1080px){:root[data-fz="xl"] .cal-layout{grid-template-columns:1fr}}
 /* календарь и панель дня — одной высоты: недели тянутся, если панель выше; кнопка «Подробнее о дне» — внизу панели */
 .cal-layout > .card{display:flex;flex-direction:column}
 .cal-layout .cal{flex:1 0 auto;grid-template-rows:min-content;grid-auto-rows:auto} /* недели — по содержимому; лишняя высота (если панель выше) делится между ними поровну */
@@ -1031,9 +1028,6 @@ a.more{text-decoration:none}
 
 /* ---------- 4-я волна (12.10.2026, вечер): крупный текст, большое колесо, крутить мышью ---------- */
 /* размер текста в шапке: «Aa» — обычный → крупный → очень крупный */
-.fz-tg span{font:800 calc(15px*var(--fz))/1 var(--f-ui);letter-spacing:-.02em}
-.fz-tg small{font-size:.72em;font-weight:800}
-.fz-tg[data-z="xl"]{background:var(--lav-soft);border-color:var(--lav);color:var(--lav-ink)}
 /* «Карта»: страница во всю ширину, колесо — почти на всю область (по высоте экрана), справа машина времени и транзиты */
 .main[data-page="chart"]{max-width:1880px}
 .main[data-page="chart"] #portrait{max-width:1240px}

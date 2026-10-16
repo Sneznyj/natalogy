@@ -130,7 +130,7 @@
   function ringPts(r, size) {
     size = size || 74;
     const rr = size / 2 - 5, c = size / 2, len = 2 * Math.PI * rr, off = len * (1 - Math.max(0.04, (r.ptsF != null ? r.ptsF : r.pts) / 10));
-    return `<span class="ring-pts" style="width:${size}px;height:${size}px" role="img" aria-label="${esc(t('pts.of', '{n} из 10', { n: r.pts }))}"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${c}" cy="${c}" r="${rr}" fill="none" stroke="var(--line-soft)" stroke-width="7"/><circle cx="${c}" cy="${c}" r="${rr}" fill="none" stroke="${LV_COL[r.level]}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${len.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 ${c} ${c})"/></svg><b style="font-size:${Math.round(size * 0.34)}px">${r.pts}<small>/10</small></b></span>`;
+    return `<span class="ring-pts" style="width:${size}px;height:${size}px" role="img" aria-label="${esc(t('pts.of', '{n} из 10', { n: r.pts }))}"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${c}" cy="${c}" r="${rr}" fill="none" stroke="var(--line-soft)" stroke-width="7"/><circle cx="${c}" cy="${c}" r="${rr}" fill="none" stroke="${LV_COL[r.level]}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${len.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 ${c} ${c})"/></svg><b style="font-size:${Math.round(size * (r.pts >= 10 ? 0.28 : 0.34))}px"><span>${r.pts}<small>/10</small></span></b></span>`;
   }
   function pbar(r) { return `<span class="pbar"><i class="c-${LVK(r.level)}" style="width:${Math.max(6, (r.ptsF != null ? r.ptsF : r.pts) * 10)}%"></i></span>`; }
   // ---------- аккордеон: подробности свёрнуты ----------
