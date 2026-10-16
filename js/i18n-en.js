@@ -283,3 +283,17 @@ Object.assign(window.NI18N.en, {
   'pro.numLeg1': 'Small numbers by the glyphs — which house of the chart the planet rules (its sign is on the house cusp).',
   'pro.gridHint3': 'hover — lights up on the chart, tap — what it means',
 });
+
+/* 16.10.2026, Алина: «Что показывать» по разделам (внутренний круг, внешний, аспекты к куспидам), схема фирдарий на один экран. */
+Object.assign(window.NI18N.en, {
+  'pro.displayHint2': 'inner and outer wheel, cusps, aspects', 'pro.dIn': 'Inner wheel', 'pro.dOut': 'Outer wheel', 'pro.dCu': 'Aspects to cusps',
+  'pro.qAllS': 'all', 'pro.qPlS': 'planets', 'pro.qSame': 'as inside', 'pro.qSameT': 'The same points as in the inner wheel', 'pro.qNoneS': 'none', 'pro.qMajorS': 'major',
+  'pro.dOutNone': 'One chart for now. To add transits, a solar return, directions or a second chart — the list in the second row of “Dynamics” under the wheel.',
+  'pro.dOutNo': 'none', 'pro.dCuH': 'Which house cusps', 'pro.dCuA': 'aspects to them', 'pro.dCuA2': 'Aspects to cusps', 'pro.dAspSub': 'between planets and points', 'pro.dCuOf': 'houses: {x}',
+  'pro.dCuCosmo': 'A cosmogram has no houses — untick “Cosmogram” above the wheel.', 'pro.dCuNoH': 'This chart has no houses (unknown birth time or a composite).',
+  'fd.schemeT': 'Firdaria — 75-year scheme', 'fd.nodeSubsS': 'Nodes with sub-periods', 'fd.agesS': 'age {a}–{b}', 'fd.ageS2': 'age {a}–{b}',
+  'fd.noSubsS': 'classically the nodes have no sub-periods — the “Nodes with sub-periods” tick above splits them into 7',
+  'fd.schemeHint': 'Tap a period or a sub-period to read about it; ← → in the window move to the neighbours.',
+  'fd.subsP': 'Sub-periods — tap to open', 'fd.perE': 'Major period', 'fd.subE': 'Sub-period · {x}', 'fd.toPer': 'Whole period: {x}',
+  'fd.prevP': 'Previous period', 'fd.nextP': 'Next period', 'fd.prevS': 'Previous sub-period', 'fd.nextS': 'Next sub-period',
+});

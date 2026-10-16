@@ -32,11 +32,17 @@
   const parseLocal = (s, tz) => { if (/Z$/.test(String(s))) { const d = new Date(s); if (!isNaN(d)) return d; } const m = String(s).match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/); if (!m) return new Date(); return AC.localToUTC(+m[1], +m[2], +m[3], +m[4], +m[5], tz).date; };
   const fmtLon = (l) => { const TX = UI.TX(); const s = AC.signOf(l); return `${Math.floor(l % 30)}°${UI.pad(Math.floor((l % 1) * 60))}′ ${TX.S[s].name}`; };
   const pName = (id) => (UI.TX().P[id] ? UI.TX().P[id].name : /^c\d+$/.test(id) ? t('cusp', 'Куспид') + ' ' + id.slice(1) : id);
-  // по умолчанию в таблице аспектов — и куспиды всех домов (15.10, Алина: «аспекты на дома»)
-  const mkView = () => ({ pts: ALL_PTS.filter((x) => x !== 'fortune').concat(CUSP_IDS), asp: MAJOR.slice(), cv2: 1, cosmo: false, orb: 1, hs: root.NStore.settings().houseSystem || 'placidus' });
-  /** Старый вид: куспиды включались одной кнопкой (cusps) — теперь каждый дом отдельно в «Точках». */
+  const PLANETS10 = ALL_PTS.filter((x) => !['node', 'chiron', 'lilith', 'fortune', 'asc', 'mc'].includes(x));
+  /**
+   * «Что показывать» (16.10, Алина) — три раздела: точки внутреннего круга (pts), внешнего круга (ptsOut)
+   * и аспекты к куспидам (cuspPts — какие дома, cuspAsp — какие аспекты к ним; в движке у куспидов только мажорные).
+   * По умолчанию в таблице аспектов — и куспиды всех домов (15.10, Алина: «аспекты на дома»).
+   */
+  const mkView = () => ({ pts: ALL_PTS.filter((x) => x !== 'fortune'), ptsOut: ALL_PTS.filter((x) => x !== 'fortune'), cuspPts: CUSP_IDS.slice(), cuspAsp: MAJOR.slice(), asp: MAJOR.slice(), cv2: 1, cv3: 1, cosmo: false, orb: 1, hs: root.NStore.settings().houseSystem || 'placidus' });
+  /** Старые виды: куспиды включались одной кнопкой (cusps), потом жили вместе с точками в pts — теперь у каждого круга свои точки и куспиды отдельно. */
   function fixView(v) {
-    if (!v.cv2) { v.pts = v.pts.filter((x) => !isCusp(x)).concat(CUSP_IDS); delete v.cusps; v.cv2 = 1; }
+    if (!v.cv2) { v.pts = (v.pts || []).filter((x) => !isCusp(x)).concat(CUSP_IDS); delete v.cusps; v.cv2 = 1; }
+    if (!v.cv3) { v.cuspPts = v.pts.filter(isCusp); v.pts = v.pts.filter((x) => !isCusp(x)); v.ptsOut = v.pts.slice(); v.cuspAsp = MAJOR.slice(); v.cv3 = 1; }
     return v;
   }
 
@@ -45,7 +51,8 @@
   }
   /** Старые сохранённые карты: «натал + транзиты» стали типом «Транзиты», год соляра — датой. */
   function normSpec(s, p) {
-    const d = defaultSpec(s && s.type, p); const out = Object.assign(d, s || {}); out.view = fixView(Object.assign(mkView(), (s && s.view) || {}));
+    // у сохранённого вида без пометок cv2/cv3 — старый формат: пометки по умолчанию не подставляем, чтобы fixView его перевёл
+    const d = defaultSpec(s && s.type, p); const out = Object.assign(d, s || {}); out.view = fixView(Object.assign(mkView(), s && s.view ? { cv2: 0, cv3: 0 } : {}, (s && s.view) || {}));
     if (!(s && s.v2)) { if (out.type === 'natal' && s && s.ring !== false) out.type = 'transit'; out.ring = false; if (!/Z$/.test(String(out.date))) out.date = parseLocal(out.date, UI.here().tz).toISOString(); out.v2 = true; }
     out.edit = false;
     return out;
@@ -100,9 +107,11 @@
   function build(spec) {
     const TX = UI.TX(), v = fixView(spec.view);
     const cosmo = !!v.cosmo; // космограмма: без домов — ни осей, ни куспидов
-    const pts = new Set(v.pts), asp = new Set(v.asp);
-    const sel = (list) => list.filter((x) => pts.has(x.id) && !(cosmo && (x.id === 'asc' || x.id === 'mc')));
-    const keepAsp = (list) => list.filter((x) => asp.has(x.type));
+    const pIn = new Set(v.pts), pOut = new Set(v.ptsOut), pCu = new Set(v.cuspPts), asp = new Set(v.asp), aCu = new Set(v.cuspAsp);
+    const selBy = (set) => (list) => list.filter((x) => set.has(x.id) && !(cosmo && (x.id === 'asc' || x.id === 'mc')));
+    const sel = selBy(pIn), selOut = selBy(pOut); // точки внутреннего круга / внешнего — каждый круг по своему разделу
+    // аспекты к куспидам — свой набор («Аспекты к куспидам»), остальные — общий («Аспекты»)
+    const keepAsp = (list) => list.filter((x) => (isCusp(x.a) || isCusp(x.b) ? aCu.has(x.type) : asp.has(x.type)));
     // орбисы — из таблицы в настройках (по типу карты), ползунок «Орбисы» в «Что показывать» — общий множитель
     const optsAsp = (kind) => ({ minor: v.asp.some((x) => MINOR.includes(x)), orbMult: v.orb, orbs: orbsOf(kind || 'natal') });
     const p = subjectOf(spec);
@@ -110,12 +119,15 @@
     const pl = placeOf(spec, p);
     const date = parseLocal(spec.date, pl.zone);
     const out = { title: '', sub: '', info: [], inner: null, outer: null, aspects: [], innerChart: natal, labels: null, p, rings: { in: null, out: null }, kind: 'natal', cosmo, at: date };
-    const inPts = (c) => sel(c.points).concat(cosmo ? [] : cuspPts(c).filter((x) => pts.has(x.id)));
+    const cuOf = (c) => (cosmo ? [] : cuspPts(c).filter((x) => pCu.has(x.id)));
+    const inPts = (c) => sel(c.points).concat(cuOf(c));
+    const outPts = (c) => selOut(c.points).concat(cuOf(c)); // карта возвращения во внешнем круге: её точки — по разделу «Внешний круг»
     const opt = Object.assign({}, natal.opts, { houseSystem: v.hs });
     // у «Карты момента» внутренний круг — сам момент (его и двигаем), а не натал
     const natalName = p.id === 'moment' ? p.name : TX.chartTypes.natal + ' · ' + p.name;
     const natalRing = { label: natalName, date: natal.date, tz: p.place.tz, place: p.place.name, mov: 'A', shifted: !!spec.shiftA };
-    const outerOf = (c, drop) => ({ points: sel(c.points.filter((x) => !(drop || ['fortune']).includes(x.id))), cusps: c.houses ? c.houses.cusps : null });
+    // outAvail — какие точки вообще есть во внешней карте (остальные кнопки раздела «Внешний круг» неактивны)
+    const outerOf = (c, drop) => { const all = c.points.filter((x) => !(drop || ['fortune']).includes(x.id)); out.outAvail = all.map((x) => x.id); return { points: selOut(all), cusps: c.houses ? c.houses.cusps : null }; };
     switch (spec.type) {
       case 'natal': {
         out.inner = toWheel(natal); out.title = natalName;
@@ -144,7 +156,9 @@
         const retRing = { label: nm, date: rc.returnDate, tz: pl.zone, place: pl.name, mov: 'date', pick: date };
         out.info.push([spec.type === 'solar' ? t('mom.solarEnd', 'Следующий соляр') : t('mom.lunarEnd', 'Следующий лунар'), UI.fmtDay(nextD, pl.zone, { year: true, hour: true })]);
         // все аспекты карты возвращения — и между её планетами, и к наталу (15.10, Алина)
-        const own = { title: spec.type === 'solar' ? t('pro.inSolar', 'Аспекты внутри соляра') : t('pro.inLunar', 'Аспекты внутри лунара'), chart: rc, aspects: keepAsp(AC.aspectsWithin(inPts(rc), optsAsp('natal'))) };
+        // карта возвращения во внешнем круге — её точки по разделу «Внешний круг», отдельно (одна) — по «Внутреннему»
+        const ownPts = spec.overlay || spec.flip ? outPts(rc) : inPts(rc);
+        const own = { title: spec.type === 'solar' ? t('pro.inSolar', 'Аспекты внутри соляра') : t('pro.inLunar', 'Аспекты внутри лунара'), chart: rc, ids: ownPts.map((x) => x.id), aspects: keepAsp(AC.aspectsWithin(ownPts, optsAsp('natal'))) };
         if (spec.overlay || spec.flip) {
           // натал всегда внутри (сиреневый круг), карта возвращения — внешним кругом; главный АС по умолчанию — её (нажатие на круг меняет)
           out.inner = toWheel(natal); out.outer = outerOf(rc);
@@ -167,7 +181,8 @@
         const years = (date - natal.date) / (365.2422 * DAY);
         const arc = spec.dir === 'deg' ? years : PRO.arcAt(natal, years);
         const dir = natal.points.filter((x) => x.id !== 'fortune').map((x) => ({ id: x.id, lon: AC.norm(x.lon + arc), speed: null }));
-        out.inner = toWheel(natal); out.outer = { points: sel(dir), cusps: natal.houses ? natal.houses.cusps.map((c) => AC.norm(c + arc)) : null };
+        out.inner = toWheel(natal); out.outer = { points: selOut(dir), cusps: natal.houses ? natal.houses.cusps.map((c) => AC.norm(c + arc)) : null };
+        out.outAvail = dir.map((x) => x.id);
         out.kind = 'directions';
         out.aspects = keepAsp(AC.aspectsBetween(inPts(natal), out.outer.points, optsAsp('directions')));
         const nm = spec.dir === 'deg' ? t('dir.deg', 'Дирекции 1° = 1 год') : t('dir.arc', 'Дирекции солнечной дуги');
@@ -179,7 +194,8 @@
       }
       case 'progressions': {
         const pr = AC.progressed(natal, date, opt);
-        out.inner = toWheel(natal); out.outer = { points: sel(pr.points), asc: pr.byId.asc ? pr.byId.asc.lon : null, mc: pr.byId.mc ? pr.byId.mc.lon : null };
+        out.inner = toWheel(natal); out.outer = { points: selOut(pr.points), asc: pr.byId.asc ? pr.byId.asc.lon : null, mc: pr.byId.mc ? pr.byId.mc.lon : null };
+        out.outAvail = pr.points.map((x) => x.id);
         out.kind = 'progressions';
         out.aspects = keepAsp(AC.aspectsBetween(inPts(natal), out.outer.points, optsAsp('progressions')));
         out.title = TX.chartTypes.progressions + ' · ' + p.name;
@@ -330,19 +346,41 @@
     </form>`;
   }
 
-  /** «Что показывать» — карточкой рядом с таблицей аспектов (на «Карте» открыта сразу, в «Двух картах» — свёрнута). */
+  /**
+   * «Что показывать» — карточкой рядом с таблицей аспектов (на «Карте» открыта сразу, в «Двух картах» — свёрнута).
+   * Разделы (16.10, Алина): внутренний круг, внешний круг, аспекты к куспидам и сами аспекты — у каждого свои кнопки и быстрые наборы.
+   * Подписи кругов (натал / транзиты / соляр…) и неактивные кнопки ставит updatePanel → paintDisplay по расчёту карты.
+   */
   function displayBox(spec, slot, compact) {
-    const TX = UI.TX(), v = spec.view, pts = new Set(v.pts), asp = new Set(v.asp);
+    const TX = UI.TX(), v = spec.view;
     // на высоком экране — открыта сразу; на ноутбуке — строкой под таблицей аспектов (нажал — раскрылась), чтобы таблица влезла целиком
     const open = v.dispOpen != null ? v.dispOpen : !compact && window.innerHeight >= 980;
-    return `<details class="card pd-disp" data-disp="${slot}"${open ? ' open' : ''}><summary>${icon('filter', 'sm')} <b>${t('pro.display', 'Что показывать')}</b> <span class="tiny muted pd-hint">${t('pro.displayHint', 'точки, аспекты, орбисы, дома')}</span></summary><div class="stack pd-disp-b">
-      <span class="label">${t('pro.points', 'Точки')}</span>
-      <div class="toggles" role="group" aria-label="${t('pro.points', 'Точки')}">${ALL_PTS.map((id) => `<button class="tg ${['asc', 'mc'].includes(id) ? 't' : ''}" type="button" data-pt="${id}" aria-pressed="${pts.has(id)}" title="${esc(pName(id))}">${G[id]}</button>`).join('')}</div>
-      <span class="label">${t('pro.houses2', 'Куспиды домов — аспекты к ним')}</span>
-      <div class="toggles" role="group" aria-label="${t('pro.houses2', 'Куспиды домов — аспекты к ним')}">${CUSP_IDS.map((id) => `<button class="tg t" type="button" data-pt="${id}" aria-pressed="${pts.has(id)}" title="${esc(t('pro.cuspN', 'Куспид {n} дома', { n: id.slice(1) }))}">${CUSP_LBL[id]}</button>`).join('')}</div>
-      <span class="label">${t('pro.aspects', 'Аспекты')}</span>
-      <div class="toggles" role="group" aria-label="${t('pro.aspects', 'Аспекты')}">${MAJOR.concat(MINOR).map((a) => `<button class="tg" type="button" data-as="${a}" aria-pressed="${asp.has(a)}" title="${esc(TX.ASP[a] ? TX.ASP[a].name : root.NWheel.ASP_N[UI.lang()][a] || a)}">${AG[a]}</button>`).join('')}</div>
-      <div class="row pd-quick"><button class="btn sm" type="button" data-dq="major">${t('pro.qMajor', 'Только мажорные')}</button><button class="btn sm" type="button" data-dq="all">${t('pro.qAll', 'Все аспекты')}</button><button class="btn sm" type="button" data-dq="planets">${t('pro.qPl', 'Только планеты')}</button><button class="btn sm" type="button" data-dq="houses">${t('pro.qHouses', 'Все дома')}</button><button class="btn sm" type="button" data-dq="nohouses">${t('pro.qNoHouses', 'Без домов')}</button></div>
+    const aName = (a) => (TX.ASP[a] ? TX.ASP[a].name : root.NWheel.ASP_N[UI.lang()][a] || a);
+    const q = (k, label, title) => `<button class="pd-q" type="button" data-dq="${k}"${title ? ` title="${esc(title)}"` : ''}>${esc(label)}</button>`;
+    const ptBtns = (side, set) => ALL_PTS.map((id) => `<button class="tg ${['asc', 'mc'].includes(id) ? 't' : ''}" type="button" data-pt="${id}" data-side="${side}" aria-pressed="${set.includes(id)}" title="${esc(pName(id))}">${G[id]}</button>`).join('');
+    const head = (k, name, sub) => `<div class="pd-gh"><i class="pd-dot ${k}" aria-hidden="true"></i><span class="pd-gt"><b>${esc(name)}</b><span class="pd-gl" data-dlab="${k}">${sub ? esc(sub) : ''}</span></span><span class="pd-qs">`;
+    return `<details class="card pd-disp" data-disp="${slot}"${open ? ' open' : ''}><summary>${icon('filter', 'sm')} <b>${t('pro.display', 'Что показывать')}</b> <span class="tiny muted pd-hint">${t('pro.displayHint2', 'внутренний и внешний круг, куспиды, аспекты')}</span></summary><div class="stack pd-disp-b">
+      <section class="pd-grp in" data-dgrp="in" aria-label="${esc(t('pro.dIn', 'Внутренний круг'))}">
+        ${head('in', t('pro.dIn', 'Внутренний круг'))}${q('in:all', t('pro.qAllS', 'все'))}${q('in:planets', t('pro.qPlS', 'планеты'), t('pro.qPl', 'Только планеты'))}</span></div>
+        <div class="toggles" role="group" aria-label="${esc(t('pro.dIn', 'Внутренний круг'))}">${ptBtns('in', v.pts)}</div>
+      </section>
+      <section class="pd-grp out" data-dgrp="out" aria-label="${esc(t('pro.dOut', 'Внешний круг'))}">
+        ${head('out', t('pro.dOut', 'Внешний круг'))}${q('out:all', t('pro.qAllS', 'все'))}${q('out:planets', t('pro.qPlS', 'планеты'), t('pro.qPl', 'Только планеты'))}${q('out:same', t('pro.qSame', 'как внутри'), t('pro.qSameT', 'Те же точки, что во внутреннем круге'))}</span></div>
+        <div class="toggles" data-dbody="out" role="group" aria-label="${esc(t('pro.dOut', 'Внешний круг'))}">${ptBtns('out', v.ptsOut)}</div>
+        <p class="tiny muted pd-none" data-dnone="out" hidden>${t('pro.dOutNone', 'Сейчас карта одна. Наложить транзиты, соляр, дирекции или вторую карту — список во второй строке «Динамики» под колесом.')}</p>
+      </section>
+      <section class="pd-grp cu" data-dgrp="cu" aria-label="${esc(t('pro.dCu', 'Аспекты к куспидам'))}">
+        ${head('cu', t('pro.dCu', 'Аспекты к куспидам'))}${q('cu:all', t('pro.qAllS', 'все'), t('pro.qHouses', 'Все дома'))}${q('cu:none', t('pro.qNoneS', 'нет'), t('pro.qNoHouses', 'Без домов'))}</span></div>
+        <div data-dbody="cu" class="stack s6">
+          <div class="toggles" role="group" aria-label="${esc(t('pro.dCuH', 'Куспиды каких домов'))}">${CUSP_IDS.map((id) => `<button class="tg t" type="button" data-cu="${id}" aria-pressed="${v.cuspPts.includes(id)}" title="${esc(t('pro.cuspN', 'Куспид {n} дома', { n: id.slice(1) }))}">${CUSP_LBL[id]}</button>`).join('')}</div>
+          <div class="pd-sub"><span class="tiny muted">${t('pro.dCuA', 'аспекты к ним')}</span><div class="toggles" role="group" aria-label="${esc(t('pro.dCuA2', 'Аспекты к куспидам'))}">${MAJOR.map((a) => `<button class="tg" type="button" data-cas="${a}" aria-pressed="${v.cuspAsp.includes(a)}" title="${esc(aName(a))}">${AG[a]}</button>`).join('')}</div></div>
+        </div>
+        <p class="tiny muted pd-none" data-dnone="cu" hidden></p>
+      </section>
+      <section class="pd-grp asp" aria-label="${esc(t('pro.aspects', 'Аспекты'))}">
+        ${head('asp', t('pro.aspects', 'Аспекты'), t('pro.dAspSub', 'между планетами и точками'))}${q('asp:major', t('pro.qMajorS', 'мажорные'), t('pro.qMajor', 'Только мажорные'))}${q('asp:all', t('pro.qAllS', 'все'), t('pro.qAll', 'Все аспекты'))}</span></div>
+        <div class="toggles" role="group" aria-label="${esc(t('pro.aspects', 'Аспекты'))}">${MAJOR.concat(MINOR).map((a) => `<button class="tg" type="button" data-as="${a}" aria-pressed="${v.asp.includes(a)}" title="${esc(aName(a))}">${AG[a]}</button>`).join('')}</div>
+      </section>
       <div class="row"><div class="field" style="min-width:150px;flex:1"><label>${t('pro.orb', 'Орбисы')}: <b data-orbv>${Math.round(v.orb * 100)}%</b></label><input data-orb type="range" min="0.5" max="1.5" step="0.1" value="${v.orb}"></div>
         <div class="field" style="flex:1"><label>${t('pro.hs', 'Дома')}</label><select class="select" data-hs>${Object.entries(TX.houseSystems).map(([k, n]) => `<option value="${k}" ${v.hs === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div></div>
       <a class="tiny" href="#settings?orbs=1">${t('pro.orbTable', 'Орбисы по каждому аспекту — в Настройках')} →</a>
@@ -404,14 +442,44 @@
     </section>`;
   }
 
+  /**
+   * «Что показывать» по расчёту карты: подписи разделов (чем занят внутренний и внешний круг), каких точек в карте нет
+   * (кнопка неактивна), нет внешнего круга или домов — раздел свёрнут в одну строку с пояснением.
+   */
+  function paintDisplay(box, r, spec) {
+    const d = box.querySelector('.pd-disp'); if (!d) return;
+    const TX = UI.TX();
+    const inL = r.labels && r.labels.in ? r.labels.in : spec.a === 'moment' ? r.p.name : spec.type === 'natal' ? t('natal', 'натал') : String(TX.chartTypes[spec.type] || '').toLowerCase();
+    const setL = (k, s) => { const e = d.querySelector(`[data-dlab="${k}"]`); if (e) e.textContent = s || ''; };
+    const axisOff = (id) => r.cosmo && (id === 'asc' || id === 'mc');
+    const avail = (side, ids) => { const s = new Set(ids); d.querySelectorAll(`[data-pt][data-side="${side}"]`).forEach((b) => { b.disabled = !s.has(b.dataset.pt) || axisOff(b.dataset.pt); }); };
+    const grp = (k, on, note) => {
+      const g = d.querySelector(`[data-dgrp="${k}"]`); if (!g) return;
+      g.classList.toggle('off', !on);
+      const body = g.querySelector(`[data-dbody="${k}"]`), nn = g.querySelector(`[data-dnone="${k}"]`);
+      if (body) body.hidden = !on;
+      if (nn) { nn.hidden = on; if (note != null) nn.textContent = note; }
+    };
+    setL('in', inL);
+    avail('in', (r.innerChart && r.innerChart.points ? r.innerChart.points : []).map((x) => x.id));
+    setL('out', r.outer ? (r.labels && r.labels.out) || t('pro.outer', 'внешняя карта') : t('pro.dOutNo', 'нет'));
+    grp('out', !!r.outer);
+    if (r.outer) avail('out', r.outAvail || r.outer.points.map((x) => x.id));
+    // куспиды — всегда внутренней карты; в космограмме и в карте без домов их нет
+    const hasH = !r.cosmo && !!(r.innerChart && r.innerChart.houses);
+    setL('cu', hasH ? t('pro.dCuOf', 'дома: {x}', { x: inL }) : '');
+    grp('cu', hasH, r.cosmo ? t('pro.dCuCosmo', 'В космограмме домов нет — сними галочку «Космограмма» над колесом.') : t('pro.dCuNoH', 'В этой карте нет домов (время рождения неизвестно или это композит).'));
+  }
+
   /** Перерисовать живую часть панели (колесо, таблица, положения, строки динамики) — ползунки не трогаем. */
   function updatePanel(box, spec, slot, compact) {
     const q = (k) => box.querySelector(`[data-dyn="${k}"]`);
     let r;
     try { r = build(spec); } catch (e) { console.error(e); q('wheel').innerHTML = `<p class="err">${esc(t('pro.err', 'Не получилось посчитать'))}: ${esc(e.message)}</p>`; return null; }
-    const v = spec.view, pts = new Set(v.pts);
+    const v = spec.view, pts = new Set(v.pts), pCu = new Set(v.cuspPts);
     const ptIds = (c) => (c.points || []).filter((p) => pts.has(p.id) && !(r.cosmo && (p.id === 'asc' || p.id === 'mc'))).map((p) => p.id);
-    const cuIds = (c) => (!r.cosmo && c.houses ? cuspPts(c).map((x) => x.id).filter((id) => pts.has(id)) : []);
+    const cuIds = (c) => (!r.cosmo && c.houses ? cuspPts(c).map((x) => x.id).filter((id) => pCu.has(id)) : []);
+    paintDisplay(box, r, spec);
     const rowsIds = ptIds(r.innerChart).concat(cuIds(r.innerChart));
     const colIds = r.outer ? r.outer.points.map((p) => p.id) : rowsIds;
     // главный АС: внутренней карты (натал) или внешней — нажатие на свободное место внутри круга меняет их местами
@@ -421,7 +489,8 @@
     const rotNote = r.canRot ? t('pro.mainAsc', 'главный АС — {x}', { x: r.rotOut ? (r.labels && r.labels.out) || t('pro.outer', 'внешняя карта') : (r.labels && r.labels.in) || t('natal', 'натал') }) : '';
     const sub = [r.sub, r.cosmo ? t('pro.cosmoSub', 'космограмма — без домов') : rotNote].filter(Boolean).join(' · ');
     q('head').innerHTML = `<div class="ph-title"><h3 title="${esc(r.title)}">${esc(r.title)}</h3><span class="tiny muted"${r.canRot ? ` title="${esc(t('pro.rotHint', 'Нажми на свободное место внутри круга — главный АС поменяется'))}"` : ''}>${sub ? esc(sub) : '&nbsp;'}</span></div>`; // строка есть всегда — колёса двух карт на одном уровне
-    q('wheel').innerHTML = (r.error ? `<p class="err">${esc(r.error)}</p>` : '') + root.NWheel.svg(r.inner, { outer: r.outer, aspects: r.aspects.map((x) => Object.assign({}, x)), lang: UI.lang(), labels: r.labels, label: r.title, scale: WHEEL_SCALE, cosmo: r.cosmo, rot: r.rotOut ? oAsc : undefined });
+    // show — точки внутреннего круга из «Что показывать» (внешний круг уже отобран в build)
+    q('wheel').innerHTML = (r.error ? `<p class="err">${esc(r.error)}</p>` : '') + root.NWheel.svg(r.inner, { outer: r.outer, aspects: r.aspects.map((x) => Object.assign({}, x)), lang: UI.lang(), labels: r.labels, label: r.title, scale: WHEEL_SCALE, cosmo: r.cosmo, rot: r.rotOut ? oAsc : undefined, show: v.pts });
     q('info').innerHTML = r.info.length ? `<div class="facts" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">${r.info.map(([k, val]) => `<span class="chip static">${esc(k)}: <b>${esc(val)}</b></span>`).join('')}</div>` : '';
     // маленькие цифры у значков: у планет внутренней карты — какими её домами управляют; у внешней — в каком доме внутренней стоят (транзит — по какому идёт)
     const hc = r.cosmo ? null : r.innerChart.houses ? r.innerChart.houses.cusps : r.inner && r.inner.cusps ? r.inner.cusps : null;
@@ -443,7 +512,7 @@
     let gh = `<div class="row sb"><h3>${t('pro.grid', 'Таблица аспектов')}</h3><span class="tiny muted">${r.aspects.length} · ${t('pro.gridHint3', 'наведи — загорится на карте, нажми — что значит')}</span></div>${grid(rowsIds, colIds, r.aspects, !r.outer, nums)}`;
     if (r.own) {
       // аспекты внутри соляра / лунара — отдельной таблицей под основной (всё, что есть в карте возвращения)
-      const oc = r.own.chart, oIds = ptIds(oc).concat(cuIds(oc)), oh = oc.houses ? oc.houses.cusps : null;
+      const oc = r.own.chart, oIds = r.own.ids, oh = oc.houses ? oc.houses.cusps : null;
       gh += `<div class="row sb pro-own-h"><h3>${esc(r.own.title)}</h3><span class="tiny muted">${r.own.aspects.length}</span></div>${grid(oIds, oIds, r.own.aspects, true, oh && !r.cosmo ? { row: rules(oh), col: rules(oh), rowNote: (n) => t('pro.numRule', 'управляет домом: {n}', { n }), colNote: (n) => t('pro.numRule', 'управляет домом: {n}', { n }) } : null, true)}`;
     }
     if (legend) gh += `<p class="tiny muted pro-numleg">${esc(legend)}</p>`;
@@ -665,20 +734,22 @@
     // что показывать — своё у каждой панели
     const v = spec.view;
     const toggle = (arr, id) => { const i = arr.indexOf(id); if (i >= 0) arr.splice(i, 1); else arr.push(id); };
-    box.querySelectorAll('[data-pt]').forEach((b) => b.addEventListener('click', () => { toggle(v.pts, b.dataset.pt); b.setAttribute('aria-pressed', String(v.pts.includes(b.dataset.pt))); live(); fit(); }));
-    box.querySelectorAll('[data-as]').forEach((b) => b.addEventListener('click', () => { toggle(v.asp, b.dataset.as); b.setAttribute('aria-pressed', String(v.asp.includes(b.dataset.as))); live(); }));
+    // у каждой кнопки свой список: точки внутреннего / внешнего круга, куспиды, аспекты к куспидам, аспекты
+    const disp = box.querySelector('.pd-disp');
+    const TGS = '[data-pt], [data-cu], [data-cas], [data-as]';
+    const listOf = (b) => (b.dataset.cu ? v.cuspPts : b.dataset.cas ? v.cuspAsp : b.dataset.as ? v.asp : b.dataset.side === 'out' ? v.ptsOut : v.pts);
+    const idOf = (b) => b.dataset.cu || b.dataset.cas || b.dataset.as || b.dataset.pt;
+    const paint = () => disp.querySelectorAll(TGS).forEach((b) => b.setAttribute('aria-pressed', String(listOf(b).includes(idOf(b)))));
+    disp.querySelectorAll(TGS).forEach((b) => b.addEventListener('click', () => { toggle(listOf(b), idOf(b)); b.setAttribute('aria-pressed', String(listOf(b).includes(idOf(b)))); live(); fit(); }));
     const orb = box.querySelector('[data-orb]'); if (orb) { orb.addEventListener('input', () => { box.querySelector('[data-orbv]').textContent = Math.round(orb.value * 100) + '%'; v.orb = +orb.value; live(); }); }
     const hsS = box.querySelector('[data-hs]'); if (hsS) hsS.addEventListener('change', () => { v.hs = hsS.value; live(); });
-    const paint = () => { box.querySelectorAll('[data-pt]').forEach((b) => b.setAttribute('aria-pressed', String(v.pts.includes(b.dataset.pt)))); box.querySelectorAll('[data-as]').forEach((b) => b.setAttribute('aria-pressed', String(v.asp.includes(b.dataset.as)))); };
-    box.querySelectorAll('[data-dq]').forEach((b) => b.addEventListener('click', () => {
-      const q = b.dataset.dq;
-      if (q === 'major') v.asp = MAJOR.slice();
-      else if (q === 'all') v.asp = MAJOR.concat(MINOR);
-      else if (q === 'planets') v.pts = ALL_PTS.filter((x) => !['node', 'chiron', 'lilith', 'fortune', 'asc', 'mc'].includes(x));
-      else if (q === 'houses') v.pts = v.pts.filter((x) => !isCusp(x)).concat(CUSP_IDS);
-      else if (q === 'nohouses') v.pts = v.pts.filter((x) => !isCusp(x));
-      paint(); live(); fit();
-    }));
+    const QUICK = {
+      'in:all': () => { v.pts = ALL_PTS.slice(); }, 'in:planets': () => { v.pts = PLANETS10.slice(); },
+      'out:all': () => { v.ptsOut = ALL_PTS.slice(); }, 'out:planets': () => { v.ptsOut = PLANETS10.slice(); }, 'out:same': () => { v.ptsOut = v.pts.slice(); },
+      'cu:all': () => { v.cuspPts = CUSP_IDS.slice(); if (!v.cuspAsp.length) v.cuspAsp = MAJOR.slice(); }, 'cu:none': () => { v.cuspPts = []; },
+      'asp:major': () => { v.asp = MAJOR.slice(); }, 'asp:all': () => { v.asp = MAJOR.concat(MINOR); },
+    };
+    disp.querySelectorAll('[data-dq]').forEach((b) => b.addEventListener('click', () => { const f = QUICK[b.dataset.dq]; if (!f) return; f(); paint(); live(); fit(); }));
     const dispD = box.querySelector('[data-disp]'); if (dispD) dispD.addEventListener('toggle', () => { v.dispOpen = dispD.open; fit(); });
     // пробное время: вернуть / сохранить
     box.addEventListener('click', (e) => {

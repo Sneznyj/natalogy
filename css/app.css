@@ -880,40 +880,116 @@ a.more{text-decoration:none}
 .fd-bar i{font-size:calc(14px*var(--fz));cursor:pointer;transition:filter .15s}
 .fd-bar i:hover{filter:brightness(1.12)}
 .fd-bar i.cur{box-shadow:inset 0 0 0 2.5px #fff,0 0 0 2px var(--ink);z-index:1}
-.fd-list{display:grid;gap:8px}
-.fd-per{border:1px solid var(--line);border-radius:16px;background:var(--surface);scroll-margin-top:130px;overflow:hidden}
-.fd-per.cur{border-color:var(--lav);box-shadow:0 0 0 1.5px var(--lav)}
-.fd-per > summary{list-style:none;display:grid;grid-template-columns:40px minmax(0,1fr) auto auto 22px;gap:12px;align-items:center;padding:10px 14px;cursor:pointer}
-.fd-per > summary::-webkit-details-marker{display:none}
-.fd-per > summary:hover{background:var(--lav-soft)}
+/* Фирдарии — схема на один экран (16.10, Алина): строки — большие периоды, в строке — их подпериоды; годовые — полосой внизу.
+   Прошлое приглушено, сейчас — подсвечено (период — сиреневым, подпериод — золотым). Не влезает по высоте — fdFit: .tight / .tight2 */
+.fd-scheme{display:grid;gap:8px;padding:14px 16px;container:fdscheme / inline-size}
+.fds-top{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px}
+.fds-top .fd-nodes{align-self:center;margin:0}
+.fds-bars{position:relative;display:grid;gap:4px}
+.fds-bars .fd-bar{height:calc(24px*var(--fz))}
+.fds-bars .fd-bar2{height:calc(18px*var(--fz))}
+.fds-bars .fd-bar2 i{font-size:calc(11px*var(--fz));cursor:pointer}
+.fds-nowl{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--ink);box-shadow:0 0 0 1.5px var(--surface);z-index:2}
+.fds-ticks{position:relative;height:calc(13px*var(--fz));margin-top:-3px;font:600 calc(10.5px*var(--fz))/1 var(--f-mono);color:var(--muted)}
+.fds-ticks span{position:absolute;top:0;transform:translateX(-50%)}
+.fds-ticks span:first-child{transform:none}
+.fds-ticks span:last-child{transform:translateX(-100%)}
+.fds-grid{display:grid;gap:4px}
+.fds-r,.fds-year{display:grid;grid-template-columns:calc(212px*var(--fz)) minmax(0,1fr);gap:4px;align-items:stretch}
+.fds-h{appearance:none;font:inherit;color:var(--ink);text-align:left;cursor:pointer;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:8px;align-items:center;padding:3px 8px 3px 3px;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-width:0}
+.fds-h .fd-sw{width:calc(32px*var(--fz));height:calc(32px*var(--fz));border-radius:8px;font-size:calc(17px*var(--fz));background:var(--fc);grid-row:1 / span 2}
+.fds-hn{display:flex;align-items:baseline;gap:6px;min-width:0}
+.fds-hn b{font-size:calc(13.5px*var(--fz));line-height:1.2;white-space:nowrap}
+.fds-hn small{font-size:calc(11.5px*var(--fz));color:var(--muted);white-space:nowrap}
+.fds-hd{font-size:calc(10.5px*var(--fz));line-height:1.25;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fds-subs{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;min-width:0}
+.fds-c{appearance:none;font:inherit;color:var(--ink);text-align:left;cursor:pointer;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:6px;align-items:center;padding:3px 6px 3px 3px;border:1px solid var(--line-soft);border-radius:9px;background:var(--surface);min-width:0}
+.fds-c .g{grid-row:1 / span 2;width:calc(24px*var(--fz));height:calc(24px*var(--fz));border-radius:7px;display:grid;place-items:center;background:var(--fc);color:#fff;font:400 calc(14px*var(--fz))/1 var(--f-glyph)}
+.fds-cn{font:700 calc(12.5px*var(--fz))/1.2 var(--f-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.fds-cd{font-size:calc(10.5px*var(--fz));line-height:1.25;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.fds-c:hover,.fds-h:hover{background:var(--lav-soft);border-color:var(--lav)}
+.fds-c:focus-visible,.fds-h:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
+.fds-r.past .fds-h,.fds-c.past,.fds-y.past{opacity:.5}
+.fds-r.past .fds-h:hover,.fds-c.past:hover{opacity:1}
+.fds-r.cur .fds-h{border-color:var(--lav);box-shadow:0 0 0 1.5px var(--lav);background:var(--lav-soft)}
+.fds-c.cur,.fds-y.cur{border-color:var(--gold-2);box-shadow:0 0 0 1.5px var(--gold-2);background:var(--gold-soft)}
+.fds-none{grid-column:1 / -1;align-self:center;padding:0 8px;font-size:calc(12px*var(--fz));line-height:1.3;color:var(--muted)}
+.fds-year{align-items:center;padding-top:6px;border-top:1px solid var(--line-soft)}
+.fds-yl{display:grid;font:700 calc(12.5px*var(--fz))/1.25 var(--f-ui);cursor:help;padding-left:3px}
+.fds-yl small{font-weight:500;font-size:calc(10.5px*var(--fz));color:var(--muted)}
+.fds-ys{display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(66px*var(--fz)),1fr));gap:4px;min-width:0}
+.fds-y{display:flex;align-items:center;gap:4px;min-width:0;padding:2px 4px 2px 2px;border:1px solid var(--line-soft);border-radius:8px;background:var(--surface);cursor:help}
+.fds-y .g{flex:none;width:calc(20px*var(--fz));height:calc(20px*var(--fz));border-radius:6px;display:grid;place-items:center;background:var(--fc);color:#fff;font:400 calc(12px*var(--fz))/1 var(--f-glyph)}
+.fds-y .mono{font-size:calc(10px*var(--fz));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.fds-hint{margin:0}
+/* не влезает по высоте (fdFit): .tight — строки плотнее; .tight2 — без второй полосы и подсказки; .tight3 — подпериоды без названий, шапка периода уже */
+.fd-scheme.tight{gap:5px;padding-top:10px;padding-bottom:10px}
+.fd-scheme.tight .fds-grid{gap:3px}
+.fd-scheme.tight .fds-c{padding:2px 5px 2px 2px;column-gap:5px}
+.fd-scheme.tight .fds-c .g{width:calc(20px*var(--fz));height:calc(20px*var(--fz));border-radius:6px;font-size:calc(12.5px*var(--fz))}
+.fd-scheme.tight .fds-cn{font-size:calc(12px*var(--fz));line-height:1.1}
+.fd-scheme.tight .fds-cd,.fd-scheme.tight .fds-hd{line-height:1.1}
+.fd-scheme.tight .fds-h{padding-top:2px;padding-bottom:2px}
+.fd-scheme.tight .fds-h .fd-sw{width:calc(26px*var(--fz));height:calc(26px*var(--fz));font-size:calc(15px*var(--fz))}
+.fd-scheme.tight .fds-hn b{font-size:calc(13px*var(--fz));line-height:1.1}
+.fd-scheme.tight2 .fd-bar2,.fd-scheme.tight2 .fds-hint{display:none}
+.fd-scheme.tight3 .fds-cn,.fd-scheme.tight3 .fds-hd{display:none}
+.fd-scheme.tight3 .fds-c{grid-template-rows:auto}
+.fd-scheme.tight3 .fds-c .g{grid-row:auto}
+.fd-scheme.tight3 .fds-r,.fd-scheme.tight3 .fds-year{grid-template-columns:calc(150px*var(--fz)) minmax(0,1fr)}
+/* .narrow (fdFit: дата в клетке не помещается) — значок и название сверху, дата во всю ширину под ними; у шапки периода — без дат */
+.fd-scheme.narrow .fds-r,.fd-scheme.narrow .fds-year{grid-template-columns:calc(168px*var(--fz)) minmax(0,1fr)}
+.fd-scheme.narrow .fds-hd{display:none}
+.fd-scheme.narrow .fds-hn{flex-wrap:wrap;row-gap:0}
+.fd-scheme.narrow .fds-c{row-gap:1px}
+.fd-scheme.narrow .fds-c .g{grid-row:1;width:calc(18px*var(--fz));height:calc(18px*var(--fz));border-radius:5px;font-size:calc(11.5px*var(--fz))}
+.fd-scheme.narrow .fds-cd{grid-column:1 / -1}
+/* .narrow-h — шапка периода сжата до значка и возраста (название — в подсказке и в окне), годовые — подписью над полосой */
+.fd-scheme.narrow-h .fds-r{grid-template-columns:calc(56px*var(--fz)) minmax(0,1fr)}
+.fd-scheme.narrow-h .fds-year{grid-template-columns:minmax(0,1fr)}
+.fd-scheme.narrow-h .fds-yl{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 8px}
+.fd-scheme.narrow-h .fds-h{grid-template-columns:minmax(0,1fr);justify-items:center;row-gap:1px;padding:2px}
+.fd-scheme.narrow-h .fds-h .fd-sw{grid-row:auto;width:calc(20px*var(--fz));height:calc(20px*var(--fz));border-radius:6px;font-size:calc(12.5px*var(--fz))}
+.fd-scheme.narrow-h .fds-hn b{display:none}
+.fd-scheme.narrow-h .fds-hn small{font-size:calc(9.5px*var(--fz));line-height:1.1}
+.fd-scheme.narrow-h .fds-ys{grid-template-columns:repeat(auto-fit,minmax(calc(44px*var(--fz)),1fr))}
+.fd-scheme.narrow-h .fds-y{flex-direction:column;gap:1px;padding:2px}
+.fd-scheme.narrow-h .fds-none,.fd-scheme.tight .fds-none{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* .narrow-y — год двумя цифрами */
+.fds-cd .ds,.fd-scheme.narrow-y .fds-cd .dl{display:none}
+.fd-scheme.narrow-y .fds-cd .ds{display:inline}
+/* .noname — плитка «значок сверху, дата под ним» без названия */
+.fd-scheme.noname .fds-cn{display:none}
+.fd-scheme.noname .fds-c{grid-template-columns:minmax(0,1fr);justify-items:center}
+.fd-scheme.noname .fds-c .g{grid-row:auto;width:calc(18px*var(--fz));height:calc(18px*var(--fz));border-radius:5px;font-size:calc(11.5px*var(--fz))}
+.fd-scheme.noname .fds-c{padding:2px;row-gap:1px}
+.fd-scheme.noname .fds-cd{grid-column:auto;text-align:center;max-width:100%}
+/* телефон (или .narrow-s на узкой карточке): шапка периода над подпериодами, подпериоды в 4 колонки */
+.fd-scheme.narrow-s .fds-r,.fd-scheme.narrow-s .fds-year{grid-template-columns:minmax(0,1fr)}
+.fd-scheme.narrow-s .fds-h{grid-template-columns:auto minmax(0,1fr);justify-items:stretch}
+.fd-scheme.narrow-s .fds-h .fd-sw{grid-row:1 / span 2;width:calc(32px*var(--fz));height:calc(32px*var(--fz))}
+.fd-scheme.narrow-s .fds-hn b,.fd-scheme.narrow-s .fds-hd{display:block}
+.fd-scheme.narrow-s .fds-subs{grid-template-columns:repeat(4,minmax(0,1fr))}
+.fd-scheme.narrow-s .fds-r{gap:3px;margin-bottom:4px}
+@container fdscheme (max-width:620px){.fds-r,.fds-year,.fd-scheme.tight3 .fds-r,.fd-scheme.tight3 .fds-year,.fd-scheme.narrow .fds-r,.fd-scheme.narrow .fds-year{grid-template-columns:minmax(0,1fr)}.fds-hd,.fd-scheme.narrow .fds-hd{display:block}.fds-subs{grid-template-columns:repeat(4,minmax(0,1fr))}.fds-r{gap:3px;margin-bottom:4px}.fds-ticks [data-a="70"]{display:none}.fds-bars .fd-bar2 i{font-size:0}}
 .fd-sw{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;font:400 calc(20px*var(--fz)) var(--f-glyph)}
-.fd-n{display:grid;min-width:0}
-.fd-n b{font-size:calc(15px*var(--fz));line-height:1.3}
-.fd-n small,.fd-sn small{font-size:calc(12.5px*var(--fz));color:var(--muted)}
-.fd-dt{white-space:nowrap}
-.fd-chev{color:var(--lav-strong);transition:transform .2s}
-.fd-per[open] .fd-chev{transform:rotate(180deg)}
-.fd-body{display:grid;gap:10px;padding:4px 14px 14px}
-.fd-body > p{font-size:calc(14.5px*var(--fz))}
-.fd-subs{display:grid;gap:5px}
-.fd-sub{border:1px solid var(--line-soft);border-radius:12px;background:var(--surface-2)}
-.fd-sub > summary{list-style:none;display:grid;grid-template-columns:62px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:8px 12px;cursor:pointer}
-.fd-sub > summary::-webkit-details-marker{display:none}
-.fd-sub > summary:hover{background:var(--lav-soft);border-radius:12px}
-.fd-sub.cur{border-color:var(--gold-2);background:var(--gold-soft)}
-.fd-gl{font-size:calc(17px*var(--fz));color:var(--lav-strong)}
 .fd-sn{display:grid;min-width:0;font-weight:700;font-size:calc(14px*var(--fz))}
-.fd-sbody{padding:0 12px 12px 84px;display:grid;gap:6px;font-size:calc(14px*var(--fz))}
-.fd-now .fd-body{padding:0}
-.fd-now .fd-body > p{color:var(--night-ink)}
+.fd-sn small{font-size:calc(12.5px*var(--fz));color:var(--muted);font-weight:500}
+.fd-dt{white-space:nowrap}
+/* «Сейчас» под схемой: слева период, справа текущий подпериод */
+.fd-now-g{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:18px;align-items:start}
+.fd-now-g > .stack > p,.fd-now-g h3{color:var(--night-ink)}
+@media (max-width:900px){.fd-now-g{grid-template-columns:minmax(0,1fr)}}
 .fd-now .muted,.fd-now .label{color:var(--night-muted)}
-.fd-now .fd-sub{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);color:var(--night-ink)}
-.fd-now .fd-sub.cur{background:rgba(233,196,106,.16);border-color:rgba(233,196,106,.6)}
-.fd-now .fd-sub > summary:hover{background:rgba(255,255,255,.08)}
-.fd-now .fd-gl{color:#F6D98E}
-.fd-now .fd-sn small{color:var(--night-muted)}
 .fd-now .tag.acc{background:rgba(255,255,255,.16);color:#fff}
-@media (max-width:640px){.fd-per > summary{grid-template-columns:36px minmax(0,1fr) 20px}.fd-per > summary .fd-dt,.fd-per > summary .tag{grid-column:2}.fd-sub > summary{grid-template-columns:52px minmax(0,1fr)}.fd-sub > summary .fd-dt,.fd-sub > summary .tag{grid-column:2}.fd-sbody{padding-left:12px}}
+/* окно периода: подпериоды списком */
+.fd-plist{display:grid;gap:5px}
+.fd-pli{appearance:none;font:inherit;color:var(--ink);text-align:left;cursor:pointer;display:grid;grid-template-columns:calc(58px*var(--fz)) minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:7px 12px;border:1px solid var(--line-soft);border-radius:12px;background:var(--surface-2)}
+.fd-pli .g{font-size:calc(16px*var(--fz));color:var(--lav-strong)}
+.fd-pli:hover{background:var(--lav-soft);border-color:var(--lav)}
+.fd-pli.cur{border-color:var(--gold-2);background:var(--gold-soft)}
+.fd-pli.past{opacity:.7}
+@media (max-width:640px){.fd-pli{grid-template-columns:calc(50px*var(--fz)) minmax(0,1fr)}.fd-pli .fd-dt,.fd-pli .tag{grid-column:2}}
 /* астрокарта: обычная карта мира */
 .acg-map{height:clamp(360px,58vh,600px);background:var(--surface-2);border:1px solid var(--line);isolation:isolate;z-index:0}
 .acg-map > svg{height:100%;width:100%}
@@ -1280,8 +1356,32 @@ body.scrubbing,body.scrubbing *{cursor:grabbing!important;user-select:none}
 .pd-disp .toggles{gap:5px}
 .pd-disp .toggles .tg{min-width:calc(34px*var(--fz));min-height:calc(32px*var(--fz));padding:2px 6px;font-size:calc(15px*var(--fz))}
 .pd-disp .toggles .tg.t{font-size:calc(12.5px*var(--fz))}
-.pd-quick .btn.sm{min-height:32px;padding:4px 10px;font-size:calc(12.5px*var(--fz))}
-.pd-quick{gap:6px}
+/* «Что показывать» по разделам (16.10, Алина): внутренний круг — сиреневая метка (как круг натала на колесе),
+   внешний — фиолетовая обводка (как его куспиды), куспиды — графитовая; у каждого раздела свои быстрые наборы справа */
+.pd-grp{display:grid;gap:7px;padding:9px 10px 10px;border:1px solid var(--line-soft);border-radius:12px;background:var(--surface-2);min-width:0}
+.pd-gh{display:flex;align-items:flex-start;gap:6px;min-width:0}
+.pd-gt{display:grid;flex:1 0 auto;max-width:100%}
+.pd-gh b{font:700 calc(13.5px*var(--fz))/1.25 var(--f-ui);color:var(--ink);white-space:nowrap}
+.pd-gl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:calc(12px*var(--fz));line-height:1.25;color:var(--muted)}
+.pd-gl:empty{display:none}
+.pd-qs{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:1px;flex:0 1 auto;min-width:0}
+.pd-gh .pd-dot{margin-top:calc(2.5px*var(--fz))}
+/* кнопки разделов — сеткой: в колонке справа по 8 в ряд (16 точек — две строки) */
+.pd-grp .toggles{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(30px*var(--fz)),1fr));gap:4px}
+.pd-disp .pd-grp .toggles .tg{min-width:0;min-height:calc(30px*var(--fz));padding:0 2px;border-radius:8px}
+.pd-sub .toggles{flex:1;min-width:calc(170px*var(--fz))}
+.pd-q{appearance:none;border:0;background:none;padding:3px 6px;border-radius:7px;font:700 calc(12px*var(--fz))/1.2 var(--f-ui);color:var(--lav-strong);cursor:pointer;white-space:nowrap}
+.pd-q:hover{background:var(--lav-soft)}
+.pd-q:focus-visible{outline:2px solid var(--lav);outline-offset:1px}
+.pd-dot{width:13px;height:13px;border-radius:50%;flex:none}
+.pd-dot.in{background:var(--w-ring-in);box-shadow:inset 0 0 0 2px var(--w-ring-line)}
+.pd-dot.out{background:var(--w-paper);box-shadow:inset 0 0 0 2px var(--w-cusp2)}
+.pd-dot.cu{background:var(--w-paper);box-shadow:inset 0 0 0 2px var(--w-cusp)}
+.pd-dot.asp{display:none}
+.pd-grp.off .pd-qs{display:none}
+.pd-grp .pd-none{margin:0;line-height:1.4}
+.pd-sub{display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap}
+.pd-disp .tg:disabled{opacity:.3;cursor:not-allowed}
 /* Карта: колесо и динамика под ним — слева, таблица аспектов и «Что показывать» — справа; всё видно разом */
 .pro-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(calc(300px*var(--fz)),clamp(330px,32%,calc(470px*var(--fz))));gap:16px;align-items:start}
 .pro-main .pro-wheel{gap:8px;padding:12px 14px}
@@ -1365,20 +1465,14 @@ body.scrubbing,body.scrubbing *{cursor:grabbing!important;user-select:none}
 
 /* ===== 14.10: фирдарии — все подпериоды ===== */
 .fd-bar2{height:24px}
-.fd-bar2 i{font-size:calc(11.5px*var(--fz));cursor:help}
+.fd-bar2 i{font-size:calc(11.5px*var(--fz))}
 .fd-nodes{font-size:calc(13.5px*var(--fz))}
 .fd-s3{display:grid;gap:3px}
 .fd-s3r{display:grid;grid-template-columns:calc(78px*var(--fz)) minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:5px 9px;border-radius:9px;font-size:calc(13px*var(--fz));background:var(--surface)}
 .fd-s3r .g{font-size:calc(14px*var(--fz));color:var(--lav-strong)}
 .fd-s3r .mono{font-size:calc(12px*var(--fz));white-space:nowrap}
 .fd-s3r.cur{background:var(--gold-soft);box-shadow:inset 0 0 0 1.5px var(--gold-2)}
-.fd-now .fd-s3r{background:rgba(255,255,255,.05)}
-.fd-now .fd-s3r.cur{background:rgba(233,196,106,.16)}
-.fd-now .fd-s3r .g{color:#F6D98E}
-.fd-alltbl > summary{cursor:pointer;list-style:none}
-.fd-alltbl > summary::-webkit-details-marker{display:none}
-.fd-alltbl tr.fd-first td{border-top:2px solid var(--line-strong)}
-@media (max-width:640px){.fd-sbody{padding:0 10px 10px}.fd-s3r{grid-template-columns:auto minmax(0,1fr);}.fd-s3r .mono{grid-column:1 / -1}}
+@media (max-width:640px){.fd-s3r{grid-template-columns:auto minmax(0,1fr)}.fd-s3r .mono{grid-column:1 / -1}}
 
 /* ===== 14.10: транзиты — дома в скобках ===== */
 .tr-hl{display:block;margin-top:3px;font-size:calc(12.5px*var(--fz));color:var(--ink);font-family:var(--f-ui)}

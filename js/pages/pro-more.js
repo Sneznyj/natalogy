@@ -37,10 +37,36 @@
     root.NDisp.bind(body.querySelector('[data-disp-box]'), c);
   }
 
-  // ---------- Фирдарии: каждый большой период раскрывается, внутри — подпериоды с расшифровкой ----------
+  // ---------- Фирдарии ----------
+  // Схема на один экран (16.10, Алина): строки — большие периоды, в строке — их подпериоды (с датой начала), годовые — полосой внизу;
+  // прошлое приглушено, сейчас — подсвечено. Нажатие на период или подпериод — окно с расшифровкой, ←/→ — соседние.
   const FIRD_COL = { sun: '#E08A1E', moon: '#7C7AB0', mercury: '#2E9C86', venus: '#C9567F', mars: '#D23B33', jupiter: '#2F6FD6', saturn: '#7E6431', node: '#6B52C8', southNode: '#545266' };
   const FG = { southNode: '☋', node: '☊' };
-  const fdOpen = { major: null, nodeSubs: false };
+  const fdOpen = { nodeSubs: false };
+  let fdFitBound = false;
+  /**
+   * Схема по окну. Дата в клетке подпериода не помещается по ширине — по шагам: .narrow (дата под значком во всю ширину клетки),
+   * .narrow-h (шапка периода — только значок и возраст), .narrow-y (год двумя цифрами), .narrow-s (шапка над подпериодами, 4 колонки —
+   * как на телефоне); названия подпериодов обрезаны до пары букв — .noname (плитка «значок + дата»).
+   * Не влезает по высоте под шапку и вкладки — строки плотнее, потом без второй полосы и подсказки, потом подпериоды без названий.
+   */
+  function fdFit(body, scroll) {
+    const sc = body.querySelector('[data-fdscheme]'); if (!sc) return;
+    sc.classList.remove('narrow', 'narrow-h', 'narrow-y', 'narrow-s', 'noname', 'tight', 'tight2', 'tight3');
+    const cut = () => [...sc.querySelectorAll('.fds-cd')].some((e) => e.scrollWidth > e.clientWidth + 1);
+    const r0 = sc.querySelector('.fds-r');
+    const stacked = () => !r0 || getComputedStyle(r0).gridTemplateColumns.trim().split(/\s+/).length < 2; // телефон: шапка уже над подпериодами
+    for (const k of ['narrow', 'narrow-h', 'narrow-y', 'narrow-s']) if (cut() && !((k === 'narrow-h' || k === 'narrow-s') && stacked())) sc.classList.add(k);
+    const cn = [...sc.querySelectorAll('.fds-cn')].find((e) => e.offsetParent);
+    if (cn && cn.clientWidth < 4 * parseFloat(getComputedStyle(cn).fontSize)) sc.classList.add('noname');
+    if (window.innerWidth < 700) return;
+    const stick = Math.max(0, ...[...document.querySelectorAll('.top, .pro-tabs')].map((e) => { const cs = getComputedStyle(e); return cs.position === 'sticky' ? (parseFloat(cs.top) || 0) + e.offsetHeight : 0; }));
+    const avail = window.innerHeight - stick - 14;
+    for (const k of ['tight', 'tight2', 'tight3']) if (sc.offsetHeight > avail) sc.classList.add(k);
+    // при открытии — схема целиком под шапкой и вкладками (как карта на вкладке «Карта»)
+    const r = sc.getBoundingClientRect();
+    if (scroll && (r.bottom > window.innerHeight - 6 || r.top < stick)) window.scrollTo({ top: window.scrollY + r.top - stick - 8, behavior: 'auto' });
+  }
   function firdaria(body, p, ctx) {
     const c = UI.chartOf(p), TX = UI.TX(), G = Object.assign({}, ctx.G, FG);
     const now = new Date(), tz = p.place.tz;
@@ -52,6 +78,8 @@
     const curSub = cur && cur.subs ? cur.subs.find((x) => x.current) : null;
     const dm = (d) => UI.fmtDay(d, tz, { year: 'numeric' });
     const age = (d) => Math.max(0, Math.round((d - c.date) / YEAR));
+    const ageF = (d) => Math.max(0, (d - c.date) / YEAR).toFixed(1).replace('.', UI.lang() === 'en' ? '.' : ',');
+    const past = (x) => x.end <= now;
     const pnm = (id) => (id === 'southNode' ? t('fd.sn', 'Южный узел') : ctx.pName(id));
     // годовые фирдарии: солнечный год делится между управителями пропорционально большим периодам, начиная с текущего управителя
     const yearStart = (() => { const sr = AC.solarReturn(c, now.getUTCFullYear(), { lat: c.params.lat, lon: c.params.lon, zone: c.params.zone }); return sr.returnDate > now ? AC.solarReturn(c, now.getUTCFullYear() - 1, { lat: c.params.lat, lon: c.params.lon, zone: c.params.zone }).returnDate : sr.returnDate; })();
@@ -84,30 +112,72 @@
       return x;
     };
     const doAvoid = (id) => { const F = XF(); return F.do && F.do[id] ? `<div class="fd-da"><span class="tag ok">✓ ${esc(F.doL)}: ${esc(F.do[id])}</span><span class="tag bad">✕ ${esc(F.avoidL)}: ${esc(F.avoid[id])}</span></div>` : ''; };
-    const subRow = (maj, s) => `<details class="fd-sub${s.current ? ' cur' : ''}"${s.current ? ' open' : ''}><summary><span class="g fd-gl">${G[maj.id]}/${G[s.id]}</span><span class="fd-sn">${esc(pnm(s.id))}<small>${esc(TX.firdarSub[s.id] || '')}</small></span><span class="mono fd-dt">${dm(s.start)} — ${dm(s.end)}</span>${s.current ? `<span class="tag acc">${t('f.nowS', 'сейчас')}</span>` : ''}</summary>
-        <div class="fd-sbody"><p>${esc(subText(maj, s))}</p>${personal(s.id) ? `<p class="small fd-pers">${esc(personal(s.id))}</p>` : ''}${doAvoid(s.id)}
-          ${s.subs2 ? `<span class="label">${t('fd.subs2', 'Под-подпериоды (третий уровень)')}</span><div class="fd-s3">${s.subs2.map((z) => `<div class="fd-s3r${z.current ? ' cur' : ''}"><span class="g">${G[maj.id]}/${G[s.id]}/${G[z.id]}</span><span>${esc(pnm(z.id))}</span><span class="mono">${dm(z.start)} — ${dm(z.end)}</span>${z.current ? `<span class="tag acc">${t('f.nowS', 'сейчас')}</span>` : '<span></span>'}</div>`).join('')}</div>` : ''}</div></details>`;
-    const majorBody = (x) => `<div class="fd-body"><p>${esc(TX.firdarLong[x.id] || '')}</p>${natalNote(x.id) ? `<p class="small muted">${esc(t('fd.ruler', 'Управитель периода в твоей карте: {x}', { x: natalNote(x.id) }))}</p>` : ''}
-      ${x.subs.length ? `<span class="label">${t('fd.subs', 'Подпериоды — нажми, чтобы раскрыть')}${x.subs[0].nodeSub ? ' · ' + t('fd.nodeSubsL', 'узлы поделены на 7 (современный вариант)') : ''}</span><div class="fd-subs">${x.subs.map((s) => subRow(x, s)).join('')}</div>` : `<p class="tiny muted">${t('fd.noSubs2', 'В классике у периодов узлов подпериодов нет. Включи «Делить узлы на подпериоды» вверху — и они появятся.')}</p>`}</div>`;
-    const bar = (list, from, len, click) => `<div class="fd-bar">${list.map((x, i) => { const l = (x.start - from) / len * 100, w = (x.end - x.start) / len * 100; return `<i class="${x.current ? 'cur' : ''}" ${click ? `data-fdgo="${i}" role="button" tabindex="0"` : ''} style="left:${l}%;width:${w}%;background:${FIRD_COL[x.id]}" data-tip="${esc((TX.firdar[x.id] || '') + '\n' + dm(x.start) + ' — ' + dm(x.end))}">${w > 3 ? G[x.id] : ''}</i>`; }).join('')}</div>`;
-    const majors = big.map((x, i) => `<details class="fd-per${x.current ? ' cur' : ''}" data-fdi="${i}"${(fdOpen.major == null ? x.current : fdOpen.major === i) ? ' open' : ''}><summary><span class="fd-sw" style="background:${FIRD_COL[x.id]}">${G[x.id]}</span><span class="fd-n"><b>${esc(TX.firdar[x.id] || pnm(x.id))}</b><small>${t('fd.ages2', 'возраст {a}–{b}', { a: age(x.start), b: age(x.end) })}</small></span><span class="mono fd-dt">${dm(x.start)} — ${dm(x.end)}</span>${x.current ? `<span class="tag acc">${t('f.nowS', 'сейчас')}</span>` : ''}<span class="fd-chev">${icon('down', 'sm')}</span></summary>${majorBody(x)}</details>`).join('');
-    body.innerHTML = `<div class="card stack"><h3>${t('f.big', 'Большие фирдарии — 75 лет')}</h3><p class="tiny muted">${f.unknownTime ? t('f.unknown', 'Время рождения неизвестно: порядок взят как для дневной карты.') : f.day ? t('f.day', 'Дневная карта: цикл начинается с Солнца.') : t('f.night', 'Ночная карта: цикл начинается с Луны.')} ${t('fd.barHint', 'Нажми на отрезок — откроется этот период.')}</p>
-        <label class="check fd-nodes"><input type="checkbox" data-fdn ${fdOpen.nodeSubs ? 'checked' : ''}> ${t('fd.nodeSubs', 'Делить узлы на подпериоды (современный вариант; в классике у узлов подпериодов нет)')}</label>
-        <span class="label">${t('fd.lvl1', 'Большие периоды')}</span>${bar(big, t0, span, true)}
-        <span class="label">${t('fd.lvl2', 'Все подпериоды')}</span><div class="fd-bar fd-bar2">${big.flatMap((x) => x.subs.map((sb) => ({ sb, x }))).map(({ sb, x }) => { const l = (sb.start - t0) / span * 100, w = (Math.min(sb.end, t0 + span) - sb.start) / span * 100; return w > 0 ? `<i class="${sb.current ? 'cur' : ''}" style="left:${l}%;width:${w}%;background:${FIRD_COL[sb.id]}" data-tip="${esc(pnm(x.id) + ' / ' + pnm(sb.id) + '\n' + dm(sb.start) + ' — ' + dm(sb.end))}">${w > 1.6 ? G[sb.id] : ''}</i>` : ''; }).join('')}</div>
-        <div class="row tiny muted"><span>0</span><span style="flex:1"></span><span>75 ${t('years', 'лет')}</span></div>
-        ${cur ? `<div class="night stack fd-now"><span class="eyebrow">${t('f.now', 'Сейчас')}</span><h3>${G[cur.id]} ${esc(TX.firdar[cur.id])}</h3><p class="small" style="color:var(--night-muted)">${dm(cur.start)} — ${dm(cur.end)} · ${t('fd.ages2', 'возраст {a}–{b}', { a: age(cur.start), b: age(cur.end) })}</p>${curSub ? `<div class="fd-cursub"><span class="label">${t('fd.curSub', 'Сейчас подпериод')}: ${G[cur.id]}/${G[curSub.id]} ${esc(pnm(curSub.id))} · ${dm(curSub.start)} — ${dm(curSub.end)}</span><p>${esc(subText(cur, curSub))}</p>${personal(curSub.id) ? `<p class="small">${esc(personal(curSub.id))}</p>` : ''}${doAvoid(curSub.id)}</div>` : ''}${majorBody(cur)}</div>` : ''}
-      </div>
-      <div class="card stack"><div class="row sb"><h3>${t('fd.all', 'Все периоды жизни')}</h3><span class="hint-click">${icon('info', 'xs')} ${t('fd.allHint', 'каждый период раскрывается — внутри подпериоды и расшифровка')}</span></div><div class="fd-list">${majors}</div></div>
-      <details class="card stack fd-alltbl"${fdOpen.table ? ' open' : ''}><summary><h3 style="display:inline">${t('fd.allSubs', 'Таблица всех подпериодов')}</h3> <span class="tiny muted">${t('fd.allSubsHint', '{n} строк — все подпериоды всех периодов жизни', { n: big.reduce((a, x) => a + Math.max(1, x.subs.length), 0) })}</span></summary>
-        <div class="tbl-wrap" style="margin-top:10px"><table class="tbl" style="min-width:0"><thead><tr><th>${t('fd.colMaj', 'Период')}</th><th>${t('fd.colSub', 'Подпериод')}</th><th>${t('fd.colFrom', 'С')}</th><th>${t('fd.colTo', 'По')}</th><th>${t('fd.colAge', 'Возраст')}</th><th>${t('fd.colAbout', 'О чём')}</th></tr></thead><tbody>${big.map((x) => (x.subs.length ? x.subs : [null]).map((sb, k) => `<tr class="${(sb ? sb.current : x.current) ? 'cur' : ''}${k === 0 ? ' fd-first' : ''}"><td>${k === 0 ? `<span class="g" style="color:${FIRD_COL[x.id]}">${G[x.id]}</span> ${esc(pnm(x.id))}` : ''}</td><td>${sb ? `<span class="g" style="color:${FIRD_COL[sb.id]}">${G[sb.id]}</span> ${esc(pnm(sb.id))}` : '—'}</td><td class="mono">${dm((sb || x).start)}</td><td class="mono">${dm((sb || x).end)}</td><td class="num">${(((sb || x).start - c.date) / YEAR).toFixed(1)}</td><td class="tiny">${esc(sb ? TX.firdarSub[sb.id] || '' : TX.firdar[x.id] || '')}</td></tr>`).join('')).join('')}</tbody></table></div></details>
-      <div class="card stack"><h3>${t('f.year', 'Годовые фирдарии')}</h3><p class="tiny muted">${esc(TX.firdarYearNote)}</p>${bar(annual, yearStart.getTime(), YEAR)}
-        <div class="tbl-wrap"><table class="tbl" style="min-width:0"><tbody>${annual.map((x) => `<tr class="${x.current ? 'cur' : ''}"><td><span class="g">${G[x.id]}</span> ${esc(pnm(x.id))}</td><td class="mono">${dm(x.start)} — ${dm(x.end)}</td><td class="small">${esc(TX.firdar[x.id] || '')}</td></tr>`).join('')}</tbody></table></div></div>`;
-    body.querySelectorAll('.fd-list > .fd-per').forEach((d) => d.addEventListener('toggle', () => { if (d.open) fdOpen.major = +d.dataset.fdi; }));
-    const fdn = body.querySelector('[data-fdn]'); if (fdn) fdn.addEventListener('change', () => { fdOpen.nodeSubs = fdn.checked; const y = window.scrollY; firdaria(body, p, ctx); root.NWheel.bindTips(body); window.scrollTo(0, y); });
-    const tblD = body.querySelector('.fd-alltbl'); if (tblD) tblD.addEventListener('toggle', () => { fdOpen.table = tblD.open; });
-    const go = (i) => { const d = body.querySelector(`.fd-list > .fd-per[data-fdi="${i}"]`); if (!d) return; d.open = true; fdOpen.major = i; d.scrollIntoView({ behavior: UI.reduceMotion() ? 'auto' : 'smooth', block: 'start' }); };
-    body.querySelectorAll('[data-fdgo]').forEach((x) => { x.addEventListener('click', () => go(+x.dataset.fdgo)); x.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(+x.dataset.fdgo); }); });
+    const nowTag = `<span class="tag acc">${t('f.nowS', 'сейчас')}</span>`;
+
+    // ---- схема ----
+    const pct = (d) => (d - t0) / span * 100;
+    const seg = (x, attr, label, tip) => { const l = pct(x.start), w = Math.min(pct(x.end), 100) - l; return w > 0 ? `<i class="${x.current ? 'cur' : ''}" ${attr} role="button" tabindex="-1" style="left:${l}%;width:${w}%;background:${FIRD_COL[x.id]}" data-tip="${esc(tip)}">${label(w)}</i>` : ''; };
+    const bigBar = `<div class="fd-bar">${big.map((x, i) => seg(x, `data-fdp="${i}"`, (w) => (w > 3 ? G[x.id] : ''), (TX.firdar[x.id] || '') + '\n' + dm(x.start) + ' — ' + dm(x.end))).join('')}</div>`;
+    const subBar = `<div class="fd-bar fd-bar2">${big.map((x, i) => x.subs.map((sb, k) => seg(sb, `data-fds="${i}:${k}"`, (w) => (w > 1.6 ? G[sb.id] : ''), pnm(x.id) + ' / ' + pnm(sb.id) + '\n' + dm(sb.start) + ' — ' + dm(sb.end))).join('')).join('')}</div>`;
+    const nowPct = Math.max(0, Math.min(100, pct(now)));
+    const ticks = [0, 10, 20, 30, 40, 50, 60, 70, 75].map((a) => `<span style="left:${a / 75 * 100}%" data-a="${a}">${a}</span>`).join('');
+    // дата начала подпериода: полная и с коротким годом (на узкой карточке, fdFit → .narrow2)
+    const cell = (x, i, sb, k) => `<button type="button" class="fds-c${sb.current ? ' cur' : ''}${past(sb) ? ' past' : ''}" data-fds="${i}:${k}" style="--fc:${FIRD_COL[sb.id]}" data-tip="${esc(pnm(x.id) + ' / ' + pnm(sb.id) + ' — ' + (TX.firdarSub[sb.id] || '') + '\n' + dm(sb.start) + ' — ' + dm(sb.end) + ' · ' + t('fd.ageS2', 'возраст {a}–{b}', { a: ageF(sb.start), b: ageF(sb.end) }))}"><span class="g">${G[sb.id]}</span><span class="fds-cn">${esc(pnm(sb.id))}</span><span class="fds-cd mono"><span class="dl">${dm(sb.start)}</span><span class="ds">${UI.fmtDay(sb.start, tz, { year: '2-digit' })}</span></span></button>`;
+    const row = (x, i) => `<div class="fds-r${x.current ? ' cur' : ''}${past(x) ? ' past' : ''}" role="listitem">
+        <button type="button" class="fds-h" data-fdp="${i}" style="--fc:${FIRD_COL[x.id]}" data-tip="${esc((TX.firdar[x.id] || '') + '\n' + dm(x.start) + ' — ' + dm(x.end))}"><span class="fd-sw">${G[x.id]}</span><span class="fds-hn"><b>${esc(pnm(x.id))}</b><small>${t('fd.agesS', '{a}–{b} лет', { a: age(x.start), b: age(x.end) })}</small></span><span class="fds-hd mono">${dm(x.start)} — ${dm(x.end)}</span></button>
+        <div class="fds-subs">${x.subs.length ? x.subs.map((sb, k) => cell(x, i, sb, k)).join('') : `<span class="fds-none" title="${esc(t('fd.noSubsS', 'у узлов в классике подпериодов нет — галочка «Узлы с подпериодами» вверху делит их на 7'))}">${t('fd.noSubsS', 'у узлов в классике подпериодов нет — галочка «Узлы с подпериодами» вверху делит их на 7')}</span>`}</div>
+      </div>`;
+    const yearEnd = new Date(yearStart.getTime() + YEAR);
+    const yearStrip = `<div class="fds-year"><span class="fds-yl" data-tip="${esc(TX.firdarYearNote)}">${t('f.year', 'Годовые фирдарии')}<small class="mono">${dm(yearStart)} — ${dm(yearEnd)}</small></span>
+        <div class="fds-ys">${annual.map((x) => `<span class="fds-y${x.current ? ' cur' : ''}${past(x) ? ' past' : ''}" style="--fc:${FIRD_COL[x.id]}" data-tip="${esc(pnm(x.id) + ' · ' + (TX.firdar[x.id] || '') + '\n' + dm(x.start) + ' — ' + dm(x.end))}"><span class="g">${G[x.id]}</span><span class="mono">${UI.fmtDay(x.start, tz)}</span></span>`).join('')}</div></div>`;
+    const dayNote = f.unknownTime ? t('f.unknown', 'Время рождения неизвестно: порядок взят как для дневной карты.') : f.day ? t('f.day', 'Дневная карта: цикл начинается с Солнца.') : t('f.night', 'Ночная карта: цикл начинается с Луны.');
+    // ---- «Сейчас»: период и подпериод с расшифровкой — под схемой ----
+    const nowCard = cur ? `<div class="night fd-now"><div class="fd-now-g">
+        <div class="stack s6"><span class="eyebrow">${t('f.now', 'Сейчас')}</span><h3>${G[cur.id]} ${esc(TX.firdar[cur.id])}</h3><p class="small" style="color:var(--night-muted)">${dm(cur.start)} — ${dm(cur.end)} · ${t('fd.ages2', 'возраст {a}–{b}', { a: age(cur.start), b: age(cur.end) })}</p><p>${esc(TX.firdarLong[cur.id] || '')}</p>${natalNote(cur.id) ? `<p class="small muted">${esc(t('fd.ruler', 'Управитель периода в твоей карте: {x}', { x: natalNote(cur.id) }))}</p>` : ''}</div>
+        ${curSub ? `<div class="fd-cursub"><span class="label">${t('fd.curSub', 'Сейчас подпериод')}: ${G[cur.id]}/${G[curSub.id]} ${esc(pnm(curSub.id))} · ${dm(curSub.start)} — ${dm(curSub.end)}</span><p>${esc(subText(cur, curSub))}</p>${personal(curSub.id) ? `<p class="small">${esc(personal(curSub.id))}</p>` : ''}${doAvoid(curSub.id)}</div>` : ''}
+      </div></div>` : '';
+    body.innerHTML = `<div class="card fd-scheme" data-fdscheme>
+        <div class="fds-top"><h3>${t('fd.schemeT', 'Фирдарии — схема на 75 лет')}</h3><span class="tiny muted">${dayNote}</span><span class="spacer"></span>
+          <label class="check fd-nodes" title="${esc(t('fd.nodeSubs', 'Делить узлы на подпериоды (современный вариант; в классике у узлов подпериодов нет)'))}"><input type="checkbox" data-fdn ${fdOpen.nodeSubs ? 'checked' : ''}> ${t('fd.nodeSubsS', 'Узлы с подпериодами')}</label></div>
+        <div class="fds-bars">${bigBar}${subBar}<b class="fds-nowl" style="left:${nowPct}%" data-tip="${esc(t('f.nowS', 'сейчас') + ' · ' + dm(now))}"></b></div>
+        <div class="fds-ticks" aria-hidden="true">${ticks}</div>
+        <div class="fds-grid" role="list">${big.map(row).join('')}</div>
+        ${yearStrip}
+        <p class="tiny muted fds-hint">${icon('info', 'xs')} ${t('fd.schemeHint', 'Нажми на период или подпериод — откроется расшифровка; в окне ← → листают соседние.')}</p>
+      </div>${nowCard}`;
+
+    // ---- окна: период (его подпериоды списком) и подпериод (расшифровка, третий уровень); ←/→ — соседние ----
+    const flat = []; big.forEach((x, i) => x.subs.forEach((sb, k) => flat.push([i, k])));
+    const tags = (x, a, b) => `<div class="row" style="gap:6px"><span class="tag">${dm(x.start)} — ${dm(x.end)}</span><span class="tag plain">${t('fd.ages2', 'возраст {a}–{b}', { a, b })}</span>${x.current ? nowTag : ''}</div>`;
+    function openPer(i) {
+      const x = big[i]; if (!x) return;
+      const html = `<div class="stack fd-pop">${tags(x, age(x.start), age(x.end))}
+        <p>${esc(TX.firdarLong[x.id] || '')}</p>${natalNote(x.id) ? `<p class="small fd-pers">${esc(t('fd.ruler', 'Управитель периода в твоей карте: {x}', { x: natalNote(x.id) }))}</p>` : ''}
+        ${x.subs.length ? `<span class="label">${t('fd.subsP', 'Подпериоды — нажми, чтобы открыть')}${x.subs[0].nodeSub ? ' · ' + t('fd.nodeSubsL', 'узлы поделены на 7 (современный вариант)') : ''}</span>
+          <div class="fd-plist">${x.subs.map((sb, k) => `<button type="button" class="fd-pli${sb.current ? ' cur' : ''}${past(sb) ? ' past' : ''}" data-k="${k}"><span class="g">${G[x.id]}/${G[sb.id]}</span><span class="fd-sn">${esc(pnm(sb.id))}<small>${esc(TX.firdarSub[sb.id] || '')}</small></span><span class="mono fd-dt">${dm(sb.start)} — ${dm(sb.end)}</span>${sb.current ? nowTag : '<span></span>'}</button>`).join('')}</div>`
+          : `<p class="tiny muted">${t('fd.noSubs2', 'В классике у периодов узлов подпериодов нет. Включи «Делить узлы на подпериоды» вверху — и они появятся.')}</p>`}</div>`;
+      const b = UI.modal(html, { eyebrow: t('fd.perE', 'Большой период'), title: `${G[x.id]} ${TX.firdar[x.id] || pnm(x.id)}`, prev: i > 0 ? () => openPer(i - 1) : null, next: i < big.length - 1 ? () => openPer(i + 1) : null, prevLabel: t('fd.prevP', 'Предыдущий период'), nextLabel: t('fd.nextP', 'Следующий период') });
+      b.querySelectorAll('[data-k]').forEach((el) => el.addEventListener('click', () => openSub(i, +el.dataset.k)));
+    }
+    function openSub(i, k) {
+      const x = big[i], sb = x && x.subs[k]; if (!sb) return;
+      const n = flat.findIndex(([a, q]) => a === i && q === k);
+      const html = `<div class="stack fd-pop">${tags(sb, ageF(sb.start), ageF(sb.end))}
+        ${TX.firdarSub[sb.id] ? `<p class="small muted">${esc(pnm(sb.id) + ': ' + TX.firdarSub[sb.id])}</p>` : ''}
+        <p>${esc(subText(x, sb))}</p>${personal(sb.id) ? `<p class="small fd-pers">${esc(personal(sb.id))}</p>` : ''}${doAvoid(sb.id)}
+        ${sb.subs2 ? `<span class="label">${t('fd.subs2', 'Под-подпериоды (третий уровень)')}</span><div class="fd-s3">${sb.subs2.map((z) => `<div class="fd-s3r${z.current ? ' cur' : ''}"><span class="g">${G[x.id]}/${G[sb.id]}/${G[z.id]}</span><span>${esc(pnm(z.id))}</span><span class="mono">${dm(z.start)} — ${dm(z.end)}</span>${z.current ? nowTag : '<span></span>'}</div>`).join('')}</div>` : ''}
+        <div><button class="btn sm ghost" type="button" data-up>${icon('up', 'sm')} ${t('fd.toPer', 'Весь период: {x}', { x: TX.firdar[x.id] || pnm(x.id) })}</button></div></div>`;
+      const b = UI.modal(html, { eyebrow: t('fd.subE', 'Подпериод · {x}', { x: pnm(x.id) }), title: `${G[x.id]}/${G[sb.id]} ${pnm(sb.id)}`, prev: n > 0 ? () => openSub(...flat[n - 1]) : null, next: n >= 0 && n < flat.length - 1 ? () => openSub(...flat[n + 1]) : null, prevLabel: t('fd.prevS', 'Предыдущий подпериод'), nextLabel: t('fd.nextS', 'Следующий подпериод') });
+      b.querySelector('[data-up]').addEventListener('click', () => openPer(i));
+    }
+    const act = (el, fn) => { el.addEventListener('click', fn); if (el.tagName !== 'BUTTON') el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } }); };
+    body.querySelectorAll('[data-fdp]').forEach((el) => act(el, () => openPer(+el.dataset.fdp)));
+    body.querySelectorAll('[data-fds]').forEach((el) => act(el, () => { const [i, k] = el.dataset.fds.split(':').map(Number); openSub(i, k); }));
+    const fdn = body.querySelector('[data-fdn]'); if (fdn) fdn.addEventListener('change', () => { fdOpen.nodeSubs = fdn.checked; firdaria(body, p, ctx); root.NWheel.bindTips(body); });
+    // подгонка — после отрисовки и ещё раз, когда загрузятся шрифты (ширина дат зависит от них)
+    requestAnimationFrame(() => fdFit(body, true));
+    if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => { if (body.querySelector('[data-fdscheme]')) fdFit(body, true); });
+    if (!fdFitBound) { fdFitBound = true; let tm = 0; window.addEventListener('resize', () => { clearTimeout(tm); tm = setTimeout(() => { const b = document.querySelector('[data-fdscheme]'); if (b) fdFit(b.parentElement); }, 150); }); }
   }
 
   // ---------- Дирекции ----------
