@@ -1,6 +1,6 @@
 /* Настройки проекта: всё, что меняется без правки кода. */
 window.NCONFIG = {
-  brand: 'Natalogy',              // рабочее название — меняется здесь и в manifest.webmanifest
+  brand: 'Salistro',              // название (16.10.2026: было рабочее Natalogy) — меняется здесь, в manifest.webmanifest, заголовках *.html и в privacy/terms
   brandRu: 'Наталогия',
   version: '0.5.0',
   // Адрес ИИ-помощника (Cloudflare Worker из server/ai-worker). Пусто — отвечает встроенный помощник по правилам, без интернета.

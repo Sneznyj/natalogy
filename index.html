@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Natalogy — твоя карта как инструкция к себе</title>
+<title>Salistro — твоя карта как инструкция к себе</title>
 <meta name="description" content="Личный астрологический календарь: баллы дня для любви, денег, работы и запусков. Натальная карта простым языком, совместимость, ИИ-помощник и профи-инструменты.">
-<meta property="og:title" content="Natalogy — твоя карта как инструкция к себе">
+<meta property="og:title" content="Salistro — твоя карта как инструкция к себе">
 <meta property="og:description" content="Нажми кнопку — и увидишь баллы своих дней: любовь, деньги, работа, запуски. Без астрологических терминов.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://sneznyj.github.io/natalogy/assets/brand/og-1200x630.jpg">
@@ -111,7 +111,7 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
 </head>
 <body>
 <header class="lnav"><div class="lw">
-  <a class="brand" href="./"><span class="brand-mark" aria-hidden="true"></span>Natalogy</a>
+  <a class="brand" href="./"><span class="brand-mark" aria-hidden="true"></span>Salistro</a>
   <span class="sp"></span>
   <a class="lk lk-hot" href="app.html#horoscope" data-i="nav.horo">★ Гороскоп</a>
   <a class="lk" href="app.html#calendar" data-i="nav.cal">Календарь</a>
@@ -215,7 +215,7 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
   </section>
 </main>
 <footer class="foot"><div class="lw cols">
-  <div><a class="brand" href="./" style="color:var(--ink)"><span class="brand-mark" aria-hidden="true"></span>Natalogy</a><p style="margin-top:10px" data-i="foot.note">Для самопознания. Не медицинский, юридический или финансовый совет.</p><p style="margin-top:8px">© 2026 Natalogy · <a href="privacy.html" data-i="privacy">Конфиденциальность</a> · <a href="terms.html" data-i="terms">Условия</a></p></div>
+  <div><a class="brand" href="./" style="color:var(--ink)"><span class="brand-mark" aria-hidden="true"></span>Salistro</a><p style="margin-top:10px" data-i="foot.note">Для самопознания. Не медицинский, юридический или финансовый совет.</p><p style="margin-top:8px">© 2026 Natalogy · <a href="privacy.html" data-i="privacy">Конфиденциальность</a> · <a href="terms.html" data-i="terms">Условия</a></p></div>
   <div><span class="label" data-i="foot.lk">Кабинет</span><ul><li><a href="app.html#horoscope" data-i="l.horo">Гороскоп</a></li><li><a href="app.html#numerology" data-i="l.num">Нумерология</a></li><li><a href="app.html#sky" data-i="l.sky">Небо и Луна</a></li><li><a href="app.html#today" data-i="l.today">Сегодня</a></li><li><a href="app.html#calendar" data-i="l.cal">Календарь</a></li><li><a href="app.html#calendar?v=week" data-i="l.week">Неделя по часам</a></li><li><a href="app.html#chart" data-i="l.chart">Моя карта</a></li><li><a href="app.html#pair" data-i="l.pair">Совместимость</a></li><li><a href="app.html#ask" data-i="l.ask">Спросить ИИ</a></li></ul></div>
   <div><span class="label" data-i="foot.pro">Профи</span><ul><li><a href="app.html#pro?type=transit" data-i="l.tr">Транзиты</a></li><li><a href="app.html#pro?type=solar" data-i="l.sol">Соляр</a></li><li><a href="app.html#pro?type=directions" data-i="l.dir">Дирекции</a></li><li><a href="app.html#pro?tab=firdaria" data-i="l.fird">Фирдарии</a></li><li><a href="app.html#pro?tab=acg" data-i="l.acg">Астрокартография</a></li><li><a href="app.html#people" data-i="l.people">Мои люди</a></li></ul></div>
 </div></footer>
@@ -266,7 +266,7 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
   };
   const lang = UI.lang();
   document.documentElement.lang = lang;
-  if (lang === 'en') { document.querySelectorAll('[data-i]').forEach((el) => { const v = EN[el.dataset.i]; if (v == null) return; if (el.hasAttribute('data-html')) el.innerHTML = v; else el.textContent = v; }); document.title = 'Natalogy — your chart as a guide to yourself'; }
+  if (lang === 'en') { document.querySelectorAll('[data-i]').forEach((el) => { const v = EN[el.dataset.i]; if (v == null) return; if (el.hasAttribute('data-html')) el.innerHTML = v; else el.textContent = v; }); document.title = 'Salistro — your chart as a guide to yourself'; }
   const sw = document.getElementById('langsw'); sw.textContent = lang === 'en' ? 'RU' : 'EN';
   sw.addEventListener('click', () => { window.NStore.set('lang', lang === 'en' ? 'ru' : 'en'); location.reload(); });
   // уже есть карта — приветствие и ссылки сразу в кабинет

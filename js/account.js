@@ -174,7 +174,7 @@
       denied: t('acc.e.denied', 'Вход отменён.'),
       provider: t('acc.e.provider', 'Сервис входа не ответил. Попробуйте ещё раз или другой способ.'),
       unavailable: t('acc.e.unavail', 'Этот способ входа пока недоступен — выберите другой.'),
-      already_linked: t('acc.e.linked', 'Этот вход уже привязан к другому аккаунту Natalogy.'),
+      already_linked: t('acc.e.linked', 'Этот вход уже привязан к другому аккаунту Salistro.'),
       last_login: t('acc.e.last', 'Нельзя отвязать единственный способ входа.'),
     })[c] || t('acc.e.other', 'Что-то пошло не так. Попробуйте ещё раз.');
   }
