@@ -25,6 +25,7 @@
   const OVER = ['none', 'transit', 'solar', 'lunar', 'directions', 'progressions', 'synastry'];
   const MIN = 60000, HOUR = 3600000, DAY = 86400000;
   const WHEEL_SCALE = 1.15; // значки и подписи на колесе крупнее — видно издалека
+  const WHEEL_SCALE_MAIN = 1.25; // «Карта» (одна большая): ещё крупнее — 16.10, Алина: «чтобы не присматриваться»
   let tab = 'chart';
   const specs = { main: null, left: null, right: null };
   let workSlot = null; // панель в «рабочем режиме» (на весь экран: колесо, динамика и таблица аспектов крупно)
@@ -39,6 +40,16 @@
    * По умолчанию в таблице аспектов — и куспиды всех домов (15.10, Алина: «аспекты на дома»).
    */
   const mkView = () => ({ pts: ALL_PTS.filter((x) => x !== 'fortune'), ptsOut: ALL_PTS.filter((x) => x !== 'fortune'), cuspPts: CUSP_IDS.slice(), cuspAsp: MAJOR.slice(), asp: MAJOR.slice(), cv2: 1, cv3: 1, cosmo: false, orb: 1, hs: root.NStore.settings().houseSystem || 'placidus' });
+  /** Есть ли у карты внешний круг (что-то наложено на натал). */
+  const biOf = (spec) => ['transit', 'directions', 'progressions', 'synastry'].includes(spec.type) || (['solar', 'lunar'].includes(spec.type) && !!(spec.overlay || spec.flip));
+  /**
+   * Космограмма (16.10, Алина): какой круг без домов — 'in' (внутренний), 'out' (внешний), 'both' или 'none'.
+   * Старое значение true — оба круга. У одной карты внешнего круга нет: 'in' и 'both' — космограмма, 'out' — нет.
+   */
+  function cosmoOf(v, bi) {
+    const c = v.cosmo === true ? 'both' : ['in', 'out', 'both'].includes(v.cosmo) ? v.cosmo : 'none';
+    return bi ? c : c === 'in' || c === 'both' ? 'both' : 'none';
+  }
   /** Старые виды: куспиды включались одной кнопкой (cusps), потом жили вместе с точками в pts — теперь у каждого круга свои точки и куспиды отдельно. */
   function fixView(v) {
     if (!v.cv2) { v.pts = (v.pts || []).filter((x) => !isCusp(x)).concat(CUSP_IDS); delete v.cusps; v.cv2 = 1; }
@@ -106,10 +117,11 @@
    */
   function build(spec) {
     const TX = UI.TX(), v = fixView(spec.view);
-    const cosmo = !!v.cosmo; // космограмма: без домов — ни осей, ни куспидов
+    // космограмма: у круга без домов нет ни осей (AC, MC), ни куспидов; круг выбирают в строке карты (16.10, Алина)
+    const cm = cosmoOf(v, biOf(spec)), cIn = cm === 'in' || cm === 'both', cOut = cm === 'out' || cm === 'both', cosmo = cm === 'both';
     const pIn = new Set(v.pts), pOut = new Set(v.ptsOut), pCu = new Set(v.cuspPts), asp = new Set(v.asp), aCu = new Set(v.cuspAsp);
-    const selBy = (set) => (list) => list.filter((x) => set.has(x.id) && !(cosmo && (x.id === 'asc' || x.id === 'mc')));
-    const sel = selBy(pIn), selOut = selBy(pOut); // точки внутреннего круга / внешнего — каждый круг по своему разделу
+    const selBy = (set, noAx) => (list) => list.filter((x) => set.has(x.id) && !(noAx && (x.id === 'asc' || x.id === 'mc')));
+    const sel = selBy(pIn, cIn), selOut = selBy(pOut, cOut); // точки внутреннего круга / внешнего — каждый круг по своему разделу
     // аспекты к куспидам — свой набор («Аспекты к куспидам»), остальные — общий («Аспекты»)
     const keepAsp = (list) => list.filter((x) => (isCusp(x.a) || isCusp(x.b) ? aCu.has(x.type) : asp.has(x.type)));
     // орбисы — из таблицы в настройках (по типу карты), ползунок «Орбисы» в «Что показывать» — общий множитель
@@ -118,10 +130,10 @@
     const natal = natalOf(spec);
     const pl = placeOf(spec, p);
     const date = parseLocal(spec.date, pl.zone);
-    const out = { title: '', sub: '', info: [], inner: null, outer: null, aspects: [], innerChart: natal, labels: null, p, rings: { in: null, out: null }, kind: 'natal', cosmo, at: date };
-    const cuOf = (c) => (cosmo ? [] : cuspPts(c).filter((x) => pCu.has(x.id)));
-    const inPts = (c) => sel(c.points).concat(cuOf(c));
-    const outPts = (c) => selOut(c.points).concat(cuOf(c)); // карта возвращения во внешнем круге: её точки — по разделу «Внешний круг»
+    const out = { title: '', sub: '', info: [], inner: null, outer: null, aspects: [], innerChart: natal, labels: null, p, rings: { in: null, out: null }, kind: 'natal', cosmo, cosmoIn: cIn, cosmoOut: cOut, cosmoMode: cm, at: date };
+    const cuOf = (c, off) => (off ? [] : cuspPts(c).filter((x) => pCu.has(x.id)));
+    const inPts = (c) => sel(c.points).concat(cuOf(c, cIn));
+    const outPts = (c) => selOut(c.points).concat(cuOf(c, cOut)); // карта возвращения во внешнем круге: её точки — по разделу «Внешний круг»
     const opt = Object.assign({}, natal.opts, { houseSystem: v.hs });
     // у «Карты момента» внутренний круг — сам момент (его и двигаем), а не натал
     const natalName = p.id === 'moment' ? p.name : TX.chartTypes.natal + ' · ' + p.name;
@@ -292,8 +304,26 @@
     return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>${t('pt', 'Точка')}</th><th>${t('pos', 'Положение')}</th><th>${t('house', 'Дом')}</th><th>${t('speed', 'Скорость')}</th><th>${t('dign', 'Достоинство')}</th></tr></thead><tbody>${rows}${cusps}</tbody></table></div>`;
   }
 
+  /**
+   * Выбор космограммы — в строке карты (16.10, Алина: «значок космограммы — в блок, где меняют карту»): какой круг строить без домов.
+   * У одной карты — «нет / да». cls — где стоит выбор: в строке карты, в окошке данных или в полосе рабочего режима.
+   */
+  function cosmoSel(spec, cls) {
+    const TX = UI.TX(), bi = biOf(spec), cur = cosmoOf(spec.view, bi);
+    const p = subjectOf(spec) || {};
+    const inN = spec.a === 'moment' ? p.name || t('pro.momentName', 'Карта момента') : t('natal', 'натал');
+    const q = ['synastry'].includes(spec.type) ? personB(spec) : null;
+    const outN = q ? q.name : spec.type === 'transit' ? t('pro.cTr', 'транзиты') : String(TX.chartTypes[spec.type] || '').toLowerCase();
+    const opts = bi
+      ? [['none', t('pro.cNone', 'нет')], ['in', t('pro.cIn', 'внутренняя · {x}', { x: inN })], ['out', t('pro.cOut', 'внешняя · {x}', { x: outN })], ['both', t('pro.cBoth', 'обе карты')]]
+      : [['none', t('pro.cNone', 'нет')], ['both', t('pro.cYes', 'да')]];
+    const tip = bi ? t('pro.cosmoT2', 'Космограмма — карта без домов: только планеты и аспекты. Выбери, какую из карт строить космограммой — внутреннюю или внешнюю.') : t('pro.cosmoT', 'Космограмма — карта без домов: только планеты и аспекты, 0° Овна слева');
+    return `<label class="pd-cosmo ${cls || ''}${cur !== 'none' ? ' on' : ''}" title="${esc(tip)}"><span class="pd-cosmo-l">${icon('target', 'sm')}<span>${t('pro.cosmo', 'Космограмма')}</span></span><select class="select sm" data-cosmo aria-label="${esc(t('pro.cosmoA', 'Какую карту строить космограммой'))}">${opts.map(([k, n]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`;
+  }
+
   // ---------- окошко над картой: свёрнуто в строку (кто, когда, где, тип) — «Изменить» раскрывает поля (15.10, Алина) ----------
-  function dataSummary(spec, slot) {
+  // под строкой — «Что показывать» (16.10, Алина: «перенеси в самый верх, где дата, время и место»)
+  function dataSummary(spec, slot, compact) {
     const TX = UI.TX();
     const p = subjectOf(spec) || {};
     const moment = spec.a === 'moment';
@@ -304,15 +334,19 @@
     if (spec.type === 'directions') type += ' · ' + (spec.dir === 'arc' ? t('dir.arcS', 'Солнечная дуга') : t('dir.degS', '1° = 1 год'));
     if (['solar', 'lunar'].includes(spec.type)) type += ' · ' + (spec.overlay || spec.flip ? t('pro.withNatal', 'с наталом') : t('pro.alone', 'отдельно'));
     const place = ['solar', 'lunar', 'horary', 'transit'].includes(spec.type) && !moment ? (spec.place === 'birth' ? t('placeBirth', 'место рождения') : t('placeHome2', 'где живёт сейчас')) : '';
+    // две строки: кто, когда, где, тип + «Изменить» и «Сохранить»; ниже — «Что показывать» (раскрывается) и космограмма
     return `<div class="card pro-data pd-sum" data-psum="${slot}">
-      <div class="pd-sum-t"><span class="pd-who-n">${moment ? '☀ ' : ''}<b>${esc(p.name || '')}</b></span>${when ? `<span class="mono">${esc(when)}</span>` : ''}${city ? `<span class="muted">${esc(city)}</span>` : ''}<span class="tag acc">${esc(type)}</span>${place ? `<span class="tag plain">${esc(place)}</span>` : ''}${spec.shiftA ? `<span class="tag">${esc(t('pdy.trial', 'пробное'))}</span>` : ''}</div>
-      <span class="spacer"></span>
-      <button class="btn sm primary" type="button" data-pedit>${icon('edit', 'sm')} ${t('pro.edit', 'Изменить')}</button>
-      <button class="btn sm pd-savebtn" type="button" data-save title="${esc(t('pro.saveChart', 'Сохранить карту'))}">${icon('save', 'sm')} <span class="lbl">${t('pro.saveChart', 'Сохранить карту')}</span></button>
+      <div class="pd-r1"><div class="pd-sum-t"><span class="pd-who-n">${moment ? '☀ ' : ''}<b>${esc(p.name || '')}</b></span>${when ? `<span class="mono">${esc(when)}</span>` : ''}${city ? `<span class="muted">${esc(city)}</span>` : ''}<span class="tag acc">${esc(type)}</span>${place ? `<span class="tag plain">${esc(place)}</span>` : ''}${spec.shiftA ? `<span class="tag">${esc(t('pdy.trial', 'пробное'))}</span>` : ''}</div>
+        <span class="spacer"></span>
+        <button class="btn sm primary" type="button" data-pedit>${icon('edit', 'sm')} ${t('pro.edit', 'Изменить')}</button>
+        <button class="btn sm pd-savebtn" type="button" data-save title="${esc(t('pro.saveChart', 'Сохранить карту'))}">${icon('save', 'sm')} <span class="lbl">${t('pro.saveChart', 'Сохранить карту')}</span></button>
+        ${compact ? '' : `<button class="btn sm pd-workbtn" type="button" data-work aria-pressed="false">${workBtn(false)}</button>`}</div>
+      ${compact ? '' : '<p class="pd-psub tiny muted" data-psub></p>'}
+      <div class="pd-r2">${displayBox(spec, slot, compact)}${cosmoSel(spec)}</div>
     </div>`;
   }
-  function dataBox(spec, slot) {
-    if (!spec.edit) return dataSummary(spec, slot);
+  function dataBox(spec, slot, compact) {
+    if (!spec.edit) return dataSummary(spec, slot, compact);
     const TX = UI.TX();
     const people = root.NStore.people();
     const p = subjectOf(spec);
@@ -342,19 +376,21 @@
         ${custom && spec.custom && spec.custom.place ? `<button class="btn sm" type="button" data-csave>${icon('plus', 'sm')} ${t('pro.customSave', 'Сохранить в «Люди»')}</button>` : ''}
         <button class="btn sm" type="button" data-save>${icon('save', 'sm')} ${t('pro.saveChart', 'Сохранить карту')}</button>
         <button class="btn sm ghost" type="button" data-pfold>${icon('up', 'sm')} ${t('pro.fold', 'Свернуть')}</button>
+        ${compact ? '' : `<button class="btn sm pd-workbtn" type="button" data-work aria-pressed="false">${workBtn(false)}</button>`}
       </div>
+      <div class="pd-r2">${displayBox(spec, slot, compact)}${cosmoSel(spec)}</div>
     </form>`;
   }
 
   /**
-   * «Что показывать» — карточкой рядом с таблицей аспектов (на «Карте» открыта сразу, в «Двух картах» — свёрнута).
+   * «Что показывать» — в самом верху, в строке карты рядом с датой, временем и местом (16.10, Алина); свёрнуто, пока не нажмёшь.
+   * В рабочем режиме строки карты нет — блок переезжает под таблицу аспектов (placeDisp).
    * Разделы (16.10, Алина): внутренний круг, внешний круг, аспекты к куспидам и сами аспекты — у каждого свои кнопки и быстрые наборы.
    * Подписи кругов (натал / транзиты / соляр…) и неактивные кнопки ставит updatePanel → paintDisplay по расчёту карты.
    */
-  function displayBox(spec, slot, compact) {
+  function displayBox(spec, slot) {
     const TX = UI.TX(), v = spec.view;
-    // на высоком экране — открыта сразу; на ноутбуке — строкой под таблицей аспектов (нажал — раскрылась), чтобы таблица влезла целиком
-    const open = v.dispOpen != null ? v.dispOpen : !compact && window.innerHeight >= 980;
+    const open = !!v.dispOpen;
     const aName = (a) => (TX.ASP[a] ? TX.ASP[a].name : root.NWheel.ASP_N[UI.lang()][a] || a);
     const q = (k, label, title) => `<button class="pd-q" type="button" data-dq="${k}"${title ? ` title="${esc(title)}"` : ''}>${esc(label)}</button>`;
     const ptBtns = (side, set) => ALL_PTS.map((id) => `<button class="tg ${['asc', 'mc'].includes(id) ? 't' : ''}" type="button" data-pt="${id}" data-side="${side}" aria-pressed="${set.includes(id)}" title="${esc(pName(id))}">${G[id]}</button>`).join('');
@@ -416,18 +452,19 @@
     </div>`;
   }
 
+  /** Панель в рабочем режиме: своя (Карта) или обе карты сразу (Две карты, 16.10, Алина: «должны выходить сразу две карты»). */
+  const isWork = (slot) => workSlot === slot || (workSlot === 'split' && (slot === 'left' || slot === 'right'));
   function panelShell(spec, slot, compact, label) {
-    const other = slot === 'left' ? 'right' : slot === 'right' ? 'left' : null;
-    return `<section class="stack pro-panel${compact ? ' compact' : ''}${workSlot === slot ? ' work' : ''}" data-panel="${slot}">
+    const on = isWork(slot);
+    return `<section class="stack pro-panel${compact ? ' compact' : ''}${on ? ' work' : ''}" data-panel="${slot}">
       ${label ? `<h3 class="pp-label">${esc(label)}</h3>` : ''}
-      ${dataBox(spec, slot)}
+      ${dataBox(spec, slot, compact)}
       <div class="pro-main">
         <div class="wheel-card pro-wheel">
           <div class="ph-head"><div class="ph-t" data-dyn="head"></div>
             <div class="ph-tools">
-              <label class="check sm ph-cosmo" title="${esc(t('pro.cosmoT', 'Космограмма — карта без домов: только планеты и аспекты, 0° Овна слева'))}"><input type="checkbox" data-cosmo ${spec.view.cosmo ? 'checked' : ''}> ${t('pro.cosmo', 'Космограмма')}</label>
-              ${other ? `<button class="btn sm ghost ph-other" type="button" data-wother="${other}" title="${esc(t('pro.workOther', 'Открыть в рабочем режиме другую карту'))}">${icon('swap', 'sm')} ${other === 'right' ? t('pro.card2', 'Карта 2') : t('pro.card1', 'Карта 1')}</button>` : ''}
-              <button class="btn sm ph-work${workSlot === slot ? ' primary' : ''}" type="button" data-work aria-pressed="${workSlot === slot}">${workBtn(workSlot === slot)}</button>
+              ${cosmoSel(spec, 'ph-cosmo')}
+              <button class="btn sm ph-work${on ? ' primary' : ''}" type="button" data-work aria-pressed="${on}">${workBtn(on, compact)}</button>
             </div></div>
           <div class="wheel-box" data-dyn="wheel"></div>
           ${dynBox(spec, slot)}
@@ -435,11 +472,16 @@
         </div>
         <div class="pro-side">
           <div class="card stack pro-asp" data-dyn="grid"></div>
-          ${displayBox(spec, slot, compact)}
         </div>
       </div>
       <div data-dyn="pos"></div>
     </section>`;
+  }
+  /** «Что показывать» живёт в строке карты, а в рабочем режиме (строки карты там нет) — под таблицей аспектов. */
+  function placeDisp(panel) {
+    const d = panel && panel.querySelector('.pd-disp'); if (!d) return;
+    const work = panel.classList.contains('work'), target = work ? panel.querySelector('.pro-side') : panel.querySelector('.pro-data .pd-r2');
+    if (target && d.parentElement !== target) { if (work) target.appendChild(d); else target.prepend(d); }
   }
 
   /**
@@ -451,8 +493,9 @@
     const TX = UI.TX();
     const inL = r.labels && r.labels.in ? r.labels.in : spec.a === 'moment' ? r.p.name : spec.type === 'natal' ? t('natal', 'натал') : String(TX.chartTypes[spec.type] || '').toLowerCase();
     const setL = (k, s) => { const e = d.querySelector(`[data-dlab="${k}"]`); if (e) e.textContent = s || ''; };
-    const axisOff = (id) => r.cosmo && (id === 'asc' || id === 'mc');
-    const avail = (side, ids) => { const s = new Set(ids); d.querySelectorAll(`[data-pt][data-side="${side}"]`).forEach((b) => { b.disabled = !s.has(b.dataset.pt) || axisOff(b.dataset.pt); }); };
+    // у круга-космограммы нет осей: AC и MC неактивны только у него
+    const axisOff = (side, id) => (side === 'out' ? r.cosmoOut : r.cosmoIn) && (id === 'asc' || id === 'mc');
+    const avail = (side, ids) => { const s = new Set(ids); d.querySelectorAll(`[data-pt][data-side="${side}"]`).forEach((b) => { b.disabled = !s.has(b.dataset.pt) || axisOff(side, b.dataset.pt); }); };
     const grp = (k, on, note) => {
       const g = d.querySelector(`[data-dgrp="${k}"]`); if (!g) return;
       g.classList.toggle('off', !on);
@@ -466,9 +509,9 @@
     grp('out', !!r.outer);
     if (r.outer) avail('out', r.outAvail || r.outer.points.map((x) => x.id));
     // куспиды — всегда внутренней карты; в космограмме и в карте без домов их нет
-    const hasH = !r.cosmo && !!(r.innerChart && r.innerChart.houses);
+    const hasH = !r.cosmoIn && !!(r.innerChart && r.innerChart.houses);
     setL('cu', hasH ? t('pro.dCuOf', 'дома: {x}', { x: inL }) : '');
-    grp('cu', hasH, r.cosmo ? t('pro.dCuCosmo', 'В космограмме домов нет — сними галочку «Космограмма» над колесом.') : t('pro.dCuNoH', 'В этой карте нет домов (время рождения неизвестно или это композит).'));
+    grp('cu', hasH, r.cosmoIn ? (r.outer ? t('pro.dCuCosmo2', 'Внутренняя карта — космограмма, домов у неё нет. Космограмму выбирают в строке карты наверху.') : t('pro.dCuCosmo1', 'Карта — космограмма, домов у неё нет. Космограмму выбирают в строке карты наверху.')) : t('pro.dCuNoH', 'В этой карте нет домов (время рождения неизвестно или это композит).'));
   }
 
   /** Перерисовать живую часть панели (колесо, таблица, положения, строки динамики) — ползунки не трогаем. */
@@ -477,23 +520,29 @@
     let r;
     try { r = build(spec); } catch (e) { console.error(e); q('wheel').innerHTML = `<p class="err">${esc(t('pro.err', 'Не получилось посчитать'))}: ${esc(e.message)}</p>`; return null; }
     const v = spec.view, pts = new Set(v.pts), pCu = new Set(v.cuspPts);
-    const ptIds = (c) => (c.points || []).filter((p) => pts.has(p.id) && !(r.cosmo && (p.id === 'asc' || p.id === 'mc'))).map((p) => p.id);
-    const cuIds = (c) => (!r.cosmo && c.houses ? cuspPts(c).map((x) => x.id).filter((id) => pCu.has(id)) : []);
+    const ptIds = (c) => (c.points || []).filter((p) => pts.has(p.id) && !(r.cosmoIn && (p.id === 'asc' || p.id === 'mc'))).map((p) => p.id);
+    const cuIds = (c) => (!r.cosmoIn && c.houses ? cuspPts(c).map((x) => x.id).filter((id) => pCu.has(id)) : []);
     paintDisplay(box, r, spec);
     const rowsIds = ptIds(r.innerChart).concat(cuIds(r.innerChart));
     const colIds = r.outer ? r.outer.points.map((p) => p.id) : rowsIds;
-    // главный АС: внутренней карты (натал) или внешней — нажатие на свободное место внутри круга меняет их местами
-    const oAsc = r.outer && !r.cosmo ? (r.outer.cusps ? r.outer.cusps[0] : r.outer.asc != null ? r.outer.asc : null) : null;
-    r.rotOut = oAsc != null && (spec.rotOut != null ? spec.rotOut : r.rotDefault === 'out');
-    r.canRot = oAsc != null && r.inner && r.inner.cusps != null;
-    const rotNote = r.canRot ? t('pro.mainAsc', 'главный АС — {x}', { x: r.rotOut ? (r.labels && r.labels.out) || t('pro.outer', 'внешняя карта') : (r.labels && r.labels.in) || t('natal', 'натал') }) : '';
-    const sub = [r.sub, r.cosmo ? t('pro.cosmoSub', 'космограмма — без домов') : rotNote].filter(Boolean).join(' · ');
+    // главный АС: внутренней карты (натал) или внешней — нажатие на свободное место внутри круга меняет их местами.
+    // Внутренний круг — космограмма: главный АС — у внешней карты (если у неё есть дома), иначе 0° Овна слева
+    const oAsc = r.outer && !r.cosmoOut ? (r.outer.cusps ? r.outer.cusps[0] : r.outer.asc != null ? r.outer.asc : null) : null;
+    r.rotOut = oAsc != null && (r.cosmoIn || (spec.rotOut != null ? spec.rotOut : r.rotDefault === 'out'));
+    r.canRot = oAsc != null && !r.cosmoIn && r.inner && r.inner.cusps != null;
+    const outL0 = (r.labels && r.labels.out) || t('pro.outer', 'внешняя карта'), inL0 = (r.labels && r.labels.in) || t('natal', 'натал');
+    const rotNote = r.canRot || (r.cosmoIn && oAsc != null) ? t('pro.mainAsc', 'главный АС — {x}', { x: r.rotOut ? outL0 : inL0 }) : '';
+    const cosmoNote = r.cosmo ? t('pro.cosmoSub', 'космограмма — без домов') : r.cosmoIn ? t('pro.cosmoInSub', 'космограмма: {x}', { x: inL0 }) : r.cosmoOut ? t('pro.cosmoInSub', 'космограмма: {x}', { x: outL0 }) : '';
+    const sub = [r.sub, cosmoNote, rotNote].filter(Boolean).join(' · ');
     q('head').innerHTML = `<div class="ph-title"><h3 title="${esc(r.title)}">${esc(r.title)}</h3><span class="tiny muted"${r.canRot ? ` title="${esc(t('pro.rotHint', 'Нажми на свободное место внутри круга — главный АС поменяется'))}"` : ''}>${sub ? esc(sub) : '&nbsp;'}</span></div>`; // строка есть всегда — колёса двух карт на одном уровне
+    // на «Карте» шапки над колесом нет (16.10, Алина: колесо крупнее) — та же подпись в строке карты
+    const ps = box.querySelector('[data-psub]');
+    if (ps) { ps.textContent = sub; ps.title = r.canRot ? t('pro.rotHint', 'Нажми на свободное место внутри круга — главный АС поменяется') : ''; ps.hidden = !sub; }
     // show — точки внутреннего круга из «Что показывать» (внешний круг уже отобран в build)
-    q('wheel').innerHTML = (r.error ? `<p class="err">${esc(r.error)}</p>` : '') + root.NWheel.svg(r.inner, { outer: r.outer, aspects: r.aspects.map((x) => Object.assign({}, x)), lang: UI.lang(), labels: r.labels, label: r.title, scale: WHEEL_SCALE, cosmo: r.cosmo, rot: r.rotOut ? oAsc : undefined, show: v.pts });
+    q('wheel').innerHTML = (r.error ? `<p class="err">${esc(r.error)}</p>` : '') + root.NWheel.svg(r.inner, { outer: r.outer, aspects: r.aspects.map((x) => Object.assign({}, x)), lang: UI.lang(), labels: r.labels, label: r.title, scale: compact ? WHEEL_SCALE : WHEEL_SCALE_MAIN, cosmo: r.cosmo, cosmoIn: r.cosmoIn, cosmoOut: r.cosmoOut, rot: r.rotOut ? oAsc : undefined, show: v.pts });
     q('info').innerHTML = r.info.length ? `<div class="facts" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">${r.info.map(([k, val]) => `<span class="chip static">${esc(k)}: <b>${esc(val)}</b></span>`).join('')}</div>` : '';
     // маленькие цифры у значков: у планет внутренней карты — какими её домами управляют; у внешней — в каком доме внутренней стоят (транзит — по какому идёт)
-    const hc = r.cosmo ? null : r.innerChart.houses ? r.innerChart.houses.cusps : r.inner && r.inner.cusps ? r.inner.cusps : null;
+    const hc = r.cosmoIn ? null : r.innerChart.houses ? r.innerChart.houses.cusps : r.inner && r.inner.cusps ? r.inner.cusps : null;
     const EX = root.NExplain;
     const rules = (c) => (id) => (c && EX ? EX.rulesOf(id, { houses: { cusps: c } }).join(',') : '');
     const outLon = (id) => { const pp = r.outer && r.outer.points.find((x) => x.id === id); return pp ? pp.lon : null; };
@@ -513,7 +562,7 @@
     if (r.own) {
       // аспекты внутри соляра / лунара — отдельной таблицей под основной (всё, что есть в карте возвращения)
       const oc = r.own.chart, oIds = r.own.ids, oh = oc.houses ? oc.houses.cusps : null;
-      gh += `<div class="row sb pro-own-h"><h3>${esc(r.own.title)}</h3><span class="tiny muted">${r.own.aspects.length}</span></div>${grid(oIds, oIds, r.own.aspects, true, oh && !r.cosmo ? { row: rules(oh), col: rules(oh), rowNote: (n) => t('pro.numRule', 'управляет домом: {n}', { n }), colNote: (n) => t('pro.numRule', 'управляет домом: {n}', { n }) } : null, true)}`;
+      gh += `<div class="row sb pro-own-h"><h3>${esc(r.own.title)}</h3><span class="tiny muted">${r.own.aspects.length}</span></div>${grid(oIds, oIds, r.own.aspects, true, oh && !r.cosmoOut ? { row: rules(oh), col: rules(oh), rowNote: (n) => t('pro.numRule', 'управляет домом: {n}', { n }), colNote: (n) => t('pro.numRule', 'управляет домом: {n}', { n }) } : null, true)}`;
     }
     if (legend) gh += `<p class="tiny muted pro-numleg">${esc(legend)}</p>`;
     q('grid').innerHTML = gh;
@@ -534,6 +583,7 @@
     const spec = specs[slot];
     host.innerHTML = panelShell(spec, slot, compact, label);
     const box = host.querySelector(`[data-panel="${slot}"]`);
+    placeDisp(box);
     const remount = () => { const y = window.scrollY; mountPanel(el, slot, compact, label); window.scrollTo(0, y); };
     const dyn = box.querySelector('[data-pdyn]');
     let rings = { in: null, out: null };
@@ -768,11 +818,16 @@
       root.NStore.saveChart({ title: r.title + (r.sub ? ' · ' + r.sub : ''), spec: Object.assign(JSON.parse(JSON.stringify(spec)), { edit: false }) });
       UI.toast(t('saved', 'Карта сохранена — она в «Сохранённых»'));
     });
-    // ---- космограмма, рабочий режим ----
-    const cosmoC = box.querySelector('[data-cosmo]');
-    cosmoC.addEventListener('change', () => { v.cosmo = cosmoC.checked; live(); fit(); });
-    box.querySelector('[data-work]').addEventListener('click', () => setWork(workSlot === slot ? null : slot));
-    const wo = box.querySelector('[data-wother]'); if (wo) wo.addEventListener('click', () => setWork(wo.dataset.wother));
+    // ---- космограмма (выбор в строке карты, в окошке данных и в полосе рабочего режима — все три показывают одно), рабочий режим ----
+    const cosmoSels = box.querySelectorAll('[data-cosmo]');
+    cosmoSels.forEach((s) => s.addEventListener('change', () => {
+      v.cosmo = s.value === 'none' ? false : s.value;
+      cosmoSels.forEach((x) => { x.value = s.value; x.closest('.pd-cosmo').classList.toggle('on', s.value !== 'none'); });
+      if (v.cosmo) spec.rotOut = null;
+      live(); fit();
+    }));
+    // в «Двух картах» рабочий режим — сразу обе карты рядом на весь экран
+    box.querySelectorAll('[data-work]').forEach((b) => b.addEventListener('click', () => setWork(isWork(slot) ? null : compact && slot !== 'main' ? 'split' : slot)));
     // ---- нажатие на аспект (клетка таблицы или линия на колесе) — короткая подсказка; на свободное место в круге — смена главного АС ----
     box.querySelector('.pro-main').addEventListener('click', (e) => {
       const ae = e.target.closest('td[data-ak], .nw-asp[data-ak]');
@@ -783,7 +838,7 @@
         if (!x || !root.NExplain) return;
         const bi = !!lastR.outer && !own;
         const ob = bi ? lastR.outer.points.find((y) => y.id === x.b) : null;
-        root.NExplain.aspectCard({ a: x.a, b: x.b, type: x.type, orb: x.orb, applying: x.applying, kind: own ? 'own' : bi ? lastR.kind : 'natal', chart: lastR.cosmo ? null : own ? lastR.own.chart : lastR.innerChart, bLon: ob ? ob.lon : null, labels: lastR.labels, at: lastR.at, person: lastR.p }, { x: e.clientX, y: e.clientY });
+        root.NExplain.aspectCard({ a: x.a, b: x.b, type: x.type, orb: x.orb, applying: x.applying, kind: own ? 'own' : bi ? lastR.kind : 'natal', chart: own ? (lastR.cosmoOut ? null : lastR.own.chart) : lastR.cosmoIn ? null : lastR.innerChart, bLon: ob ? ob.lon : null, labels: lastR.labels, at: lastR.at, person: lastR.p }, { x: e.clientX, y: e.clientY });
         return;
       }
       const svg = e.target.closest('svg.nw');
@@ -792,7 +847,7 @@
       const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
       const sp = pt.matrixTransform(m.inverse());
       if (Math.hypot(sp.x - 360, sp.y - 360) > +svg.dataset.rin) return;
-      if (!lastR.canRot) { UI.toast(lastR.cosmo ? t('pro.rotCosmo', 'В космограмме нет домов — менять нечего') : t('pro.rotNo', 'Главный АС меняется, когда есть вторая карта с домами')); return; }
+      if (!lastR.canRot) { UI.toast(lastR.cosmo ? t('pro.rotCosmo', 'В космограмме нет домов — менять нечего') : lastR.cosmoIn ? t('pro.rotCosmoIn', 'Внутренняя карта — космограмма: главный АС у внешней карты') : t('pro.rotNo', 'Главный АС меняется, когда есть вторая карта с домами')); return; }
       spec.rotOut = !lastR.rotOut; live();
       UI.toast(t('pro.rotDone', 'Главный АС — {x}', { x: spec.rotOut ? (lastR.labels && lastR.labels.out) || t('pro.outer', 'внешняя карта') : (lastR.labels && lastR.labels.in) || t('natal', 'натал') }));
     });
@@ -817,6 +872,7 @@
     const fz = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fz')) || 1;
     document.querySelectorAll('.pro-panel').forEach((panel) => {
       const work = panel.classList.contains('work'); // рабочий режим: панель на весь экран, шапки сайта над ней нет, клетки таблицы крупнее
+      const both = work && !!panel.closest('.split.work'); // «Две карты» в рабочем режиме: обе карты рядом, у каждой своя колонка
       const card = panel.querySelector('.pro-wheel'), wb = card && card.querySelector('[data-dyn="wheel"]');
       const asp = panel.querySelector('.pro-asp'), tbl = asp && asp.querySelector('table.asp-grid');
       if (!work && panel.classList.contains('compact')) {
@@ -824,44 +880,67 @@
         if (wb) wb.style.width = ''; if (asp) asp.style.removeProperty('--ag');
         panel.style.removeProperty('--pro-stick'); panel.style.removeProperty('--wbar'); return;
       }
-      // в рабочем режиме сверху закреплена полоса с названием и кнопками (шапка карты) — место под ней
-      const bar = work && card && card.querySelector('.ph-head'), barH = bar ? Math.ceil(bar.getBoundingClientRect().height) : 0;
-      if (work) panel.style.setProperty('--wbar', barH + 'px'); else panel.style.removeProperty('--wbar');
+      // в рабочем режиме сверху закреплена полоса с названием и кнопками (шапка карты) — место под ней; у двух карт шапка — в своей колонке
+      const bar = work && !both && card && card.querySelector('.ph-head'), barH = bar ? Math.ceil(bar.getBoundingClientRect().height) : 0;
+      if (work && !both) panel.style.setProperty('--wbar', barH + 'px'); else panel.style.removeProperty('--wbar');
       const stick = work ? barH : stick0, gap = work ? 26 : 16; // в рабочем режиме ещё поля панели сверху и снизу
       panel.style.setProperty('--pro-stick', stick + 'px');
       if (!wb) return;
       if (window.innerWidth < 700) { wb.style.width = ''; if (asp) asp.style.removeProperty('--ag'); return; }
-      const rest = card.getBoundingClientRect().height - wb.getBoundingClientRect().height;
+      let rest = card.getBoundingClientRect().height - wb.getBoundingClientRect().height;
+      if (!work) {
+        // обычный режим (16.10, Алина: «увеличь масштаб карты, чтобы не присматриваться»): колесо — во всю высоту окна,
+        // динамика под ним — следующим экраном (раньше колесо ужималось, чтобы динамика влезала вместе с ним)
+        const dyn = card.querySelector('.pro-dyn'), info = card.querySelector('[data-dyn="info"]');
+        rest -= (dyn ? dyn.getBoundingClientRect().height + 8 : 0) + (info && info.offsetHeight ? info.getBoundingClientRect().height + 8 : 0);
+      }
       const colW = card.clientWidth - 28;
-      // строка «чья карта · Изменить» над колесом тоже должна быть видна
-      const sum = !work && panel.querySelector('.pd-sum'), sumH = sum ? sum.getBoundingClientRect().height + 12 : 0;
+      // строка «чья карта · Изменить» над колесом тоже должна быть видна («Что показывать» в ней — свёрнутым)
+      const sum = !work && panel.querySelector('.pd-sum');
+      let sumH = 0;
+      if (sum) {
+        sumH = sum.getBoundingClientRect().height + 12;
+        const d = sum.querySelector('.pd-disp[open]'), s = d && d.querySelector('summary');
+        if (d) sumH -= d.getBoundingClientRect().height - (s ? s.getBoundingClientRect().height : 0);
+      }
       wb.style.width = Math.round(Math.max(300, Math.min(colW, window.innerHeight - stick - rest - sumH - gap))) + 'px';
-      if (tbl && window.innerWidth > 1100) {
-        // таблица важнее: если вместе с «Что показывать» клетки выходят мельче 27 px — таблица по высоте окна, а настройки ниже (листаются)
-        const disp = panel.querySelector('.pd-disp');
+      if (tbl && both) {
+        // две карты на весь экран: таблица под колесом своей карты — клетки по ширине колонки
+        const cols = tbl.rows[0] ? tbl.rows[0].cells.length : 12;
+        asp.style.setProperty('--ag', Math.max(22, Math.min(36 * fz, Math.floor((panel.clientWidth - 44) / (cols * 0.94 + 0.2)))) + 'px');
+      } else if (tbl && window.innerWidth > 1100) {
+        // таблица аспектов — по высоте окна (под ней в рабочем режиме — «Что показывать», к нему докручивают)
         const head = asp.getBoundingClientRect().height - tbl.getBoundingClientRect().height;
         const avail = window.innerHeight - stick - gap - head, n = tbl.rows.length;
-        let cell = Math.floor((avail - (disp && !work ? disp.getBoundingClientRect().height + 12 : 0)) / n);
-        if (cell < 27) cell = Math.floor(avail / n);
-        asp.style.setProperty('--ag', Math.max(work ? 30 : 22, Math.min((work ? 50 : 32) * fz, cell)) + 'px');
+        asp.style.setProperty('--ag', Math.max(work ? 30 : 22, Math.min((work ? 50 : 32) * fz, Math.floor(avail / n))) + 'px');
       } else if (asp) asp.style.removeProperty('--ag');
     });
+    // две карты рядом — колёса одного размера (по меньшему), чтобы их было удобно сравнивать
+    const sw = document.querySelector('.split.work');
+    if (sw && window.innerWidth >= 700) {
+      const wbs = [...sw.querySelectorAll('.pro-panel.work [data-dyn="wheel"]')];
+      const m = Math.min(...wbs.map((b) => parseFloat(b.style.width) || Infinity));
+      if (isFinite(m)) wbs.forEach((b) => { b.style.width = m + 'px'; });
+    }
     if (!fitBound) { fitBound = true; let tm = 0; window.addEventListener('resize', () => { clearTimeout(tm); tm = setTimeout(fit, 120); }); }
   }
   /**
    * «Рабочий режим» (15.10, Алина): панель на весь экран — колесо с динамикой и таблица аспектов крупно, без шапки сайта и меню.
+   * В «Двух картах» (slot = 'split', 16.10, Алина) — обе карты сразу, рядом, у каждой своя колонка с шапкой, динамикой и таблицей.
    * Браузер тоже переходит в полноэкранный режим (если разрешает); Esc или кнопка — обратно. slot = null — выйти.
    */
   let fsMine = false, workBound = false;
-  const workBtn = (on) => (on ? `${icon('close', 'sm')} ${t('pro.workOff', 'Выйти из рабочего режима')} <kbd class="kb">Esc</kbd>` : `${icon('maximize', 'sm')} ${t('pro.workOn', 'Рабочий режим')}`);
+  const workBtn = (on, short) => (on ? `${icon('close', 'sm')} ${short ? t('pro.workOffS', 'Выйти') : t('pro.workOff', 'Выйти из рабочего режима')} <kbd class="kb">Esc</kbd>` : `${icon('maximize', 'sm')} ${t('pro.workOn', 'Рабочий режим')}`);
   function setWork(slot) {
     const prev = workSlot;
     workSlot = slot;
+    const split = document.querySelector('.split');
+    if (split) split.classList.toggle('work', slot === 'split');
     document.querySelectorAll('.pro-panel').forEach((p) => {
-      const on = p.dataset.panel === slot;
+      const on = isWork(p.dataset.panel);
       p.classList.toggle('work', on);
-      const b = p.querySelector('[data-work]');
-      if (b) { b.setAttribute('aria-pressed', String(on)); b.classList.toggle('primary', on); b.innerHTML = workBtn(on); }
+      p.querySelectorAll('[data-work]').forEach((b) => { b.setAttribute('aria-pressed', String(on)); b.classList.toggle('primary', on); b.innerHTML = workBtn(on, p.classList.contains('compact')); });
+      placeDisp(p);
       // панель на весь экран считается от экрана, только если у предков нет transform: снять остаток анимации появления страницы
       if (on) for (let e = p.parentElement; e && e !== document.body; e = e.parentElement) if (e.getAnimations) e.getAnimations().forEach((a) => a.cancel());
     });
@@ -877,7 +956,7 @@
       window.addEventListener('hashchange', () => { if (workSlot) setWork(null); });
     }
     setTimeout(fit, 30); setTimeout(fit, 260); // после перехода в полноэкранный режим высота окна меняется
-    if (!slot && prev) { const p = document.querySelector(`.pro-panel[data-panel="${prev}"]`); if (p) setTimeout(() => toChart(p), 280); }
+    if (!slot && prev) { const p = prev === 'split' ? document.querySelector('.split') : document.querySelector(`.pro-panel[data-panel="${prev}"]`); if (p) setTimeout(() => toChart(p), 280); }
   }
   /** Прокрутить к карте так, чтобы колесо, динамика и таблица оказались целиком под шапкой и вкладками. */
   function toChart(panel) {

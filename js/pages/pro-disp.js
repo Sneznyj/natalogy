@@ -1,5 +1,6 @@
-/* Цепочки диспозиторов — как в Sotis Online (алгоритм отображения А. Голоушкина): свободная схема, значки планет и серые стрелки
-   «планета → её диспозитор»; пунктирный кружок — планета в своём знаке (конечный диспозитор). Переключатели как там:
+/* Цепочки диспозиторов: значки планет и серые стрелки «планета → её диспозитор»; пунктирный кружок — планета в своём знаке
+   (конечный диспозитор). Схема — ёмкое дерево на один экран (16.10, Алина): конечный диспозитор или петля наверху, кто ему
+   подчиняется — уровнями ниже; ветки — полками, размер — по месту на странице (treeLayout, refit). Переключатели как в Sotis:
    набор планет (10 / септенер / 10 + узел и Хирон), достоинство (обитель, изгнание, экзальтация, падение), знаки или дома.
    В режиме «Дома» узлы — дома I–XII: стрелка ведёт от дома к дому, где стоит управитель его куспида.
    Под схемой — расшифровка: главные планеты и дома, петли, каждая цепочка простыми словами. Тексты — NXT (texts-extra.js). */
@@ -57,79 +58,108 @@
     return { nodes, edges, next, cycles, cyc, under, chainOf, trad, houseOf };
   }
 
-  /** Свободная раскладка: пружины по стрелкам, отталкивание узлов (Фрюхтерман — Рейнгольд), детерминированно. Компоненты — рядом. */
-  function layout(m) {
-    const adj = Object.fromEntries(m.nodes.map((id) => [id, new Set()]));
-    for (const [a, b] of m.edges) if (a !== b) { adj[a].add(b); adj[b].add(a); }
-    const comp = [], seen = new Set();
-    for (const id of m.nodes) {
-      if (seen.has(id)) continue;
-      const list = [], q = [id]; seen.add(id);
-      while (q.length) { const x = q.shift(); list.push(x); for (const y of adj[x]) if (!seen.has(y)) { seen.add(y); q.push(y); } }
-      comp.push(list);
-    }
-    comp.sort((a, b) => b.length - a.length);
-    const K = 64, pos = {};
-    const boxes = comp.map((list) => {
-      const n = list.length, P = {};
-      list.forEach((id, i) => { const a = (i / n) * Math.PI * 2 + 0.3; P[id] = { x: Math.cos(a) * K * Math.sqrt(n) * 0.6, y: Math.sin(a) * K * Math.sqrt(n) * 0.6 }; });
-      if (n > 1) {
-        let temp = K * 1.2;
-        for (let it = 0; it < 360; it++) {
-          const D = Object.fromEntries(list.map((id) => [id, { x: 0, y: 0 }]));
-          for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
-            const a = list[i], b = list[j]; let dx = P[a].x - P[b].x, dy = P[a].y - P[b].y; let d = Math.hypot(dx, dy) || 0.01;
-            const f = (K * K) / d; dx /= d; dy /= d; D[a].x += dx * f; D[a].y += dy * f; D[b].x -= dx * f; D[b].y -= dy * f;
-          }
-          for (const [a, b] of m.edges) {
-            if (a === b || !P[a] || !P[b]) continue;
-            let dx = P[a].x - P[b].x, dy = P[a].y - P[b].y; const d = Math.hypot(dx, dy) || 0.01; const f = (d * d) / K; dx /= d; dy /= d;
-            D[a].x -= dx * f; D[a].y -= dy * f; D[b].x += dx * f; D[b].y += dy * f;
-          }
-          for (const id of list) { const d = Math.hypot(D[id].x, D[id].y) || 0.01; const s = Math.min(d, temp) / d; P[id].x += D[id].x * s; P[id].y += D[id].y * s; }
-          temp = Math.max(1.5, temp * 0.985);
-        }
-      }
-      // конечный диспозитор (или петля) — сверху: поворачиваем компоненту так, чтобы её «центр тяжести» стрелок смотрел вверх
-      const sink = list.find((id) => m.cyc.has(id));
-      if (sink && n > 2) {
-        const cx = list.reduce((a, id) => a + P[id].x, 0) / n, cy = list.reduce((a, id) => a + P[id].y, 0) / n;
-        const ang = Math.atan2(P[sink].y - cy, P[sink].x - cx), rot = -Math.PI / 2 - ang;
-        const co = Math.cos(rot), si = Math.sin(rot);
-        for (const id of list) { const x = P[id].x - cx, y = P[id].y - cy; P[id] = { x: x * co - y * si, y: x * si + y * co }; }
-      }
-      const xs = list.map((id) => P[id].x), ys = list.map((id) => P[id].y);
-      const b = { list, P, x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
-      return b;
+  /**
+   * Ёмкая раскладка (16.10, Алина: «схема должна располагаться ёмко, чтобы вся была видна без прокрутки»): дерево по уровням.
+   * Корень ветки — петля (конечный диспозитор или взаимная рецепция) либо узел без стрелки; кто ему подчиняется — уровнем ниже.
+   * Две ориентации: «вниз» (корни сверху) и «влево» (корни справа, стрелки слева направо) — ветки укладываются полками;
+   * берём ту, что крупнее влезает в окно (avail — сколько места под схемой), при равенстве — более низкую. Возвращает { pos, W, H, sc, orient }.
+   */
+  function treeLayout(m, avail) {
+    const R = 17, PAD = 30;
+    const kids = Object.fromEntries(m.nodes.map((id) => [id, []]));
+    const sameLoop = (a, b) => m.cyc.has(a) && m.cyc.has(b) && m.cyc.get(a) === m.cyc.get(b);
+    for (const id of m.nodes) { const nx = m.next(id); if (nx && nx !== id && !sameLoop(id, nx)) kids[nx].push(id); }
+    // ветки: петли (в порядке стрелок) и узлы без диспозитора; самые большие — первыми
+    const size = (id) => 1 + kids[id].reduce((a, k) => a + size(k), 0);
+    const comps = m.cycles.map((l) => l.slice()).concat(m.nodes.filter((id) => !m.next(id)).map((id) => [id]));
+    comps.sort((a, b) => b.reduce((s, id) => s + size(id), 0) - a.reduce((s, id) => s + size(id), 0));
+    // внутри ветки: b — место поперёк (листья по порядку), d — уровень
+    const blocks = comps.map((roots) => {
+      const P = {}; let slot = 0, maxD = 0;
+      const place = (id, d) => {
+        maxD = Math.max(maxD, d);
+        const ch = kids[id].slice().sort((a, b) => size(b) - size(a));
+        // крупные поддеревья — в середину, чтобы стрелки сходились к узлу ровнее
+        const mid = []; ch.forEach((k, i) => (i % 2 ? mid.push(k) : mid.unshift(k)));
+        if (!mid.length) { P[id] = { b: slot++, d }; return P[id].b; }
+        const bs = mid.map((k) => place(k, d + 1));
+        P[id] = { b: (bs[0] + bs[bs.length - 1]) / 2, d };
+        return P[id].b;
+      };
+      roots.forEach((r) => place(r, 0));
+      return { P, n: slot, maxD, loop: roots.length > 2 };
     });
-    // компоненты слева направо, при широком ряде — перенос
-    const PAD = 46, GAP = 56, MAXW = 900;
-    let x = PAD, y = PAD, rowH = 0, W = 0;
-    for (const b of boxes) {
-      const w = b.x1 - b.x0, h = b.y1 - b.y0;
-      if (x > PAD && x + w > MAXW) { x = PAD; y += rowH + GAP; rowH = 0; }
-      for (const id of b.list) pos[id] = { x: x + (b.P[id].x - b.x0), y: y + (b.P[id].y - b.y0) };
-      x += w + GAP; rowH = Math.max(rowH, h); W = Math.max(W, x - GAP + PAD);
-    }
-    return { pos, W: Math.max(W, 260), H: y + rowH + PAD };
+    // полки: ветки слева направо (ориентация «вниз») или сверху вниз («вправо») с переносом
+    // полки: ветки кладём рядами слева направо (первый подходящий ряд, крупные — первыми), ряд не шире lim;
+    // перебираем lim от самой широкой ветки до всех в один ряд и берём крупнейший масштаб, при равенстве — более низкую схему
+    const pack = (orient) => {
+      const down = orient === 'down', SB = down ? 50 : 44, SD = down ? 64 : 78; // шаг поперёк и между уровнями
+      const GAP = down ? 34 : 30, LOOP = 26; // у петли из 3+ узлов — дуга возврата над рядом (справа от столбца) — место под неё
+      const dims = blocks.map((b) => { const across = (b.n - 1) * SB + 2 * R, along = b.maxD * SD + 2 * R + (b.loop ? LOOP : 0); return down ? { w: across, h: along } : { w: along, h: across }; });
+      const order = dims.map((d, i) => i).sort((i, j) => dims[j].w - dims[i].w || dims[j].h - dims[i].h);
+      const total = dims.reduce((a, d) => a + d.w + GAP, 0) - GAP;
+      const lims = [...new Set([Math.max(...dims.map((d) => d.w))].concat(order.map((_, k) => total / (k + 1))).map((x) => Math.round(Math.max(x, Math.max(...dims.map((d) => d.w))))))];
+      let best = null;
+      for (const lim of lims) {
+        const rows = []; // { x — занято по ширине, h — высота ряда, items }
+        const at = [];
+        for (const i of order) {
+          const d = dims[i];
+          let row = rows.find((r) => r.x + GAP + d.w <= lim + 1);
+          if (!row) { row = { x: -GAP, h: 0, items: [] }; rows.push(row); }
+          row.items.push(i); at[i] = { x: row.x + GAP, row }; row.x += GAP + d.w; row.h = Math.max(row.h, d.h);
+        }
+        let y = 0; for (const r of rows) { r.y = y; y += r.h + GAP; }
+        const ww = Math.max(...rows.map((r) => r.x)) + 2 * PAD, hh = y - GAP + 2 * PAD;
+        const sc = Math.min(1.25, avail.w / ww, avail.h / hh);
+        if (!best || sc > best.sc + 1e-6 || (Math.abs(sc - best.sc) < 1e-6 && hh * sc < best.H * best.sc - 0.5)) best = { sc, at: at.map((q) => ({ x: q.x, y: q.row.y })), W: ww, H: hh };
+      }
+      const pos = {};
+      blocks.forEach((b, i) => {
+        const o = best.at[i], off = b.loop ? LOOP : 0, bw = dims[i].w;
+        for (const id in b.P) {
+          const p = b.P[id], across = R + p.b * SB, along = R + off + p.d * SD;
+          // «влево»: корни справа, стрелки читаются слева направо (♆ → ♄ → ♂ → ♀ → ☿)
+          pos[id] = down ? { x: PAD + o.x + across, y: PAD + o.y + along } : { x: PAD + o.x + bw - along, y: PAD + o.y + across };
+        }
+      });
+      return { pos, W: best.W, H: best.H, sc: best.sc, orient: down ? 'down' : 'left' };
+    };
+    const a = pack('down'), b = pack('left');
+    // крупнее — лучше; при равном размере — та, что ниже ростом (ёмче, меньше листать)
+    return b.sc > a.sc * 1.08 || (b.sc >= a.sc * 0.9 && b.H * b.sc < a.H * a.sc * 0.8) ? b : a;
   }
 
-  function svg(m, c, label) {
+  /** Сколько места под схемой: ширина колонки и высота окна под шапкой и заголовком карточки (box — уже на странице). */
+  function availOf(box) {
+    const g = box && box.querySelector('.disp-graph');
+    const w = g && g.clientWidth ? g.clientWidth - 4 : Math.min(1080, window.innerWidth - (window.innerWidth > 980 ? 330 : 40));
+    const stick = Math.max(0, ...[...document.querySelectorAll('.top, .pro-tabs')].map((e) => { const cs = getComputedStyle(e); return cs.position === 'sticky' ? (parseFloat(cs.top) || 0) + e.offsetHeight : 0; }));
+    // над схемой в карточке — заголовок, переключатели и подсказка; схема должна влезть под ними целиком
+    const head = g ? g.getBoundingClientRect().top - box.getBoundingClientRect().top : 150;
+    return { w: Math.max(240, w), h: Math.max(260, window.innerHeight - stick - head - 28) };
+  }
+
+  function svg(m, c, label, avail) {
     const TX = UI.TX(), G = root.NWheel.GLYPH;
-    const { pos, W, H } = layout(m);
+    const { pos, W, H, sc, orient } = treeLayout(m, avail || availOf(null));
     const R = 17, mk = 'dsa' + Math.random().toString(36).slice(2, 7);
     const name = (id) => (isH(id) ? t('house.n', '{n} дом', { n: id.slice(1) }) : TX.P[id].name);
-    let s = `<svg class="disp-svg sotis" viewBox="0 0 ${Math.round(W)} ${Math.round(H)}" width="${Math.round(W)}" height="${Math.round(H)}" role="img" aria-label="${esc(label)}"><defs><marker id="${mk}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 1L9 5L0 9" fill="none" stroke="var(--disp-arrow)" stroke-width="1.4"/></marker><marker id="${mk}r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 1L9 5L0 9" fill="none" stroke="var(--rose)" stroke-width="1.6"/></marker></defs>`;
+    let s = `<svg class="disp-svg sotis" viewBox="0 0 ${Math.round(W)} ${Math.round(H)}" width="${Math.round(W * sc)}" height="${Math.round(H * sc)}" data-orient="${orient}" role="img" aria-label="${esc(label)}"><defs><marker id="${mk}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 1L9 5L0 9" fill="none" stroke="var(--disp-arrow)" stroke-width="1.4"/></marker><marker id="${mk}r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 1L9 5L0 9" fill="none" stroke="var(--rose)" stroke-width="1.6"/></marker></defs>`;
     const pair = new Set(m.edges.map(([a, b]) => a + '>' + b));
     for (const [a, b] of m.edges) {
       if (a === b) continue;
       const A = pos[a], B = pos[b]; let dx = B.x - A.x, dy = B.y - A.y; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
       const loop = m.cyc.has(a) && m.cyc.has(b) && m.cyc.get(a) === m.cyc.get(b);
-      // взаимная рецепция: две стрелки навстречу — разводим дугами
-      const both = pair.has(b + '>' + a), bend = both ? 14 : 0;
-      const x0 = A.x + dx * (R + 2), y0 = A.y + dy * (R + 2), x1 = B.x - dx * (R + 4), y1 = B.y - dy * (R + 4);
-      const mx = (x0 + x1) / 2 - dy * bend, my = (y0 + y1) / 2 + dx * bend;
-      s += `<path d="M${x0.toFixed(1)} ${y0.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}" fill="none" stroke="${loop ? 'var(--rose)' : 'var(--disp-arrow)'}" stroke-width="${loop ? 1.6 : 1.2}" marker-end="url(#${mk}${loop ? 'r' : ''})"/>`;
+      const L = loop ? m.cycles[m.cyc.get(a)] : null;
+      // взаимная рецепция: две стрелки навстречу — разводим дугами; петля из 3+ узлов замыкается дугой над рядом (справа от столбца)
+      const both = pair.has(b + '>' + a);
+      let cx = (A.x + B.x) / 2, cy = (A.y + B.y) / 2;
+      if (both) { cx -= dy * 14 * 2; cy += dx * 14 * 2; }
+      else if (L && L.length > 2 && a === L[L.length - 1] && b === L[0]) { const bend = 24 + 0.12 * d; if (orient === 'down') cy = Math.min(A.y, B.y) - bend; else cx = Math.max(A.x, B.x) + bend; }
+      const u0 = Math.hypot(cx - A.x, cy - A.y) || 1, u1 = Math.hypot(B.x - cx, B.y - cy) || 1;
+      const x0 = A.x + (cx - A.x) / u0 * (R + 2), y0 = A.y + (cy - A.y) / u0 * (R + 2), x1 = B.x - (B.x - cx) / u1 * (R + 4), y1 = B.y - (B.y - cy) / u1 * (R + 4);
+      s += `<path d="M${x0.toFixed(1)} ${y0.toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}" fill="none" stroke="${loop ? 'var(--rose)' : 'var(--disp-arrow)'}" stroke-width="${loop ? 1.6 : 1.2}" marker-end="url(#${mk}${loop ? 'r' : ''})"/>`;
     }
     for (const id of m.nodes) {
       const p = pos[id], self = m.next(id) === id;
@@ -211,15 +241,26 @@
     const m = model(c, st); m.mode = st.mode;
     const sel = (k, list) => `<select class="select sm" data-dsel="${k}">${list.map(([v, n]) => `<option value="${v}" ${st[k] === v ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
     return `<div class="card stack disp-card">
-      <div class="row sb"><h3>${t('t.disp', 'Цепочки диспозиторов')}</h3><span class="tiny muted">${esc(t('disp.algo', 'схема как в Sotis (алгоритм А. Голоушкина)'))}</span></div>
+      <div class="row sb"><h3>${t('t.disp', 'Цепочки диспозиторов')}</h3><span class="tiny muted">${esc(t('disp.algo2', 'стрелки сходятся к главным планетам карты'))}</span></div>
       <div class="row disp-sels">${sel('set', [['10', t('disp.s10', '10 планет')], ['7', t('disp.s7', 'Септенер (7)')], ['12', t('disp.s12', '10 + узел и Хирон')]])}${sel('dig', [['dom', t('disp.dom', 'Обитель')], ['exile', t('disp.exile', 'Изгнание')], ['exalt', t('disp.exalt', 'Экзальтация')], ['fall', t('disp.fall', 'Падение')]])}${c.houses ? sel('mode', [['signs', t('disp.signs', 'Знаки')], ['houses', t('disp.houses', 'Дома')]]) : ''}</div>
       <p class="tiny muted">${esc(st.mode === 'houses' ? t('disp.hintH', 'Стрелка ведёт от дома к дому, где стоит управитель его куспида. Пунктирный кружок — управитель в своём же доме: туда сходятся цепочки. Розовые стрелки — петли. Наведи на дом — подробности.') : t('disp.hintP', 'Стрелка ведёт от планеты к её диспозитору — управителю знака, где она стоит. Пунктирный кружок — планета в своём знаке (конечный диспозитор), розовые стрелки — петли (взаимная рецепция). Наведи на значок — подробности.'))}</p>
-      <div class="disp-graph scrollx">${svg(m, c, t('t.disp', 'Цепочки диспозиторов'))}</div>
+      <div class="disp-graph">${svg(m, c, t('t.disp', 'Цепочки диспозиторов'))}</div>
       <div class="stack disp-read">${reading(m, c)}</div>
     </div>`;
   }
+  /** Схема по месту на странице: ширина колонки и высота окна под заголовком карточки (и при изменении окна). */
+  let fitT = 0, fitBox = null, fitC = null, fitBound = false;
+  function refit(box, c) {
+    const g = box.querySelector('.disp-graph'); if (!g || !document.body.contains(box)) return;
+    if (!c.houses && st.mode === 'houses') st.mode = 'signs';
+    const m = model(c, st); m.mode = st.mode;
+    g.innerHTML = svg(m, c, t('t.disp', 'Цепочки диспозиторов'), availOf(box));
+  }
   function bind(box, c) {
     box.querySelectorAll('[data-dsel]').forEach((s) => s.addEventListener('change', () => { st[s.dataset.dsel] = s.value; box.innerHTML = card(c); bind(box, c); }));
+    refit(box, c);
+    fitBox = box; fitC = c;
+    if (!fitBound) { fitBound = true; window.addEventListener('resize', () => { clearTimeout(fitT); fitT = setTimeout(() => { if (fitBox && document.body.contains(fitBox)) refit(fitBox, fitC); }, 150); }); }
     root.NWheel.bindTips(box);
   }
 

@@ -2,6 +2,7 @@
    Без зависимостей: NWheel.svg(chart, opts) → строка SVG; NWheel.bindTips(root) — подсказки при наведении и касании.
    chart: { points:[{id, lon, retro}], cusps:[12], asc, mc }   opts: { outer:{points, cusps?:[12], asc?, mc?}, aspects:[{a,b,type,nature,orb,strength, from?:'in'|'out'}],
    show:[ids], labels:{in,out}, outerCusps:false — не рисовать дома внешней карты, cosmo — космограмма (без домов, 0° Овна слева),
+   cosmoIn / cosmoOut — космограммой только внутренний или только внешний круг (16.10, Алина): у этого круга нет домов и осей,
    rot — градус, который стоит слева (по умолчанию ASC внутренней карты; «главный АС» внешней карты — её ASC) } */
 (function (root) {
   'use strict';
@@ -43,6 +44,82 @@
     return items;
   }
 
+  /**
+   * Точки на отрезке [lo, hi] в заданном порядке, шаг не меньше d, как можно ближе к желаемым xs (xs по возрастанию).
+   * Замена y = x − k·d сводит задачу к неубывающей последовательности: склеиваем соседей, нарушающих порядок (pool adjacent violators),
+   * потом каждый блок ставим в границы. Не хватает места — шаг уменьшается ровно до того, что помещается.
+   */
+  function place1D(xs, d, lo, hi) {
+    const n = xs.length;
+    if (!n) return [];
+    if (hi < lo) hi = lo = (lo + hi) / 2;
+    if (n > 1 && (n - 1) * d > hi - lo) d = (hi - lo) / (n - 1);
+    const blocks = [];
+    xs.forEach((x, k) => {
+      blocks.push({ s: x - k * d, c: 1 });
+      while (blocks.length > 1) {
+        const b = blocks[blocks.length - 1], a = blocks[blocks.length - 2];
+        if (a.s / a.c <= b.s / b.c) break;
+        a.s += b.s; a.c += b.c; blocks.pop();
+      }
+    });
+    const out = [], ylo = lo, yhi = hi - (n - 1) * d;
+    let k = 0;
+    for (const b of blocks) { const m = Math.min(yhi, Math.max(ylo, b.s / b.c)); for (let j = 0; j < b.c; j++, k++) out.push(m + k * d); }
+    return out;
+  }
+
+  /**
+   * Значки планет не закрывают линии куспидов (16.10, Алина): каждый значок стоит в своём доме (между соседними линиями)
+   * и отходит от линии на clear(угол линии) градусов; внутри дома значки раздвигаются на minSep как можно ближе к своим градусам.
+   * Тесный дом: отступ от линии уменьшается до clearMin (значок только касается линии), шаг между значками — до RHO·minSep
+   * (рамка значка шире самого символа). Не помещаются и так — ближайший к линии значок переходит за линию, в соседний дом,
+   * если там есть место (так рисуют планету «на куспиде»; засечка на градусе и выноска остаются на своём месте).
+   * lines — углы линий на колесе (куспиды или оси); без линий — обычный разнос по кругу.
+   */
+  function spreadAround(items, lines, minSep, clear, clearMin) {
+    if (!lines || lines.length < 2) return spread(items, minSep);
+    const L = lines.map(norm).sort((a, b) => a - b), n = L.length;
+    const W = L.map((s, i) => norm(L[(i + 1) % n] - s) || 360);
+    const RHO = 0.7;
+    const homeOf = (a) => { let k = n - 1; for (let i = 0; i < n; i++) if (a >= L[i]) k = i; return k; };
+    // sec — в каком доме рисуем значок, want — желаемое место от начала этого дома (за линией — меньше 0 или больше ширины)
+    const pl = items.map((it) => { const sec = homeOf(norm(it.ang)); return { it, sec, want: norm(it.ang - L[sec]) }; });
+    const inSec = (j) => pl.filter((q) => q.sec === j);
+    const room = (j, cnt) => W[j] - clearMin(L[j]) - clearMin(L[(j + 1) % n]) - Math.max(0, cnt - 1) * minSep * RHO; // ≥ 0 — помещаются
+    const stuck = new Set();
+    for (let guard = 0; guard < 4 * pl.length + 4; guard++) {
+      let worst = -1, wv = 0;
+      for (let j = 0; j < n; j++) { if (stuck.has(j)) continue; const c = inSec(j).length; if (c > 1) { const r = room(j, c); if (r < wv) { wv = r; worst = j; } } }
+      if (worst < 0) break;
+      const list = inSec(worst).sort((p, q) => p.want - q.want);
+      const first = list[0], last = list[list.length - 1], nx = (worst + 1) % n, pv = (worst - 1 + n) % n;
+      const cand = [];
+      if (room(nx, inSec(nx).length + 1) >= 0) cand.push({ q: last, to: nx, d: W[worst] - last.want, want: -(W[worst] - last.want) });
+      if (room(pv, inSec(pv).length + 1) >= 0) cand.push({ q: first, to: pv, d: first.want, want: W[pv] + first.want });
+      if (!cand.length) { stuck.add(worst); continue; } // соседям тоже тесно — сожмём как есть
+      cand.sort((a, b) => a.d - b.d);
+      cand[0].q.sec = cand[0].to; cand[0].q.want = cand[0].want;
+    }
+    for (let i = 0; i < n; i++) {
+      const list = inSec(i).sort((p, q) => p.want - q.want);
+      if (!list.length) continue;
+      const s = L[i], e = L[(i + 1) % n], w = W[i];
+      const xs = list.map((q) => q.want);
+      const cmL = clearMin(s), cmR = clearMin(e);
+      let lo = clear(s), hi = w - clear(e);
+      let def = (list.length - 1) * minSep - (hi - lo);
+      if (def > 0) { // тесно: сначала поровну с двух сторон, потом сколько осталось
+        const dl = Math.max(0, Math.min(def / 2, lo - cmL)); lo -= dl; def -= dl;
+        const dr = Math.max(0, Math.min(def, w - cmR - hi)); hi += dr; def -= dr;
+        if (def > 0) lo -= Math.max(0, Math.min(def, lo - cmL));
+      }
+      const pos = place1D(xs, minSep, lo, hi);
+      list.forEach((q, j) => { q.it.ang = s + pos[j]; });
+    }
+    return items;
+  }
+
   // ширина подписи (Manrope 800) в долях кегля — чтобы подписи куспидов вставали рядом с линией и не наезжали на соседей
   const CW = { I: 0.3, V: 0.66, X: 0.64, A: 0.7, C: 0.68, D: 0.72, M: 0.86 };
   const textW = (str, fs) => [...String(str)].reduce((w, ch) => w + (CW[ch] || 0.6) * fs, 0);
@@ -72,10 +149,18 @@
       : { in: 31, out: 31, deg: 15, bg: 17, sign: 18, hl: 16, hlAx: 16.5, hd: 12 };
     const GS = Object.fromEntries(Object.entries(GS0).map(([k, v]) => [k, Math.round(v * K * 10) / 10]));
     const PADV = (bi ? 28 : 12) + Math.ceil(36 * (K - 1)); // поля вокруг — под подписи куспидов снаружи пояса (крупнее подписи — шире поля)
-    // космограмма — без домов и осей, 0° Овна слева; opts.rot — какой градус поставить слева (ASC внешней карты, если «главный АС» — её)
-    const cosmo = !!opts.cosmo;
+    // космограмма — без домов и осей, 0° Овна слева; opts.rot — какой градус поставить слева (ASC внешней карты, если «главный АС» — её).
+    // Космограммой может быть один круг (16.10, Алина): внутренний без домов — слева главный АС внешней карты (если у неё есть дома);
+    // внешний без домов — внешние куспиды и оси не рисуются, слева — АС натала.
+    const cosmoIn = !!(opts.cosmo || opts.cosmoIn), cosmoOut = !!(opts.cosmo || opts.cosmoOut);
+    const ob = bi ? opts.outer : null;
+    const outerHouses = !!(ob && !cosmoOut && opts.outerCusps !== false && (ob.cusps || ob.asc != null || ob.mc != null));
+    // линии домов внешней карты: все 12 куспидов или только оси (у прогрессий есть лишь ASC и MC)
+    const oList = !outerHouses ? [] : ob.cusps ? ob.cusps.map((c, i) => [c, i])
+      : [[ob.asc, 0], [ob.mc, 9], [ob.asc != null ? ob.asc + 180 : null, 6], [ob.mc != null ? ob.mc + 180 : null, 3]].filter((x) => x[0] != null);
+    const oAsc0 = outerHouses ? (ob.cusps ? ob.cusps[0] : ob.asc != null ? ob.asc : null) : null;
     const asc = chart.asc != null ? chart.asc : 0;
-    const rot = cosmo ? 0 : opts.rot != null ? opts.rot : asc;
+    const rot = cosmoIn ? (!opts.cosmo && oAsc0 != null ? (opts.rot != null ? opts.rot : oAsc0) : 0) : opts.rot != null ? opts.rot : asc;
     const ang = (lon) => 180 + norm(lon - rot); // главный ASC слева, против часовой
     const xy = (r, a) => [C + r * Math.cos(a * Math.PI / 180), C - r * Math.sin(a * Math.PI / 180)];
     const P = (r, a) => { const [x, y] = xy(r, a); return `${r1(x)} ${r1(y)}`; };
@@ -84,14 +169,20 @@
     const vis = (p) => !show || show.has(p.id);
     const degTxt = (lon) => `${Math.floor(norm(lon) % 30)}°`;
     const noAxis = (p) => !['asc', 'mc'].includes(p.id);
-    // планеты по кругам: разносим близкие значки заранее — по этим местам потом раскладываются подписи куспидов внешней карты
+    // планеты по кругам: разносим близкие значки заранее — по этим местам потом раскладываются подписи куспидов внешней карты.
+    // Линии домов своего круга — препятствия: значок не ложится на куспид (см. spreadAround), градус под значком — тоже.
     const sep = (rG, rD, wG, wD) => Math.max(wG / rG, wD / rD) * 180 / Math.PI; // минимальный разнос значков, градусы
-    const layout = (points, minSep) => spread(points.map((p) => ({ p, ang: ang(p.lon) })), minSep);
+    const asinD = (x) => Math.asin(Math.min(1, Math.max(0, x))) * 180 / Math.PI;
+    const wDeg = 1.75 * GS.deg, hDeg = GS.deg; // подпись градуса «29°» под значком
+    const clearOf = (rG, rD) => (a) => Math.max(asinD((GS.bg + 3) / rG), asinD((extT(a, wDeg, hDeg) + 2.5) / rD));
+    const clearMinOf = (rG) => () => asinD((GS.bg + 0.5) / rG);
+    const layout = (points, minSep, lines, rG, rD) => spreadAround(points.map((p) => ({ p, ang: ang(p.lon) })), lines.map(ang), minSep, clearOf(rG, rD), clearMinOf(rG));
     const ptsIn = chart.points.filter(vis);
-    const inItems = layout(ptsIn.filter(noAxis), bi ? sep(R.pl, R.plDeg, 30 * K, 26 * K) : sep(R.pl, R.plDeg, 34 * K, 28 * K));
-    const outItems = bi ? layout(opts.outer.points.filter((p) => noAxis(p) && (!opts.showOuter || opts.showOuter.includes(p.id))), sep(R.opl, R.oplDeg, 30 * K, 26 * K)) : [];
+    const inLines = chart.cusps && !cosmoIn ? chart.cusps : [];
+    const inItems = layout(ptsIn.filter(noAxis), bi ? sep(R.pl, R.plDeg, 30 * K, 26 * K) : sep(R.pl, R.plDeg, 34 * K, 28 * K), inLines, R.pl, R.plDeg);
+    const outItems = bi ? layout(opts.outer.points.filter((p) => noAxis(p) && (!opts.showOuter || opts.showOuter.includes(p.id))), sep(R.opl, R.oplDeg, 30 * K, 26 * K), oList.map((x) => x[0]), R.opl, R.oplDeg) : [];
 
-    let s = `<svg class="nw${bi ? ' bi' : ''}${cosmo ? ' cosmo' : ''}" data-rin="${R.zodIn}" viewBox="${-PADV} ${-PADV} ${S + 2 * PADV} ${S + 2 * PADV}" role="img" aria-label="${esc(opts.label || (lang === 'ru' ? 'Колесо карты' : 'Chart wheel'))}" xmlns="http://www.w3.org/2000/svg">`;
+    let s = `<svg class="nw${bi ? ' bi' : ''}${cosmoIn ? ' cosmo' : ''}" data-rin="${R.zodIn}" viewBox="${-PADV} ${-PADV} ${S + 2 * PADV} ${S + 2 * PADV}" role="img" aria-label="${esc(opts.label || (lang === 'ru' ? 'Колесо карты' : 'Chart wheel'))}" xmlns="http://www.w3.org/2000/svg">`;
     // поле внутри пояса; у двойного внутренний круг (натал) — сиреневый, внешний — без фона, чтобы планеты в нём читались чётко (15.10, Алина)
     s += `<circle cx="${C}" cy="${C}" r="${R.zodIn}" fill="var(--w-paper)"/>`;
     if (bi) s += `<circle cx="${C}" cy="${C}" r="${R.ring}" fill="var(--w-ring-in)" stroke="var(--w-ring-line)" stroke-width="1.6"/>`;
@@ -118,7 +209,7 @@
     const AX = { 0: ['AC', 'var(--w-ax-asc)', 'var(--w-ax-asc-ink)'], 3: ['IC', 'var(--w-ax-ic)', 'var(--w-ax-ic-ink)'], 6: ['DC', 'var(--w-ax-dsc)', 'var(--w-ax-dsc-ink)'], 9: ['MC', 'var(--w-ax-mc)', 'var(--w-ax-mc-ink)'] };
     const HOUSE = lang === 'ru' ? 'Дом ' : 'House ';
     let hnum = '', axes = '';
-    if (chart.cusps && !cosmo) {
+    if (chart.cusps && !cosmoIn) {
       const rEnd = bi ? R.ring : R.zodIn;
       for (let i = 0; i < 12; i++) {
         const c = chart.cusps[i], ax = AX[i];
@@ -145,10 +236,8 @@
     // фиолетовые линии только во внешнем круге; номер дома и градус — у пояса знаков, рядом с линией;
     // если там стоит планета — подпись уходит на другую сторону линии или чуть дальше. Оси внешней карты — пунктиром.
     let ocusps = '', olabels = '';
-    const ob = bi ? opts.outer : null;
-    if (ob && !cosmo && opts.outerCusps !== false && (ob.cusps || ob.asc != null || ob.mc != null)) {
-      const list = ob.cusps ? ob.cusps.map((c, i) => [c, i])
-        : [[ob.asc, 0], [ob.mc, 9], [ob.asc != null ? ob.asc + 180 : null, 6], [ob.mc != null ? ob.mc + 180 : null, 3]].filter((x) => x[0] != null);
+    if (outerHouses) {
+      const list = oList;
       const busy = outItems.map((it) => { const [x, y] = xy(R.opl, it.ang); return { x, y, r: GS.bg + 1.5 }; })
         .concat(outItems.map((it) => { const [x, y] = xy(R.oplDeg, it.ang); return { x, y, r: 11 }; }));
       const placed = [];
@@ -229,7 +318,7 @@
         const tip = `${name}${sideLabel ? ' · ' + sideLabel : ''}: ${fmtDeg(p.lon, lang)}${p.house ? ` · ${lang === 'ru' ? 'дом' : 'house'} ${p.house}` : ''}${p.retro ? (lang === 'ru' ? ' · ретроградный' : ' · retrograde') : ''}`;
         h += `<g class="nw-pl ${cls}" data-id="${p.id}" data-tip="${esc(tip)}" tabindex="0">`;
         h += L(tickFrom, tickTo, a0, `stroke="${tickCol}" stroke-width="2.2"`);
-        if (Math.abs(it.ang - a0) > 1.2) { const lr = rGlyph + GS.bg - 1; h += `<line x1="${r1(xy(tickTo, a0)[0])}" y1="${r1(xy(tickTo, a0)[1])}" x2="${r1(xy(lr, it.ang)[0])}" y2="${r1(xy(lr, it.ang)[1])}" stroke="var(--w-line2)" stroke-width=".8"/>`; }
+        if (Math.abs(d180(it.ang - a0)) > 1.2) { const lr = rGlyph + GS.bg - 1; h += `<line x1="${r1(xy(tickTo, a0)[0])}" y1="${r1(xy(tickTo, a0)[1])}" x2="${r1(xy(lr, it.ang)[0])}" y2="${r1(xy(lr, it.ang)[1])}" stroke="var(--w-line2)" stroke-width=".8"/>`; }
         const [px, py] = xy(R.asp, a0);
         h += `<circle cx="${r1(px)}" cy="${r1(py)}" r="${out ? 2.3 : 2.7}" fill="${tickCol}"/>`;
         h += `<circle class="pl-bg" cx="${r1(gx)}" cy="${r1(gy)}" r="${GS.bg}" fill="${!bi ? 'var(--w-plbg)' : out ? 'var(--w-paper)' : 'var(--w-ring-in)'}" stroke="transparent"/>`;
@@ -348,5 +437,5 @@
     scope.addEventListener('pointerleave', clear);
   }
 
-  root.NWheel = { svg, bindTips, linkAspects, spread, fmtDeg, GLYPH, SIGN_G, ASP_G, NAMES, SIGNS, ASP_N };
+  root.NWheel = { svg, bindTips, linkAspects, spread, spreadAround, place1D, fmtDeg, GLYPH, SIGN_G, ASP_G, NAMES, SIGNS, ASP_N };
 })(typeof window !== 'undefined' ? window : globalThis);

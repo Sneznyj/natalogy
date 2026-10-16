@@ -295,3 +295,26 @@ Object.assign(window.NI18N.en, {
   'fd.subsP': 'Sub-periods — tap to open', 'fd.perE': 'Major period', 'fd.subE': 'Sub-period · {x}', 'fd.toPer': 'Whole period: {x}',
   'fd.prevP': 'Previous period', 'fd.nextP': 'Next period', 'fd.prevS': 'Previous sub-period', 'fd.nextS': 'Next sub-period',
 });
+
+/* 16.10.2026, Алина (второй список): космограмма в строке карты (какой круг), «Что показывать» наверху, две карты в рабочем режиме,
+   «что даёт аспект», диспозиторы на один экран, гороскоп — по Асценденту и «Периоды». */
+Object.assign(window.NI18N.en, {
+  'pro.cTr': 'transits', 'pro.cNone': 'none', 'pro.cIn': 'inner · {x}', 'pro.cOut': 'outer · {x}', 'pro.cBoth': 'both charts', 'pro.cYes': 'yes',
+  'pro.cosmoT2': 'Cosmogram — a chart without houses: only planets and aspects. Choose which chart becomes a cosmogram — the inner or the outer one.',
+  'pro.cosmoA': 'Which chart to draw as a cosmogram', 'pro.cosmoInSub': 'cosmogram: {x}',
+  'pro.dCuCosmo2': 'The inner chart is a cosmogram, so it has no houses. The cosmogram is chosen in the chart row at the top.',
+  'pro.rotCosmoIn': 'The inner chart is a cosmogram — the main ASC belongs to the outer chart', 'pro.workOffS': 'Leave',
+  'pro.dCuCosmo1': 'The chart is a cosmogram, so it has no houses. The cosmogram is chosen in the chart row at the top.',
+  'disp.algo2': 'arrows run to the chart’s main planets',
+  'ac.gives': 'What it gives', 'ac.tip': 'Tip', 'ac.between': 'Between you',
+  'horo.yourAsc': 'your Ascendant', 'horo.yourSun': 'your Sun', 'horo.ascMe': 'Your Ascendant is {a}, your Sun is {s}.',
+  'horo.ascGo': 'Read by my Ascendant', 'horo.ascOn': 'now — by the Ascendant',
+  'horo.ascNoTime2': 'No birth time ({n}) — the Ascendant can’t be calculated without it. Read by the Sun ({s}) for now; you can add the time in People.',
+  'horo.ascNoChart': 'Don’t know your Ascendant? Your chart will show it — you need the date, time and city of birth.', 'horo.ascFind': 'Find my Ascendant',
+  'horo.ascT': 'Choose your sign by the Ascendant, not the Sun',
+  'horo.ascP': 'The forecast is more accurate this way: the horoscope counts houses from the chosen sign, and they match your chart only if it is your Ascendant — the rising sign.',
+  'horo.p2': 'Choose your sign — ideally by the Ascendant. I’ll show the day, week, month, year and astrological periods: retrogrades, New and Full Moons, eclipses.',
+  'horo.people2': 'My people’s signs (↑ — Ascendant):', 'horo.byAsc': 'by the Ascendant', 'horo.bySun': 'by the Sun — no birth time',
+  'horo.periods': 'Periods', 'horo.periodsT': 'Mercury and Venus retrogrades, New and Full Moons, eclipses — what they mean for your sign',
+  'horo.pRange': 'Periods for the year ahead', 'horo.pIng2': '{p} {s} — a new sign', 'horo.pFilter': 'Which periods',
+});

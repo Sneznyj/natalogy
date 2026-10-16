@@ -1068,6 +1068,41 @@ body.scrubbing,body.scrubbing *{cursor:grabbing!important;user-select:none}
 .hsign[aria-pressed="true"] small{color:rgba(255,255,255,.8)}
 .hsign[aria-pressed="true"] .me{color:#FFE2A8}
 .horo-people{gap:6px}
+/* 16.10 (Алина): знак — по Асценденту; ★ — Асцендент, ☉ — Солнце */
+.hsign .me.sun{color:var(--muted);font-family:var(--f-glyph)}
+.hsign[aria-pressed="true"] .me.sun{color:rgba(255,255,255,.85)}
+.horo-asc{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;padding:12px 16px;border-radius:16px;background:var(--gold-soft,#FFF6E0);border:1px solid color-mix(in srgb,var(--gold-2,#D9A441) 45%,transparent)}
+.horo-asc .ha-ic{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--surface);color:var(--gold-2,#B07A12);font:800 calc(18px*var(--fz))/1 var(--f-ui);box-shadow:var(--shadow)}
+.horo-asc b{font:700 calc(15px*var(--fz))/1.3 var(--f-ui)}
+.horo-asc p{margin:0;line-height:1.5;font-size:calc(14px*var(--fz))}
+.horo-asc .ha-me{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center}
+.horo-asc .ha-me .btn .g{font-family:var(--f-glyph)}
+/* «Периоды»: фильтры, карточки периодов (раскрываются), «для тебя» по дому, даты, что делать / чего избегать */
+.hp-filter{gap:6px}
+.hp-list{display:grid;gap:8px}
+.hp-item{border:1px solid var(--line-soft);border-radius:16px;background:var(--surface-2);overflow:hidden}
+.hp-item.now{border-color:color-mix(in srgb,var(--lav-strong) 55%,transparent);background:var(--lav-soft)}
+.hp-item > summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px 12px;align-items:center;padding:10px 14px}
+.hp-item > summary::-webkit-details-marker{display:none}
+.hp-g{position:relative;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line-soft)}
+.hp-g .g{font:400 calc(22px*var(--fz))/1 var(--f-glyph);color:var(--lav-strong)}
+.hp-g i{position:absolute;right:2px;bottom:0;font:700 calc(11px*var(--fz))/1 var(--f-glyph);font-style:normal;color:var(--bad,#C9271F)}
+.hp-g.ecl{background:linear-gradient(135deg,var(--surface) 50%,var(--lav-soft) 50%)}
+.hp-t{display:grid;gap:2px;min-width:0}
+.hp-t b{font:700 calc(15px*var(--fz))/1.3 var(--f-ui)}
+.hp-t small{font:500 calc(12.5px*var(--fz))/1.2 var(--f-mono);color:var(--muted)}
+.hp-tags{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
+.hp-st.now{background:var(--lav-strong);color:#fff;border-color:transparent}
+.hp-st.shadow{background:var(--surface-3,var(--surface));color:var(--muted)}
+.hp-st.soon{background:var(--gold-soft,#FFF0C8);color:var(--ink)}
+.hp-body{display:grid;gap:10px;padding:2px 14px 14px 66px}
+.hp-you{margin:0;line-height:1.55}
+.hp-you .label{display:block;margin-bottom:3px}
+.hp-you2{margin:0;line-height:1.5;font-size:calc(14px*var(--fz))}
+.hp-dates{gap:6px}
+.hp-da{display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(220px*var(--fz)),1fr));gap:8px 18px}
+.hp-da ul{margin:4px 0 0;padding-left:18px;display:grid;gap:2px;font-size:calc(14px*var(--fz))}
+@media (max-width:640px){.hp-item > summary{grid-template-columns:auto minmax(0,1fr)}.hp-tags{grid-column:1/-1;justify-content:flex-start}.hp-body{padding:2px 12px 12px}}
 .horo-layout{display:grid;grid-template-columns:minmax(0,1fr) calc(330px*var(--fz));gap:18px;align-items:start}
 @media (max-width:1100px){.horo-layout{grid-template-columns:1fr}}
 .horo-side{position:sticky;top:76px;display:grid;gap:14px}
@@ -1490,7 +1525,7 @@ body.scrubbing,body.scrubbing *{cursor:grabbing!important;user-select:none}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--disp-arrow:#B4ABCB}}
 .disp-sels{gap:8px}
 .disp-sels .select{width:auto;min-width:150px;min-height:38px;padding-top:4px;padding-bottom:4px}
-.disp-svg.sotis{display:block;margin:0 auto;max-width:none}
+.disp-svg.sotis{display:block;margin:0 auto;max-width:100%;height:auto} /* 16.10: схема по месту — целиком в окне */
 .disp-svg .dn{cursor:help;outline:none}
 .disp-svg .dn:hover circle,.disp-svg .dn:focus circle{fill:var(--lav-soft)}
 .disp-read{gap:10px}
@@ -1705,10 +1740,8 @@ button.tag{cursor:pointer;border:0}
 .ph-tools .btn.sm{min-height:34px;padding:6px 12px}
 .check.sm{font-size:calc(13px*var(--fz));font-weight:600;align-items:center;gap:7px;white-space:nowrap}
 .check.sm input{margin-top:0}
-.ph-other{display:none}
-.pro-panel.work .ph-other{display:inline-flex}
 /* окошко данных свёрнуто в строку */
-.pd-sum{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;padding:10px 14px}
+.pd-sum{display:grid;gap:8px;padding:10px 14px}
 .pd-sum-t{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;min-width:0;font-size:calc(14px*var(--fz))}
 .pd-sum-t .mono{font:600 calc(13.5px*var(--fz)) var(--f-mono)}
 .pd-sum .btn.sm{min-height:34px}
@@ -1761,9 +1794,57 @@ body.pro-working{overflow:hidden}
   .pro-panel.work .pro-asp .tbl-wrap{overflow:clip}
 }
 .pro-panel.work .ph-title h3{font-size:calc(22px*var(--fz))}
+/* 16.10 (Алина): космограмма — выбором в строке карты (какой круг без домов), «Что показывать» — там же, под строкой;
+   в рабочем режиме строки карты нет: выбор космограммы — в полосе сверху, «Что показывать» — под таблицей аспектов */
+.pd-cosmo{display:inline-flex;align-items:center;gap:6px;margin:0;font:600 calc(13px*var(--fz)) var(--f-ui);color:var(--muted);white-space:nowrap}
+.pd-cosmo-l{display:inline-flex;align-items:center;gap:5px}
+.pd-cosmo .ico{width:16px;height:16px;color:var(--lav-strong)}
+.pd-cosmo .select.sm{width:auto;min-height:34px;padding:4px 30px 4px 10px;font-size:calc(13.5px*var(--fz));border-radius:10px;background-position:calc(100% - 15px) 50%,calc(100% - 10px) 50%}
+.pd-cosmo.on .select.sm{border-color:var(--lav-strong);background-color:var(--lav-soft);color:var(--lav-ink);font-weight:700}
+.ph-cosmo{display:none}
+.pro-panel.work .ph-cosmo{display:inline-flex}
+.pd-r1{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;min-width:0}
+/* «Карта» не в рабочем режиме: шапки над колесом нет (название уже в строке карты) — колесо крупнее; «Рабочий режим» и подпись — в строке карты */
+.pro-panel:not(.compact):not(.work) .pro-wheel > .ph-head{display:none}
+.pd-psub{margin:-4px 0 0;line-height:1.3}
+.pd-psub[hidden]{display:none}
+@media (max-width:1499px){.pro-panel:not(.compact) .pd-r1 .pd-savebtn .lbl{display:none}}
+.pd-r2{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:flex-start;padding-top:8px;border-top:1px solid var(--line-soft);min-width:0}
+.pro-data .pd-r2 > .pd-disp{flex:1 1 300px;min-width:0;margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none}
+.pro-data .pd-r2 > .pd-disp > summary{min-height:34px}
+.pro-data .pd-r2 > .pd-cosmo{flex:0 0 auto;margin-left:auto}
+/* на широком экране космограмма — справа в строке «Что показывать», а раскрытый блок занимает всю ширину под ними */
+@media (min-width:700px){
+  .pro-data .pd-r2{display:block;position:relative}
+  .pro-data .pd-r2 > .pd-cosmo{position:absolute;top:8px;right:0}
+  .pro-data .pd-r2 > .pd-disp > summary{padding-right:calc(300px*var(--fz))}
+}
+.pro-data .pd-disp > summary b{font:700 calc(14px*var(--fz)) var(--f-ui)}
+.pro-data .pd-disp > summary::after{content:'';width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translateY(-2px);margin-left:2px;flex:none;transition:transform .15s}
+.pro-data .pd-disp[open] > summary::after{transform:rotate(-135deg) translateY(-2px)}
+@media (min-width:900px){
+  .pro-data .pd-disp-b{display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(230px*var(--fz)),1fr));gap:10px;align-items:start}
+  .pro-data .pd-disp-b > .row,.pro-data .pd-disp-b > a{grid-column:1/-1}
+}
+.pro-panel.work .pro-side .pd-disp{background:var(--surface)}
+/* «Две карты» в рабочем режиме — обе сразу, рядом; у каждой колонка: шапка, колесо, динамика, ниже таблица аспектов */
+.split.work{position:fixed;inset:0;z-index:60;margin:0;padding:10px 12px 12px;background:var(--bg);grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;overflow:hidden}
+.split.work .pro-panel.work{position:relative;inset:auto;z-index:auto;padding:0 4px 8px 0;overflow:auto;max-height:calc(100vh - 22px);scrollbar-width:thin}
+.split.work .pro-panel.work .pro-wheel .ph-head{position:sticky;top:0;left:auto;right:auto;z-index:3;margin:-12px -14px 0;padding:10px 14px;border-radius:var(--r-lg) var(--r-lg) 0 0;background:var(--w-paper);box-shadow:none}
+.split.work .pro-panel.work .pro-main{grid-template-columns:minmax(0,1fr);min-height:0}
+.split.work .pro-panel.work .pro-side{position:static;max-width:none;max-height:none;overflow:visible}
+.split.work .pro-panel.work .ph-title h3{font-size:calc(18px*var(--fz));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.split.work .pro-panel.work .ph-head{flex-wrap:nowrap}
+.split.work .pro-panel.work .ph-t{flex:1 1 0;min-width:0}
+.split.work .pro-panel.work .ph-tools{flex-wrap:nowrap}
+@media (max-width:1700px){.split.work .ph-cosmo .pd-cosmo-l > span{display:none}}
+.split.work .pro-panel.work .pro-main .pro-wheel .wheel-box{width:auto}
+.split.work .pro-panel.compact .pdy-dt .dfield{width:calc(152px*var(--fz))}
+.split.work .pro-panel.compact .pdy-when .pdy-pl{display:inline}
+@media (max-width:900px){.split.work{grid-template-columns:1fr;overflow:auto}.split.work .pro-panel.work{max-height:none;overflow:visible}}
 @media (max-width:1100px){.pro-panel.work .pro-main,.pro-panel.compact.work .pro-main{grid-template-columns:minmax(0,1fr)}.pro-panel.work .pro-side{max-width:none;max-height:none}}
 /* короткая подсказка по нажатию на аспект */
-.asp-card{position:fixed;z-index:93;width:min(calc(380px*var(--fz)),calc(100vw - 16px));background:var(--surface);color:var(--ink);border:1px solid var(--line-strong);border-radius:18px;box-shadow:var(--shadow-lg);padding:12px 14px 14px;display:grid;gap:8px;font-size:calc(13.5px*var(--fz));line-height:1.45;animation:fade .14s ease-out}
+.asp-card{position:fixed;z-index:93;width:min(calc(430px*var(--fz)),calc(100vw - 16px));max-height:calc(100vh - 16px);overflow:auto;overscroll-behavior:contain;background:var(--surface);color:var(--ink);border:1px solid var(--line-strong);border-radius:18px;box-shadow:var(--shadow-lg);padding:12px 14px 14px;display:grid;gap:8px;font-size:calc(13.5px*var(--fz));line-height:1.45;animation:fade .14s ease-out}
 .asp-card .ac-h{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start}
 .asp-card .ac-gl{display:inline-flex;gap:3px;align-items:center;padding:6px 9px;border-radius:12px;background:var(--surface-2);font:400 calc(18px*var(--fz))/1 var(--f-glyph);white-space:nowrap}
 .asp-card .ac-gl .g.t{font:800 calc(12px*var(--fz)) var(--f-ui)}
@@ -1778,6 +1859,13 @@ body.pro-working{overflow:hidden}
 .asp-card .ac-sum.soft{background:var(--at-soft-bg)} .asp-card .ac-sum.hard{background:var(--at-hard-bg)} .asp-card .ac-sum.conj{background:var(--at-conj-bg)}
 .asp-card .ac-houses{margin:0}
 .asp-card .btn.sm{justify-self:start;min-height:32px}
+.asp-card .ac-gives{display:grid;gap:5px;padding:10px 12px;border-radius:14px;background:var(--surface-2);border-left:3px solid var(--line-strong)}
+.asp-card .ac-gives.soft{border-left-color:var(--lav-strong)} .asp-card .ac-gives.hard{border-left-color:var(--at-hard)} .asp-card .ac-gives.conj{border-left-color:var(--at-conj)}
+.asp-card .ac-gives .label{margin:0}
+.asp-card .ac-gives p{margin:0}
+.asp-card .ac-tip{color:var(--ink-2,var(--ink));font-size:calc(13px*var(--fz))}
+.asp-card .ac-syn{margin:0;padding:8px 10px;border-radius:12px;background:var(--lav-soft)}
+.asp-card .ac-kind{margin:0;color:var(--muted);font-size:calc(12.5px*var(--fz))}
 /* кнопка «наверх» */
 .to-top{position:fixed;right:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));z-index:45;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--surface);color:var(--lav-strong);border:1px solid var(--line-strong);box-shadow:var(--shadow);cursor:pointer;opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .2s,transform .2s}
 .to-top.on{opacity:1;transform:none;pointer-events:auto}

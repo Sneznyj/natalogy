@@ -127,10 +127,30 @@
    *         labels: { in, out }, at — момент (для транзита), person }
    * at: { x, y } — где нажали (подсказка встаёт рядом).
    */
+  // ---------- «что даёт аспект» (16.10, Алина: «при нажатии на аспект расписывай, что он даёт») — тексты aspect-texts.js ----------
+  const PT_RANK = (id) => (/^c\d+$/.test(id) ? 6 : id === 'asc' || id === 'mc' ? 5 : id === 'node' ? 4 : id === 'lilith' ? 3 : id === 'chiron' ? 2 : id === 'fortune' ? 1 : 0);
+  /** [что даёт, совет] для пары точек и характера аспекта (c — соединение, s — гармония, h — напряжение). */
+  function aspectGives(a, b, nk) {
+    const TX = UI.TX(), AX = TX.aspx || (root.NAspTexts || {})[UI.lang()] || {}, H = TX.H;
+    // планета к самой себе (транзит к своему месту, «Солнце — Солнце» в синастрии, возвращения)
+    if (a === b && AX.self && AX.self[a] && AX.self[a][nk]) return { g: AX.self[a][nk][0], t: AX.self[a][nk][1] };
+    const pair = AX.pairs && AX.pairs[[a, b].sort().join('|')];
+    if (pair && pair[nk]) return { g: pair[nk][0], t: pair[nk][1] };
+    const area = (id) => (/^c\d+$/.test(id) ? (H[+id.slice(1)] || {}).area : id === 'asc' ? (H[1] || {}).area : id === 'mc' ? (H[10] || {}).area : TX.P[id] ? TX.P[id].area : '') || '';
+    const [pt, pl] = PT_RANK(a) >= PT_RANK(b) ? [a, b] : [b, a];
+    const fill = (s) => String(s || '').replace('{n}', /^c\d+$/.test(pt) ? pt.slice(1) : '').replace('{a}', area(pt));
+    const tip = (AX.tipGen || {})[nk] || '';
+    if (PT_RANK(pl) >= 5 || !(AX.role || {})[pl]) return { g: fill(((AX.pointPair || {})[nk] || '').replace('{b}', area(pl))), t: tip };
+    const ptKey = /^c\d+$/.test(pt) ? 'cusp' : pt;
+    const head = AX.point && AX.point[ptKey] ? fill(AX.point[ptKey][nk]) : '';
+    return { g: (head ? head + ' ' : '') + AX.role[pl][nk] + '.', t: tip };
+  }
+
   function aspectCard(info, at) {
     closeCard();
     $$hide();
     const TX = UI.TX(), X = TX.trx || {}, H = TX.H, en = UI.lang() === 'en', AC = root.AstroCore;
+    const AX = TX.aspx || (root.NAspTexts || {})[UI.lang()] || {}, AL = AX.lbl || {};
     const ch = info.chart && info.chart.houses ? info.chart : null;
     const bi = info.bLon != null;
     const nm = (id) => (TX.P[id] ? TX.P[id].name : /^c\d+$/.test(id) ? ({ c4: 'IC', c7: 'DC' }[id] || (en ? 'Cusp ' : 'Куспид ') + id.slice(1)) + (['c4', 'c7'].includes(id) ? (en ? ` (${id.slice(1)}th house)` : ` (${id.slice(1)} дом)`) : '') : id);
@@ -172,12 +192,22 @@
         : `<p class="ac-houses"><b>Через дома:</b> дела, связанные ${esc(and(fromH.map((h) => H[h].with), 'и'))}, ${esc(verb)} ${esc(and(toH.map((h) => `«${H[h].area}»`), 'и'))}.</p>`;
     }
     const orbTxt = info.orb != null ? `${t('orb', 'орбис')} ${info.orb.toFixed(1).replace('.', en ? '.' : ',')}°${info.applying != null ? ' · ' + (info.applying ? t('applying', 'сходящийся') : t('separating', 'расходящийся')) : ''}` : '';
+    // что даёт: текст пары планет (или точки и планеты), совет; в синастрии — ещё «между вами»; как работает в этом типе карты
+    const nk = n === 'conj' ? 'c' : n === 'soft' ? 's' : 'h';
+    const gv = aspectGives(info.a, info.b, nk);
+    const synT = info.kind === 'synastry' && TX.syn ? (TX.syn[[info.a, info.b].sort().join('|')] || null) : null;
+    const syn = synT ? synT[tn === 'hard' ? 'h' : 's'] : '';
+    const K = AX.kind || {};
+    const kindTxt = [K[info.kind] || '', info.kind === 'transit' && info.applying != null ? (info.applying ? K.transitA : K.transitS) : ''].filter(Boolean).join(' ');
     card = document.createElement('div');
     card.className = 'asp-card'; card.setAttribute('role', 'dialog');
     card.innerHTML = `<div class="ac-h"><span class="ac-gl ${tn}">${gl(info.a)}<span class="g">${W.ASP_G[info.type] || ''}${VS}</span>${gl(info.b)}</span><div class="ac-t"><b>${esc(nm(info.a))} ${esc(an)} ${esc(nm(info.b))}</b><small>${esc([kindL, orbTxt].filter(Boolean).join(' · '))}</small></div><button class="iconbtn" type="button" data-acx aria-label="${esc(t('close', 'Закрыть'))}">${UI.icon('close', 'sm')}</button></div>
       ${who(info.a, hA, rA, false)}${who(info.b, hB, rB, true)}
+      ${gv.g ? `<div class="ac-gives ${tn}"><span class="label">${esc(AL.gives || t('ac.gives', 'Что даёт'))}</span><p>${esc(gv.g)}</p>${gv.t ? `<p class="ac-tip"><b>${esc(AL.tip || t('ac.tip', 'Совет'))}:</b> ${esc(gv.t)}</p>` : ''}</div>` : ''}
+      ${syn ? `<p class="ac-syn"><b>${esc(AL.between || t('ac.between', 'Между вами'))}:</b> ${esc(syn)}</p>` : ''}
       <p class="ac-sum ${tn}">${aspTxt ? esc((aspTxt.match(/^.*?[.!?](?:\s|$)/) || [aspTxt])[0].trim()) + ' ' : ''}${combo ? `<b>${esc(cap(combo))}.</b>` : ''}</p>
       ${houses}
+      ${kindTxt ? `<p class="ac-kind">${esc(kindTxt)}</p>` : ''}
       ${moving && root.NExplain ? `<button class="btn sm" type="button" data-acmore>${t('ac.more', 'Подробнее о транзите')}</button>` : ''}`;
     document.body.appendChild(card);
     const tw = card.offsetWidth, th = card.offsetHeight;
@@ -198,5 +228,5 @@
   }
   function $$hide() { document.querySelectorAll('.nw-tip').forEach((x) => { x.hidden = true; }); }
 
-  root.NExplain = { transit, tone, short, phrase, rulesOf, natalHouse, transitHouse, houseLine, houseStory, aspectCard, closeCard, natureOf };
+  root.NExplain = { transit, tone, short, phrase, rulesOf, natalHouse, transitHouse, houseLine, houseStory, aspectCard, aspectGives, closeCard, natureOf };
 })(window);
