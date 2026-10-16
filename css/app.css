@@ -1892,3 +1892,7 @@ body.pro-working .to-top{display:none}
 .orb-tbl .orb-in{width:calc(74px*var(--fz));min-height:34px;padding:4px 10px;font:600 calc(14px*var(--fz)) var(--f-mono);text-align:center}
 .orb-tbl .orb-in.ch{border-color:var(--lav-strong);background:var(--lav-soft);color:var(--lav-ink)}
 .orb-tbl .orb-in.bad{border-color:var(--coral,#E0605A)}
+/* 16.10: страница «Карта» — кнопка «Рабочий режим» справа сверху над колесом (открывает эту карту в Профи на весь экран) */
+.ch-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.ch-head #wInfo{flex:1 1 260px;min-width:0}
+.ch-head .ch-work{min-height:34px;padding:6px 12px;margin-left:auto}

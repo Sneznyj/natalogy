@@ -76,9 +76,9 @@
     return root.NStore.person(spec.a) || root.NStore.active();
   }
   /** Сейчас в городе, где человек живёт («где я сейчас») — начальные данные «Карты момента». */
-  function momentNow() {
-    const h = UI.here(), q = UI.partsIn(new Date(), h.tz);
-    return { y: q.y, mo: q.mo, d: q.d, h: q.h, mi: q.mi, s: 0, timeKnown: true, place: { name: h.name || h.tz, nameEn: h.nameEn, country: h.country, countryEn: h.countryEn, lat: h.lat, lon: h.lon, tz: h.tz } };
+  function momentNow(at) {
+    const h = UI.here(), q = UI.partsIn(at || new Date(), h.tz);
+    return { y: q.y, mo: q.mo, d: q.d, h: q.h, mi: q.mi, s: at ? q.s || 0 : 0, timeKnown: true, place: { name: h.name || h.tz, nameEn: h.nameEn, country: h.country, countryEn: h.countryEn, lat: h.lat, lon: h.lon, tz: h.tz } };
   }
   const birthDate = (p) => AC.localToUTC(p.y, p.mo, p.d, p.timeKnown !== false ? p.h : 12, p.timeKnown !== false ? p.mi : 0, p.place.tz).date;
   const cache = new Map();
@@ -931,6 +931,7 @@
    */
   let fsMine = false, workBound = false;
   const workBtn = (on, short) => (on ? `${icon('close', 'sm')} ${short ? t('pro.workOffS', 'Выйти') : t('pro.workOff', 'Выйти из рабочего режима')} <kbd class="kb">Esc</kbd>` : `${icon('maximize', 'sm')} ${t('pro.workOn', 'Рабочий режим')}`);
+  let workBack = false; // рабочий режим открыт кнопкой со страницы «Карта» — при выходе вернуться туда
   function setWork(slot) {
     const prev = workSlot;
     workSlot = slot;
@@ -953,8 +954,9 @@
       workBound = true;
       document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && fsMine) { fsMine = false; if (workSlot) setWork(null); } });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && workSlot && !document.querySelector('[data-sheet], .pop[data-pop], .asp-card, .calpop')) setWork(null); });
-      window.addEventListener('hashchange', () => { if (workSlot) setWork(null); });
+      window.addEventListener('hashchange', () => { workBack = false; if (workSlot) setWork(null); });
     }
+    if (!slot && prev && workBack) { workBack = false; history.back(); return; }
     setTimeout(fit, 30); setTimeout(fit, 260); // после перехода в полноэкранный режим высота окна меняется
     if (!slot && prev) { const p = prev === 'split' ? document.querySelector('.split') : document.querySelector(`.pro-panel[data-panel="${prev}"]`); if (p) setTimeout(() => toChart(p), 280); }
   }
@@ -983,12 +985,20 @@
     if (!okA(specs.right)) { specs.right = defaultSpec('natal', p); specs.right.a = 'moment'; specs.right.mom = momentNow(); }
     if (params.type && TYPES.includes(params.type)) { specs.main.type = params.type; specs.main.flip = false; specs.main.move = null; specs.main.rotOut = null; tab = 'chart'; if (params.type === 'solar' || params.type === 'lunar') specs.main.view.asp = MAJOR.concat(MINOR); if (params.type === 'directions') specs.main.dir = 'deg'; }
     if (params.load) { const sv = root.NStore.saved().find((x) => x.id === params.load); if (sv) { specs.main = normSpec(sv.spec, p); specs.main.move = null; tab = 'chart'; } }
+    // «Рабочий режим» со страницы «Карта» (16.10): натал, натал + транзиты или небо на момент — сразу на весь экран
+    const work = params.work === '1';
+    if (work) {
+      const at = params.at ? new Date(+params.at) : null;
+      tab = 'chart';
+      if (params.sky) Object.assign(specs.main, { type: 'natal', a: 'moment', mom: momentNow(at), shiftA: null, flip: false, move: null, rotOut: null });
+      else { specs.main.date = (at || new Date()).toISOString(); if (params.shift) specs.main.shiftA = +params.shift; }
+    }
     const redraw = (kept) => { // kept — перерисовать на месте, без прокрутки к карте
       const y = window.scrollY;
       el.innerHTML = `<div class="sec-head"><span class="eyebrow">${t('pro.eyebrow', 'Профи-режим')}</span><h1>${t('pro.title', 'Астропроцессор')}</h1></div>
         <div class="pro-tabs hs"><button class="hs-btn" type="button" data-hsl aria-label="${t('scrollL', 'Прокрутить влево')}">${icon('left', 'sm')}</button><div class="hs-track"><div class="chips" role="tablist">${TABS().map(([k, n, ic]) => `<button class="chip" type="button" role="tab" data-tab="${k}" aria-pressed="${tab === k}">${icon(ic)} ${esc(n)}</button>`).join('')}</div></div><button class="hs-btn" type="button" data-hsr aria-label="${t('scrollR', 'Прокрутить вправо')}">${icon('right', 'sm')}</button></div>
         <div id="proBody"></div>`;
-      el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { if (workSlot) setWork(null); tab = b.dataset.tab; redraw(); }));
+      el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { if (workSlot) { workBack = false; setWork(null); } tab = b.dataset.tab; redraw(); }));
       UI.hscroll(el.querySelector('.pro-tabs'));
       const body = el.querySelector('#proBody');
       try {
@@ -1003,6 +1013,8 @@
       window.scrollTo(0, y);
     };
     redraw();
+    // включить после текущего hashchange — иначе его же обработчик рабочего режима сразу выключит
+    if (work) { history.replaceState(null, '', '#pro' + (params.id ? '?id=' + encodeURIComponent(params.id) : '')); setTimeout(() => { setWork('main'); workBack = true; }, 0); }
   }
 
   function savedView(body, redraw) {

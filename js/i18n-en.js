@@ -273,7 +273,7 @@ Object.assign(window.NI18N.en, {
   'pro.withNatal': 'with natal', 'pro.alone': 'on its own', 'pro.edit': 'Change', 'pro.overlay2': 'Together with natal (natal inside)', 'pro.fold': 'Collapse',
   'pro.houses2': 'House cusps — aspects to them', 'pro.cuspN': 'Cusp of house {n}', 'pro.qHouses': 'All houses', 'pro.qNoHouses': 'No houses', 'pro.orbTable': 'Orbs for every aspect — in Settings',
   'pro.cosmoT': 'Cosmogram — a chart without houses: only planets and aspects, 0° Aries on the left', 'pro.cosmo': 'Cosmogram', 'pro.cosmoSub': 'cosmogram — no houses',
-  'pro.workOther': 'Open the other chart in work mode', 'pro.workOff': 'Leave work mode', 'pro.workOn': 'Work mode',
+  'pro.workOther': 'Open the other chart in work mode', 'pro.workOff': 'Leave work mode', 'pro.workOn': 'Work mode', 'chart.workT': 'Open this chart full screen: wheel, dynamics and the aspect grid, large',
   'pro.mainAsc': 'main ASC — {x}', 'pro.outer': 'outer chart', 'pro.rotHint': 'Click an empty spot inside the wheel to switch the main ASC', 'pro.rotDone': 'Main ASC — {x}',
   'pro.rotCosmo': 'A cosmogram has no houses — nothing to switch', 'pro.rotNo': 'The main ASC switches when there is a second chart with houses',
   'pro.numLegT': 'Small numbers by the glyphs: natal planets (left) — which natal house the planet rules; transiting planets (top) — which natal house it is moving through now.',

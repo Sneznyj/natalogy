@@ -53,7 +53,8 @@
       <p class="small muted" id="modeHint"></p>
       <div class="chart-layout">
         <div class="wheel-card">
-          <div id="wInfo" class="row sb small" style="gap:8px"></div>
+          <div class="ch-head"><div id="wInfo" class="row small" style="gap:8px"></div>
+            <button class="btn sm ch-work" type="button" data-work title="${esc(t('chart.workT', 'Открыть эту карту на весь экран: колесо, динамика и таблица аспектов крупно'))}">${icon('maximize', 'sm')} ${t('pro.workOn', 'Рабочий режим')}</button></div>
           <div class="wheel-box" id="wBox"></div>
           <div class="wheel-legend"><span><i style="background:var(--w-soft)"></i>${t('wl.soft', 'гармония (трин, секстиль)')}</span><span><i style="background:var(--w-hard)"></i>${t('wl.hard', 'напряжение (квадрат, оппозиция)')}</span><span><i style="background:var(--w-conj)"></i>${t('wl.conj', 'соединение')}</span><span class="hint-click">${icon('info', 'xs')} ${hover ? t('wl.tap', 'наведи или нажми на планету') : t('wl.tapTouch', 'нажми на планету — подробности')}</span></div>
         </div>
@@ -148,6 +149,14 @@
     const jumpTo = (d) => { st.at = Math.abs(d - Date.now()) < 60000 ? null : d; if (tb && tb.set) tb.set(d); drawWheel(); };
     el.addEventListener('natalogy:jump', (e) => jumpTo(e.detail));
     el.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { st.mode = b.dataset.mode; el.querySelectorAll('[data-mode]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); setHint(); mountBar(); drawWheel(); if (st.mode === 'natal') drawPortrait(el, p, natalFor(p)); }));
+    // «Рабочий режим»: та же карта (с тем же моментом и пробным временем) в Профи — на весь экран
+    el.querySelector('[data-work]').addEventListener('click', () => {
+      const q = ['work=1'];
+      if (st.mode === 'sky') q.push('sky=1'); else q.push('id=' + encodeURIComponent(p.id), 'type=' + (st.mode === 'transit' ? 'transit' : 'natal'));
+      if (st.mode !== 'natal' && st.at) q.push('at=' + (+st.at));
+      if (st.mode === 'natal' && st.over[p.id]) q.push('shift=' + (+st.over[p.id]));
+      location.hash = '#pro?' + q.join('&');
+    });
     setHint(); mountBar(); drawWheel();
     // крутить колесо мышью: время идёт тем шагом, что выбран в машине времени
     UI.wheelScrub(el.querySelector('#wBox'), () => tb);
