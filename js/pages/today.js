@@ -108,19 +108,25 @@
     }
     return rows.length ? `<div class="reasons">${rows.join('')}</div>` : `<p class="muted small">${t('noReasons', 'Сильных влияний нет — обычный день.')}</p>`;
   }
-  /** Колесо транзитов дня: внутри карта человека, снаружи небо в полдень (или сейчас). */
-  function wheelBlock(day, p, isToday) {
-    const natal = UI.chartOf(p), TX = UI.TX();
-    const at = isToday ? new Date() : new Date(day.start.getTime() + 12 * 3600000);
+  /** Что стоит на колесе транзитов дня: внутри карта человека, снаружи небо на момент at, аспекты между ними. */
+  function wheelData(natal, at) {
     const sky = AC.chart({ date: at, timeKnown: false });
     const ids = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'node'];
     const inner = { points: natal.points.filter((x) => ids.concat(['chiron']).includes(x.id)), cusps: natal.houses ? natal.houses.cusps : null, asc: natal.houses ? natal.houses.asc : 0, mc: natal.houses ? natal.houses.mc : null };
     const outer = { points: sky.points.filter((x) => ids.includes(x.id)) };
     const asp = AC.aspectsBetween(inner.points.concat(natal.houses ? [{ id: 'asc', lon: natal.houses.asc }, { id: 'mc', lon: natal.houses.mc }] : []), outer.points, { orbMult: 0.4 })
       .filter((x) => ['conj', 'sextile', 'square', 'trine', 'opp'].includes(x.type)).sort((a, b) => a.orb - b.orb).slice(0, 14);
-    const svg = W.svg(inner, { outer, aspects: asp, lang: UI.lang(), labels: { in: t('natal', 'натал'), out: t('transit', 'транзит') }, label: t('dd.wheel', 'Транзиты к карте') });
+    return { inner, outer, asp };
+  }
+  /** Колесо транзитов дня: внутри карта человека, снаружи небо в полдень (или сейчас). */
+  function wheelBlock(day, p, isToday) {
+    const natal = UI.chartOf(p), TX = UI.TX();
+    const at = isToday ? new Date() : new Date(day.start.getTime() + 12 * 3600000);
+    const { inner, outer, asp } = wheelData(natal, at);
+    const phone = Math.min(window.innerWidth, window.innerHeight) < 560;
+    const svg = W.svg(inner, { outer, aspects: asp, lang: UI.lang(), labels: { in: t('natal', 'натал'), out: t('transit', 'транзит') }, label: t('dd.wheel', 'Транзиты к карте'), scale: phone ? 1.15 : undefined });
     const chips = asp.slice(0, 8).map((x) => `<span class="tag plain" style="font-family:var(--f-glyph)" data-tip="${esc(TX.P[x.b] ? TX.P[x.b].name + ' ' + (TX.ASP[x.type] ? TX.ASP[x.type].name : '') + ' ' + (TX.P[x.a] ? TX.P[x.a].yourDat || TX.P[x.a].name : x.a) : '')}"><span style="color:${x.nature === 'soft' ? 'var(--w-soft)' : x.nature === 'hard' ? 'var(--w-hard)' : 'var(--w-conj)'}">${pg(x.b)}${W.ASP_G[x.type]}${VS}${pg(x.a)}</span> <span class="mono" style="font-size:calc(11.5px*var(--fz))">${x.orb.toFixed(1)}°</span></span>`).join('');
-    return `<div class="wheel-card"><div class="wheel-box" style="max-width:420px">${svg}</div><div class="tags" style="justify-content:center">${chips}</div><p class="tiny muted" style="text-align:center">${isToday ? t('dd.wheelNow', 'Внутри — твоя карта, снаружи — небо сейчас ({t}).', { t: UI.fmtTime(at, UI.here().tz) }) : t('dd.wheelNoon', 'Внутри — твоя карта, снаружи — небо в 12:00 этого дня.')}</p></div>`;
+    return `<div class="wheel-card"><div class="wheel-box" style="max-width:420px" data-wat="${at.getTime()}">${svg}</div><div class="tags" style="justify-content:center">${chips}</div><p class="tiny muted" style="text-align:center">${isToday ? t('dd.wheelNow', 'Внутри — твоя карта, снаружи — небо сейчас ({t}).', { t: UI.fmtTime(at, UI.here().tz) }) : t('dd.wheelNoon', 'Внутри — твоя карта, снаружи — небо в 12:00 этого дня.')}</p></div>`;
   }
 
   /** Полный показ дня. opts: { person, isToday, sphere, wheel } */
@@ -231,6 +237,17 @@
   // ---------- окна ----------
   function bindDay(el, day, person) {
     el.querySelectorAll('[data-sph]').forEach((b) => b.addEventListener('click', () => openSphere(day, b.dataset.sph, person)));
+    // колесо транзитов: зум на телефоне и нажатие на аспект (линия, ☌ соединения) — «что даёт» (17.10, Алина)
+    const wb = el.querySelector('[data-wat]');
+    if (wb && root.NExplain && person) {
+      root.NWheel.zoom(wb);
+      const at = new Date(+wb.dataset.wat), natal = UI.chartOf(person), wd = wheelData(natal, at);
+      root.NExplain.bindAspects(wb, (a, b) => {
+        const x = wd.asp.find((y) => y.a === a && y.b === b); if (!x) return null;
+        const ob = wd.outer.points.find((y) => y.id === x.b);
+        return { a: x.a, b: x.b, type: x.type, orb: x.orb, applying: x.applying, kind: 'transit', chart: natal, bLon: ob ? ob.lon : null, labels: { in: t('natal', 'натал'), out: t('transit', 'транзит') }, at, person };
+      });
+    }
   }
   /** Окно дня; ctx.shift(day, ±1) → Promise<day> для стрелок «соседний день». */
   function openDay(day, ctx) {

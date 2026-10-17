@@ -66,7 +66,7 @@
       const rows = ORDER.filter((id) => ca.byId[id]), cols = ORDER.filter((id) => cb.byId[id]);
       const map = new Map(all.map((x) => [x.a + '>' + x.b, x]));
       const cls = (x) => (x.type === 'conj' ? (soft(x) ? 'conj' : 'hard') : soft(x) ? 'soft' : 'hard');
-      const grid = `<div class="tbl-wrap pair-grid"><table class="asp-grid"><tr><th class="corner"><small>${esc(A.name)} ↓ · ${esc(B.name)} →</small></th>${cols.map((c) => `<th title="${esc(TX.P[c].name)}">${G[c]}</th>`).join('')}</tr>${rows.map((r) => `<tr><th title="${esc(TX.P[r].name)}">${G[r]}</th>${cols.map((c) => { const x = map.get(r + '>' + c); return x ? `<td class="${cls(x)}" data-tip="${esc(`${A.name}: ${TX.P[r].name} ${AG[x.type]} ${B.name}: ${TX.P[c].name} · ${TX.ASP[x.type].name}, ${t('orb', 'орбис')} ${x.orb.toFixed(1)}°`)}"><span class="a">${AG[x.type]}</span><span class="o">${Math.round(x.orb)}°</span></td>` : '<td></td>'; }).join('')}</tr>`).join('')}</table></div>`;
+      const grid = `<div class="tbl-wrap pair-grid"><table class="asp-grid"><tr><th class="corner"><small>${esc(A.name)} ↓ · ${esc(B.name)} →</small></th>${cols.map((c) => `<th title="${esc(TX.P[c].name)}">${G[c]}</th>`).join('')}</tr>${rows.map((r) => `<tr><th title="${esc(TX.P[r].name)}">${G[r]}</th>${cols.map((c) => { const x = map.get(r + '>' + c); return x ? `<td class="${cls(x)}" data-ak="${esc(r + '>' + c)}" data-pa="${esc(r)}" data-pb="${esc(c)}" data-tip="${esc(`${A.name}: ${TX.P[r].name} ${AG[x.type]} ${B.name}: ${TX.P[c].name} · ${TX.ASP[x.type].name}, ${t('orb', 'орбис')} ${x.orb.toFixed(1)}°`)}"><span class="a">${AG[x.type]}</span><span class="o">${Math.round(x.orb)}°</span></td>` : '<td></td>'; }).join('')}</tr>`).join('')}</table></div>`;
       const listOf = (f) => all.filter((x) => (f === 'all' ? true : f === 'plus' ? soft(x) : !soft(x))).sort((a, b) => a.orb - b.orb);
       const allList = (f) => listOf(f).map((x) => `<div class="pa-row ${soft(x) ? 'plus' : 'minus'}"><span class="g">${G[x.a]} ${AG[x.type]} ${G[x.b]}</span><div><b>${esc(TX.P[x.a].name)} (${esc(A.name)}) — ${esc(TX.P[x.b].name)} (${esc(B.name)})</b> <span class="tiny muted">· ${esc(TX.ASP[x.type].name)}, ${x.orb.toFixed(1)}°</span><p class="small">${esc(UI.TX().gend(phrase(x), A.gender))}</p>${soft(x) ? '' : `<p class="small pa-fix">${icon('bulb', 'xs')} ${esc(fixOf(x))}</p>`}</div></div>`).join('') || `<p class="muted small">—</p>`;
       box.innerHTML = `<section class="night chart-hero">
@@ -88,6 +88,9 @@
       box.querySelectorAll('[data-pf]').forEach((b) => b.addEventListener('click', () => { filt = b.dataset.pf; box.querySelectorAll('[data-pf]').forEach((z) => z.setAttribute('aria-pressed', String(z === b))); box.querySelector('[data-palist]').innerHTML = allList(filt); }));
       root.NWheel.bindTips(box);
       root.NWheel.linkAspects(box);
+      root.NWheel.zoom(box.querySelector('.wheel-box'));
+      // нажатие на аспект (клетка таблицы, линия или ☌ на колесе) — «что даёт» в синастрии (17.10, Алина)
+      root.NExplain.bindAspects(box, (a, b) => { const x = all.find((y) => y.a === a && y.b === b); if (!x) return null; const ob = cb.byId[x.b]; return { a: x.a, b: x.b, type: x.type, orb: x.orb, applying: x.applying, kind: 'synastry', chart: ca, bLon: ob ? ob.lon : null, labels: { in: A.name, out: B.name }, person: A }; });
     };
     draw();
   }

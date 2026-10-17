@@ -69,34 +69,160 @@
     return out;
   }
 
+  const asinD = (x) => Math.asin(Math.min(1, Math.max(0, x))) * 180 / Math.PI;
+  /** С какой стороны значка писать градус, если значок стоит на дорожке: справа (верх и низ круга) или снизу (бока); +1 — по ходу углов. */
+  const sideDir = (a) => { const t = a * Math.PI / 180, sn = Math.sin(t), cs = Math.cos(t); return Math.abs(sn) >= Math.abs(cs) ? (sn > 0 ? -1 : 1) : (cs > 0 ? -1 : 1); };
+
+  /**
+   * Шахматный порядок в скоплениях (17.10, Алина: «где скопление планет — располагай их в шахматном порядке, чтобы значки
+   * стояли возле своих градусов»). В одну строку тесные значки разъезжаются далеко от своих градусов; в скоплении они встают
+   * на две дорожки — внешнюю и внутреннюю — через одного, и каждый остаётся почти на своём градусе. Градус у значка на дорожке
+   * пишется сбоку (на той же высоте, справа или снизу), а не под ним. Решаем по каждому дому: сначала обычная раскладка
+   * в одну строку (pos1); если значки скопления в ней уехали от своих градусов дальше thr·minSep, цепочки тесных значков
+   * (соседи по градусам ближе minSep) раскладываются через одного на две дорожки, остальные значки дома остаются в строке.
+   * Шахматный вариант берём, только если он заметно ближе к градусам и всё помещается.
+   * st: { rG, rD — радиусы обычной строки (значок, градус), rO, rI — дорожки, bg — радиус подложки значка, ink — полуширина символа,
+   *       labExt(item, угол) — сколько подпись градуса занимает по ходу круга, labH — её высота, bandM — [низ, верх] обычной строки, thr }
+   */
+  function stagger(list, s, w, lo, hi, pos1, minSep, st, lined) {
+    const DEG = 180 / Math.PI, n = list.length;
+    const want = list.map((q) => q.want);
+    const d1 = list.map((q, j) => Math.abs(pos1[j] - q.want));
+    const lim = st.thr * minSep;
+    // тесно в одну строку: значки налезают друг на друга (place1D ужал шаг) или уехали от своих градусов
+    const f1 = Math.min(1, (hi - lo) / ((n - 1) * minSep));
+    if (Math.max(...d1) <= lim && f1 >= 0.9) return;
+    const chains = []; let cur = [0];
+    for (let j = 1; j < n; j++) { if (want[j] - want[j - 1] < minSep) cur.push(j); else { chains.push(cur); cur = [j]; } }
+    chains.push(cur);
+    const hot = chains.filter((c) => c.length > 1 && (f1 < 0.9 || c.some((j) => d1[j] > lim)));
+    if (!hot.length) return;
+    const score1 = d1.reduce((a, x) => a + x * x, 0);
+    let best = null;
+    // варианты: какая дорожка у первого значка цепочки и с какой стороны подписи (своя сторона — справа/снизу, или обратная, если так влезает лучше)
+    for (const flip of [1, -1]) for (const par of [0, 1]) {
+      const tr = list.map(() => 'm'), ls = list.map(() => 0);
+      for (const c of hot) { const dir = flip * sideDir(s + (want[c[0]] + want[c[c.length - 1]]) / 2); c.forEach((j, k) => { tr[j] = (k + par) % 2 ? 'i' : 'o'; ls[j] = dir; }); }
+      const R = (j) => (tr[j] === 'o' ? st.rO : tr[j] === 'i' ? st.rI : st.rG);
+      const hb = (st.bg + st.ink) / 2; // по радиусу значок на дорожке занимает ± hb (подложка шире символа — немного заходить можно)
+      // ограничения при кегле подписи sc (1 — обычный; в тесноте подпись мельче, а не налезает на соседа)
+      const build = (sc) => {
+        // по ходу круга (px): со стороны подписи — символ + подпись, с другой — подложка; по радиусу подпись на диагоналях выступает больше половины высоты
+        const lab = (j) => Math.max(st.bg, st.ink + 1.5 + sc * st.labExt(list[j].it, s + want[j]));
+        const labR = (j) => sc * st.labRad(list[j].it, s + want[j]);
+        const band = (j) => (tr[j] === 'm' ? st.bandM : [R(j) - Math.max(hb, labR(j)), R(j) + Math.max(hb, labR(j))]);
+        const ext = (j, side) => (side === ls[j] ? lab(j) : st.bg);
+        const bnd = list.map((q, j) => {
+          if (tr[j] === 'm' || !lined) return [lo, hi];
+          const cl = (side) => asinD((ext(j, side) + 3) / R(j));
+          let a = cl(-1), z = w - cl(1);
+          if (a > z) a = z = (a + z) / 2;
+          return [a, z];
+        });
+        const need = [];
+        for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+          let g = 0;
+          if (tr[i] === 'm' && tr[j] === 'm') g = minSep;
+          else {
+            const [a0, a1] = band(i), [b0, b1] = band(j);
+            if (Math.min(a1, b1) - Math.max(a0, b0) > 0) {
+              if (tr[i] === 'm' || tr[j] === 'm') g = (tr[i] === 'm' ? minSep / 2 : ext(i, 1) / R(i) * DEG) + (tr[j] === 'm' ? minSep / 2 : ext(j, -1) / R(j) * DEG);
+              else if (tr[i] === tr[j]) g = (ext(i, 1) + ext(j, -1) + 4) / Math.min(R(i), R(j)) * DEG;
+              else {
+                // разные дорожки, сжатые по радиусу: значки расходятся по диагонали; подпись напротив значка другой дорожки — целиком
+                const dr = Math.abs(R(i) - R(j)), D = st.bg + st.ink;
+                let px = Math.sqrt(Math.max(0, D * D - dr * dr));
+                if (ls[i] === 1 && dr < labR(i) + st.bg + 1) px = Math.max(px, lab(i) + st.bg);
+                if (ls[j] === -1 && dr < labR(j) + st.bg + 1) px = Math.max(px, lab(j) + st.bg);
+                g = px / Math.min(R(i), R(j)) * DEG;
+              }
+            }
+          }
+          if (g > 0) need.push([i, j, g]);
+        }
+        return { need, bnd };
+      };
+      // раздвигаем попарно, пока все ограничения не выполнятся (значков в доме немного — хватает сотни проходов)
+      const solve = ({ need, bnd }, f) => {
+        const y = list.map((q, j) => Math.min(bnd[j][1], Math.max(bnd[j][0], tr[j] === 'm' ? pos1[j] : want[j])));
+        for (let it = 0; it < 400; it++) {
+          let moved = false;
+          for (const [i, j, g] of need) {
+            const d = g * f - (y[j] - y[i]);
+            if (d > 0.01) { y[i] -= d / 2; y[j] += d / 2; moved = true; }
+          }
+          for (let j = 0; j < n; j++) y[j] = Math.min(bnd[j][1], Math.max(bnd[j][0], y[j]));
+          if (!moved) break;
+        }
+        return { y, resid: need.reduce((a, [i, j, g]) => a + Math.max(0, g * f - (y[j] - y[i]) - 0.05), 0) };
+      };
+      // тесно — сначала подпись мельче (на 15 %, мельче — на телефоне не прочесть), потом шаг ужимается (f < 1), как в обычной строке;
+      // подписи на дорожках рисуются поверх значков с подложкой цвета фона — даже вплотную к соседу цифры читаются
+      let sc = 1, f = 1, sol = null;
+      for (const k of [1, 0.85]) { const r = solve(build(k), 1); if (r.resid < 0.3) { sc = k; sol = r; break; } }
+      if (!sol) { sc = 0.85; const b = build(sc); do { f -= 0.05; sol = solve(b, f); } while (sol.resid >= 0.3 && f > 0.56); }
+      if (sol.resid >= 0.3) continue;
+      const score = sol.y.reduce((a, v, j) => a + (v - want[j]) ** 2, 0) * (flip === 1 ? 1 : 1.2);
+      const better = !best || f > best.f + 0.03 || (Math.abs(f - best.f) <= 0.03 && (sc > best.sc + 0.01 || (Math.abs(sc - best.sc) <= 0.01 && score < best.score)));
+      if (better) best = { score, y: sol.y, tr, ls, f, sc };
+    }
+    // шахматный вариант — если в нём значки теснятся меньше, а при той же тесноте — заметно ближе к своим градусам
+    if (!best || !(best.f > f1 + 0.05 || (best.f >= f1 - 0.02 && best.score <= 0.75 * score1))) return;
+    list.forEach((q, j) => { q.it.ang = s + best.y[j]; q.it.tr = best.tr[j]; q.it.ls = best.ls[j]; q.it.lsc = best.sc; });
+  }
+
   /**
    * Значки планет не закрывают линии куспидов (16.10, Алина): каждый значок стоит в своём доме (между соседними линиями)
    * и отходит от линии на clear(угол линии) градусов; внутри дома значки раздвигаются на minSep как можно ближе к своим градусам.
    * Тесный дом: отступ от линии уменьшается до clearMin (значок только касается линии), шаг между значками — до RHO·minSep
    * (рамка значка шире самого символа). Не помещаются и так — ближайший к линии значок переходит за линию, в соседний дом,
    * если там есть место (так рисуют планету «на куспиде»; засечка на градусе и выноска остаются на своём месте).
-   * lines — углы линий на колесе (куспиды или оси); без линий — обычный разнос по кругу.
+   * lines — углы линий на колесе (куспиды или оси); без линий — один «дом» на весь круг, разрез — посередине самого большого просвета.
+   * st — шахматный порядок в скоплениях (см. stagger); у каждого значка it.tr: 'm' — обычная строка, 'o' / 'i' — дорожки.
    */
-  function spreadAround(items, lines, minSep, clear, clearMin) {
-    if (!lines || lines.length < 2) return spread(items, minSep);
+  function spreadAround(items, lines, minSep, clear, clearMin, st) {
+    items.forEach((it) => { it.tr = 'm'; it.ls = 0; it.lsc = 1; });
+    if (!lines || lines.length < 2) {
+      if (!st || items.length < 2) return spread(items, minSep);
+      // без домов: разрезаем круг посередине самого большого просвета между значками — дальше как один дом на 360°
+      const a = items.map((it) => norm(it.ang)).sort((x, y) => x - y);
+      let gi = 0, gw = -1;
+      a.forEach((v, i) => { const g = norm((a[(i + 1) % a.length]) - v) || 360; if (g > gw) { gw = g; gi = i; } });
+      const cut = norm(a[gi] + gw / 2);
+      const list = items.map((it) => ({ it, want: norm(it.ang - cut) })).sort((p, q) => p.want - q.want);
+      const lo = minSep / 2, hi = 360 - minSep / 2;
+      const pos = place1D(list.map((q) => q.want), minSep, lo, hi);
+      list.forEach((q, j) => { q.it.ang = cut + pos[j]; });
+      stagger(list, cut, 360, lo, hi, pos, minSep, st, false);
+      return items;
+    }
     const L = lines.map(norm).sort((a, b) => a - b), n = L.length;
     const W = L.map((s, i) => norm(L[(i + 1) % n] - s) || 360);
-    const RHO = 0.7;
+    const RHO = 0.7, RHO2 = 1; // на дорожках сжимать почти нельзя: подпись градуса стоит сбоку и первой попадает под соседний значок
     const homeOf = (a) => { let k = n - 1; for (let i = 0; i < n; i++) if (a >= L[i]) k = i; return k; };
     // sec — в каком доме рисуем значок, want — желаемое место от начала этого дома (за линией — меньше 0 или больше ширины)
     const pl = items.map((it) => { const sec = homeOf(norm(it.ang)); return { it, sec, want: norm(it.ang - L[sec]) }; });
     const inSec = (j) => pl.filter((q) => q.sec === j);
     const room = (j, cnt) => W[j] - clearMin(L[j]) - clearMin(L[(j + 1) % n]) - Math.max(0, cnt - 1) * minSep * RHO; // ≥ 0 — помещаются
+    // в шахматном порядке в доме помещается больше (17.10): значки через одного на двух дорожках, у каждой свой шаг — значок и градус сбоку.
+    // Оценка для выбора «оставить в своём доме или отдать соседу» (сжатие до RHO, как у строки); точная раскладка — в stagger
+    const room2 = (j, cnt) => {
+      if (!st || cnt < 2) return -Infinity;
+      const a = L[j] + W[j] / 2, lab = st.ink + 1.5 + 0.85 * st.labExt(null, a), u = lab + st.bg + 4; // подпись в тесноте мельче (как в stagger)
+      const need = Math.max((Math.ceil(cnt / 2) - 1) * u / st.rO, (Math.floor(cnt / 2) - 1) * u / st.rI) * 180 / Math.PI;
+      return W[j] - clearMin(L[j]) - clearMin(L[(j + 1) % n]) - need * RHO2 - 0.36 * st.labExt(null, a) / st.rO * 180 / Math.PI;
+    };
+    const fits = (j, cnt) => Math.max(room(j, cnt), room2(j, cnt));
     const stuck = new Set();
     for (let guard = 0; guard < 4 * pl.length + 4; guard++) {
       let worst = -1, wv = 0;
-      for (let j = 0; j < n; j++) { if (stuck.has(j)) continue; const c = inSec(j).length; if (c > 1) { const r = room(j, c); if (r < wv) { wv = r; worst = j; } } }
+      for (let j = 0; j < n; j++) { if (stuck.has(j)) continue; const c = inSec(j).length; if (c > 1) { const r = fits(j, c); if (r < wv) { wv = r; worst = j; } } }
       if (worst < 0) break;
       const list = inSec(worst).sort((p, q) => p.want - q.want);
       const first = list[0], last = list[list.length - 1], nx = (worst + 1) % n, pv = (worst - 1 + n) % n;
       const cand = [];
-      if (room(nx, inSec(nx).length + 1) >= 0) cand.push({ q: last, to: nx, d: W[worst] - last.want, want: -(W[worst] - last.want) });
-      if (room(pv, inSec(pv).length + 1) >= 0) cand.push({ q: first, to: pv, d: first.want, want: W[pv] + first.want });
+      if (fits(nx, inSec(nx).length + 1) >= 0) cand.push({ q: last, to: nx, d: W[worst] - last.want, want: -(W[worst] - last.want) });
+      if (fits(pv, inSec(pv).length + 1) >= 0) cand.push({ q: first, to: pv, d: first.want, want: W[pv] + first.want });
       if (!cand.length) { stuck.add(worst); continue; } // соседям тоже тесно — сожмём как есть
       cand.sort((a, b) => a.d - b.d);
       cand[0].q.sec = cand[0].to; cand[0].q.want = cand[0].want;
@@ -116,6 +242,7 @@
       }
       const pos = place1D(xs, minSep, lo, hi);
       list.forEach((q, j) => { q.it.ang = s + pos[j]; });
+      if (st && list.length > 1) stagger(list, s, w, lo, hi, pos, minSep, st, true);
     }
     return items;
   }
@@ -138,16 +265,39 @@
     const lang = opts.lang || 'ru';
     const bi = !!opts.outer;
     const S = 720, C = S / 2;
-    // opts.scale — крупнее значки и подписи (Профи: «видно издалека»); кольца чуть раздвигаются под них
-    const K = Math.max(1, Math.min(1.25, +opts.scale || 1));
-    const R = bi
-      ? { zodOut: 336, zodIn: 308, ring: 238, pl: 211, plDeg: 181, asp: 158, opl: K > 1 ? 276 : 273, oplDeg: 249, hNum: 146 }
-      : { zodOut: 320, zodIn: 292, pl: 251, plDeg: 215, asp: 190 };
+    // opts.scale — крупнее значки и подписи (Профи: «видно издалека», телефон — 17.10, Алина: «с телефона плохо видно»)
+    const K = Math.max(1, Math.min(1.5, +opts.scale || 1));
     // кегли: планеты внутреннего и внешнего круга, градусы, подложка значка, знаки зодиака, подписи куспидов (hl — внутренняя карта, oc — внешняя)
     const GS0 = bi
       ? { in: 28, out: 27, deg: 14, bg: 15, sign: 16, hl: 16, hlAx: 16.5, hd: 12, oc: 14, ocAx: 14.5, od: 11 }
       : { in: 31, out: 31, deg: 15, bg: 17, sign: 18, hl: 16, hlAx: 16.5, hd: 12 };
     const GS = Object.fromEntries(Object.entries(GS0).map(([k, v]) => [k, Math.round(v * K * 10) / 10]));
+    const degTxt = (lon) => `${Math.floor(norm(lon) % 30)}°`;
+    // градус у значка на шахматной дорожке пишется сбоку, чуть мельче (17.10); его ширина и как далеко он выступает по радиусу
+    const DS = Math.round(GS.deg * 0.86 * 10) / 10;
+    const degW = (p) => { const n = degTxt(p.lon).length - 1; return n * 0.62 * DS + 0.45 * DS + (p.retro ? 0.62 * (DS - 2) : 0); };
+    const labRmax = 0.7072 * (degW({ lon: 29 }) / 2 + DS / 2);
+    // высота кольца под две дорожки: значок внешней, под ним значок внутренней (с подписью сбоку), всё с подложками
+    const band2 = (gSize) => 3 * GS.bg + Math.max(0.4 * gSize, labRmax) + 1;
+    // кольца: при обычном размере — как было; крупнее (K > 1) — кольца планет по размеру значков и двух шахматных дорожек,
+    // строка «значок + градус» посередине своего кольца; круг аспектов от этого чуть меньше
+    let R;
+    if (K <= 1) R = bi
+      ? { zodOut: 336, zodIn: 308, ring: 238, pl: 211, plDeg: 181, asp: 158, opl: 273, oplDeg: 249, hNum: 146 }
+      : { zodOut: 320, zodIn: 292, pl: 251, plDeg: 215, asp: 190 };
+    else {
+      const unit = 2 * GS.bg + 1.5 + GS.deg; // значок и градус под ним
+      const mid = (top, bot) => { const g = top - Math.max(0, (top - bot - unit) / 2) - GS.bg; return [g, g - GS.bg - 1.5 - GS.deg / 2]; };
+      if (bi) {
+        const ring = Math.min(238, Math.round(308 - 11 - band2(GS.out))), asp = Math.min(158, Math.round(ring - 11 - band2(GS.in)));
+        const [opl, oplDeg] = mid(299, ring + 2), [pl, plDeg] = mid(ring - 9, asp + 4);
+        R = { zodOut: 336, zodIn: 308, ring, pl, plDeg, asp, opl, oplDeg, hNum: asp - 12 };
+      } else {
+        const asp = Math.min(190, Math.round(280 - 2 - band2(GS.in)));
+        const [pl, plDeg] = mid(280, asp + 4);
+        R = { zodOut: 320, zodIn: 292, pl, plDeg, asp };
+      }
+    }
     const PADV = (bi ? 28 : 12) + Math.ceil(36 * (K - 1)); // поля вокруг — под подписи куспидов снаружи пояса (крупнее подписи — шире поля)
     // космограмма — без домов и осей, 0° Овна слева; opts.rot — какой градус поставить слева (ASC внешней карты, если «главный АС» — её).
     // Космограммой может быть один круг (16.10, Алина): внутренний без домов — слева главный АС внешней карты (если у неё есть дома);
@@ -167,20 +317,34 @@
     const L = (ra, rb, a, attrs) => { const [x0, y0] = xy(ra, a), [x1, y1] = xy(rb, a); return `<line x1="${r1(x0)}" y1="${r1(y0)}" x2="${r1(x1)}" y2="${r1(y1)}" ${attrs}/>`; };
     const show = opts.show ? new Set(opts.show) : null;
     const vis = (p) => !show || show.has(p.id);
-    const degTxt = (lon) => `${Math.floor(norm(lon) % 30)}°`;
     const noAxis = (p) => !['asc', 'mc'].includes(p.id);
     // планеты по кругам: разносим близкие значки заранее — по этим местам потом раскладываются подписи куспидов внешней карты.
     // Линии домов своего круга — препятствия: значок не ложится на куспид (см. spreadAround), градус под значком — тоже.
     const sep = (rG, rD, wG, wD) => Math.max(wG / rG, wD / rD) * 180 / Math.PI; // минимальный разнос значков, градусы
-    const asinD = (x) => Math.asin(Math.min(1, Math.max(0, x))) * 180 / Math.PI;
     const wDeg = 1.75 * GS.deg, hDeg = GS.deg; // подпись градуса «29°» под значком
     const clearOf = (rG, rD) => (a) => Math.max(asinD((GS.bg + 3) / rG), asinD((extT(a, wDeg, hDeg) + 2.5) / rD));
     const clearMinOf = (rG) => () => asinD((GS.bg + 0.5) / rG);
-    const layout = (points, minSep, lines, rG, rD) => spreadAround(points.map((p) => ({ p, ang: ang(p.lon) })), lines.map(ang), minSep, clearOf(rG, rD), clearMinOf(rG));
+    // шахматные дорожки кольца (17.10, Алина): внешняя — под засечками, внутренняя — сколько хватает места до нижней границы кольца;
+    // градус у значка на дорожке — сбоку, тем же кеглем
+    const trackOf = (rG, rD, top, bot, gSize) => {
+      const ink = 0.4 * gSize, rO = top - GS.bg, rI = Math.max(rO - GS.bg - Math.max(ink, labRmax) - 1, bot + GS.bg);
+      return { rG, rD, rO, rI, bg: GS.bg, ink, labH: DS, labExt: (it, a) => extT(a, degW(it ? it.p : { lon: 29 }), DS), labRad: (it, a) => extR(a, degW(it ? it.p : { lon: 29 }), DS), bandM: [rD - hDeg / 2, rG + GS.bg], thr: 0.3 };
+    };
+    const stIn = bi ? trackOf(R.pl, R.plDeg, R.ring - 9, R.asp + 2, GS.in) : trackOf(R.pl, R.plDeg, R.zodIn - 12, R.asp + 2, GS.in);
+    const stOut = bi ? trackOf(R.opl, R.oplDeg, R.zodIn - 9, R.ring + 2, GS.out) : null;
+    const layout = (points, minSep, lines, rG, rD, st) => spreadAround(points.map((p) => ({ p, ang: ang(p.lon) })), lines.map(ang), minSep, clearOf(rG, rD), clearMinOf(rG), opts.stagger === false ? null : st);
     const ptsIn = chart.points.filter(vis);
     const inLines = chart.cusps && !cosmoIn ? chart.cusps : [];
-    const inItems = layout(ptsIn.filter(noAxis), bi ? sep(R.pl, R.plDeg, 30 * K, 26 * K) : sep(R.pl, R.plDeg, 34 * K, 28 * K), inLines, R.pl, R.plDeg);
-    const outItems = bi ? layout(opts.outer.points.filter((p) => noAxis(p) && (!opts.showOuter || opts.showOuter.includes(p.id))), sep(R.opl, R.oplDeg, 30 * K, 26 * K), oList.map((x) => x[0]), R.opl, R.oplDeg) : [];
+    const inItems = layout(ptsIn.filter(noAxis), bi ? sep(R.pl, R.plDeg, 30 * K, 26 * K) : sep(R.pl, R.plDeg, 34 * K, 28 * K), inLines, R.pl, R.plDeg, stIn);
+    const outItems = bi ? layout(opts.outer.points.filter((p) => noAxis(p) && (!opts.showOuter || opts.showOuter.includes(p.id))), sep(R.opl, R.oplDeg, 30 * K, 26 * K), oList.map((x) => x[0]), R.opl, R.oplDeg, stOut) : [];
+    // где на самом деле стоят значок и подпись градуса (обычная строка — градус под значком, дорожка — сбоку)
+    const spot = (it, st, rG, rD) => {
+      const rr = it.tr === 'o' ? st.rO : it.tr === 'i' ? st.rI : rG;
+      const g = xy(rr, it.ang);
+      if (it.tr === 'm') return { rr, g, d: xy(rD, it.ang) };
+      const sc = it.lsc || 1, ext = sc * extT(it.ang, degW(it.p), DS), da = it.ls * (st.ink + 1.5 + ext / 2) / rr * 180 / Math.PI;
+      return { rr, g, d: xy(rr, it.ang + da), side: true, fs: Math.round(DS * sc * 10) / 10 };
+    };
 
     let s = `<svg class="nw${bi ? ' bi' : ''}${cosmoIn ? ' cosmo' : ''}" data-rin="${R.zodIn}" viewBox="${-PADV} ${-PADV} ${S + 2 * PADV} ${S + 2 * PADV}" role="img" aria-label="${esc(opts.label || (lang === 'ru' ? 'Колесо карты' : 'Chart wheel'))}" xmlns="http://www.w3.org/2000/svg">`;
     // поле внутри пояса; у двойного внутренний круг (натал) — сиреневый, внешний — без фона, чтобы планеты в нём читались чётко (15.10, Алина)
@@ -207,17 +371,20 @@
     // ---- дома внутренней карты: линии только в своём круге (через внешний круг не идут — там планеты второй карты), ----
     // оси цветом (AC — красная, IC — салатовая, DC — синяя, MC — жёлтая), номер и градус — снаружи пояса (как в Sotis)
     const AX = { 0: ['AC', 'var(--w-ax-asc)', 'var(--w-ax-asc-ink)'], 3: ['IC', 'var(--w-ax-ic)', 'var(--w-ax-ic-ink)'], 6: ['DC', 'var(--w-ax-dsc)', 'var(--w-ax-dsc-ink)'], 9: ['MC', 'var(--w-ax-mc)', 'var(--w-ax-mc-ink)'] };
-    const HOUSE = lang === 'ru' ? 'Дом ' : 'House ';
+    // подсказка куспида (17.10, Алина: «при наведении на куспид показывай градусы и какой это дом»): «натал · V дом · куспид 12°34′ Лев»
+    const cuspTip = (side, i, c) => (side ? side + ' · ' : '') + (AX[i] ? AX[i][0] + ' · ' : '') + (lang === 'ru' ? `${ROMAN[i]} дом · куспид ${fmtDeg(c, lang)}` : `House ${ROMAN[i]} · cusp ${fmtDeg(c, lang)}`);
+    // линия куспида с широкой невидимой полосой — наводить и нажимать (на телефоне) удобно; подсказка — у всей группы
+    const cuspLine = (ra, rb, a, attrs, tip, ax) => `<g class="nw-cusp${ax ? ' ax' : ''}" data-tip="${esc(tip)}">${L(ra, rb, a, `class="cl" ${attrs}`)}${L(ra, rb, a, `stroke="transparent" stroke-width="${r1(12 * K)}"`)}</g>`;
     let hnum = '', axes = '';
     if (chart.cusps && !cosmoIn) {
       const rEnd = bi ? R.ring : R.zodIn;
       for (let i = 0; i < 12; i++) {
         const c = chart.cusps[i], ax = AX[i];
         const a = ang(c);
+        const tip = cuspTip(bi && opts.labels && opts.labels.in, i, c);
         // оси — поверх линий внешней карты, но под планетами
-        if (ax) axes += L(R.asp, rEnd, a, `stroke="${ax[1]}" stroke-width="3.2" stroke-linecap="round"`);
-        else s += L(R.asp, rEnd, a, `stroke="var(--w-cusp)" stroke-width="1.2"`);
-        const tip = (bi && opts.labels && opts.labels.in ? opts.labels.in + ' · ' : '') + (ax ? ax[0] + ' · ' : '') + HOUSE + (i + 1) + ' · ' + fmtDeg(c, lang);
+        if (ax) axes += cuspLine(R.asp, rEnd, a, `stroke="${ax[1]}" stroke-width="3.2" stroke-linecap="round"`, tip, true);
+        else s += cuspLine(R.asp, rEnd, a, `stroke="var(--w-cusp)" stroke-width="1.2"`, tip, false);
         const label = ax ? ax[0] : ROMAN[i], dg = String(Math.floor(norm(c) % 30));
         const fs = ax ? GS.hlAx : GS.hl;
         // подпись прижата к поясу снаружи, на продолжении линии
@@ -238,8 +405,8 @@
     let ocusps = '', olabels = '';
     if (outerHouses) {
       const list = oList;
-      const busy = outItems.map((it) => { const [x, y] = xy(R.opl, it.ang); return { x, y, r: GS.bg + 1.5 }; })
-        .concat(outItems.map((it) => { const [x, y] = xy(R.oplDeg, it.ang); return { x, y, r: 11 }; }));
+      const spots = outItems.map((it) => spot(it, stOut, R.opl, R.oplDeg));
+      const busy = spots.map((q) => ({ x: q.g[0], y: q.g[1], r: GS.bg + 1.5 })).concat(spots.map((q) => ({ x: q.d[0], y: q.d[1], r: 11 })));
       const placed = [];
       const axAng = []; // оси натала больше не проходят через внешний круг — подписям мешают только планеты и соседние подписи
       // штраф места: налезть на планету или другую подпись — плохо, лечь на линию оси — терпимо (у подписи есть подложка)
@@ -248,10 +415,11 @@
         + axAng.filter((x) => Math.abs(d180(b.a - x)) < (extT(b.a, b.w, b.h) + 2) / b.r * 180 / Math.PI).length;
       for (const [c, i] of list) {
         const ax = AX[i], a = ang(c);
+        const tip = cuspTip(opts.labels && opts.labels.out, i, c);
         // оси внешней карты — тем же цветом, что у натала, но пунктиром
         ocusps += ax
-          ? L(R.ring, R.zodIn, a, `stroke="${ax[1]}" stroke-width="2.8" stroke-dasharray="7 4" stroke-linecap="round"`)
-          : L(R.ring, R.zodIn, a, `stroke="var(--w-cusp2)" stroke-width="1.4"`);
+          ? cuspLine(R.ring, R.zodIn, a, `stroke="${ax[1]}" stroke-width="2.8" stroke-dasharray="7 4" stroke-linecap="round"`, tip, true)
+          : cuspLine(R.ring, R.zodIn, a, `stroke="var(--w-cusp2)" stroke-width="1.4"`, tip, false);
         const lab = ax ? ax[0] : String(i + 1), deg = String(Math.floor(norm(c) % 30));
         const fs = ax ? GS.ocAx : GS.oc, w = textW(lab, fs) + textW(deg, GS.od) + 1, h = fs + 2;
         let best = null, bestCost = Infinity;
@@ -263,7 +431,6 @@
           if (k < 1) break;
         }
         placed.push(best);
-        const tip = (opts.labels && opts.labels.out ? opts.labels.out + ' · ' : '') + (ax ? ax[0] + ' · ' : '') + HOUSE + (i + 1) + ' · ' + fmtDeg(c, lang);
         olabels += `<text class="nw-oc" x="${r1(best.x)}" y="${r1(best.y)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${fs}" font-weight="800" fill="${ax ? ax[2] : 'var(--w-cusp2-ink)'}" stroke="var(--w-paper)" stroke-width="3" paint-order="stroke" data-tip="${esc(tip)}">${lab}<tspan font-size="${GS.od}" dy="-5">${deg}</tspan></text>`;
       }
     }
@@ -292,7 +459,15 @@
       const ak = bi ? x.a + '>' + x.b : [x.a, x.b].sort().join('~');
       const akA = `data-ak="${esc(ak)}" data-pa="${esc(x.a)}" data-pb="${esc(x.b)}"`;
       let g = '';
-      if (opts.aspGlyphs !== false && len > 70 && x.type !== 'conj' && ASP_G[x.type]) {
+      if (opts.aspGlyphs !== false && x.type === 'conj') {
+        // соединение: обе точки почти в одном месте и линии не видно — значок ☌ у края круга аспектов между ними;
+        // на него наводят и нажимают, как на линию аспекта (17.10, Алина: «нет описания соединения при нажатии на аспект»)
+        const a1 = ang(la), am = a1 + d180(ang(lb) - a1) / 2, rb = 7.5 * K;
+        let rr = R.asp - rb - 4, [gx, gy] = xy(rr, am);
+        for (let k = 0; k < 5 && glyphsAt.some(([a, b]) => Math.hypot(a - gx, b - gy) < 2 * rb + 1); k++) { rr -= 2 * rb + 1; [gx, gy] = xy(rr, am); }
+        glyphsAt.push([gx, gy]);
+        g = `<g class="nw-asp nw-conj" ${akA} data-tip="${esc(tip)}"><circle cx="${r1(gx)}" cy="${r1(gy)}" r="${r1(rb + 5)}" fill="transparent"/><circle class="cb" cx="${r1(gx)}" cy="${r1(gy)}" r="${r1(rb)}" fill="var(--w-asp-bg)" stroke="${col}" stroke-width="1.3"/><text x="${r1(gx)}" y="${r1(gy + 0.5)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_G}" font-size="${r1(11 * K)}" font-weight="700" fill="${col}">${ASP_G.conj}${VS}</text></g>`;
+      } else if (opts.aspGlyphs !== false && len > 70 && ASP_G[x.type]) {
         let tt = x.type === 'opp' ? 0.3 : 0.5, gx = x0 + (x1 - x0) * tt, gy = y0 + (y1 - y0) * tt;
         for (const k of [0.38, 0.62, 0.3, 0.7]) { if (!glyphsAt.some(([a, b]) => Math.hypot(a - gx, b - gy) < 16)) break; tt = k; gx = x0 + (x1 - x0) * tt; gy = y0 + (y1 - y0) * tt; }
         glyphsAt.push([gx, gy]);
@@ -304,38 +479,47 @@
     s += aspHTML + aspGly + hnum;
 
     // ---- планеты ----
-    function ring(items, rGlyph, rDeg, tickFrom, tickTo, cls, sideLabel) {
+    function ring(items, rGlyph, rDeg, tickFrom, tickTo, cls, sideLabel, st) {
       const out = cls === 'out';
       const tickCol = out ? 'var(--w-planet2)' : 'var(--w-ink)';
       const gSize = out ? GS.out : GS.in;
       let h = '';
-      for (const it of items) {
+      // сначала внутренняя дорожка: подложки значков строки и внешней дорожки ложатся поверх её выносок
+      const order = items.slice().sort((a, b) => (a.tr === 'i' ? 0 : 1) - (b.tr === 'i' ? 0 : 1));
+      let top = '';
+      for (const it of order) {
         const p = it.p, a0 = ang(p.lon);
-        const [gx, gy] = xy(rGlyph, it.ang), [dx, dy] = xy(rDeg, it.ang);
+        const sp = spot(it, st, rGlyph, rDeg), rr = sp.rr;
+        const [gx, gy] = sp.g, [dx, dy] = sp.d;
         const g = GLYPH[p.id] || '•';
         const isTxt = /^[A-Z]{2}$/.test(g);
         const name = NAMES[lang][p.id] || p.id;
         const tip = `${name}${sideLabel ? ' · ' + sideLabel : ''}: ${fmtDeg(p.lon, lang)}${p.house ? ` · ${lang === 'ru' ? 'дом' : 'house'} ${p.house}` : ''}${p.retro ? (lang === 'ru' ? ' · ретроградный' : ' · retrograde') : ''}`;
-        h += `<g class="nw-pl ${cls}" data-id="${p.id}" data-tip="${esc(tip)}" tabindex="0">`;
+        h += `<g class="nw-pl ${cls}" data-id="${p.id}" data-tr="${it.tr}" data-tip="${esc(tip)}" tabindex="0">`;
         h += L(tickFrom, tickTo, a0, `stroke="${tickCol}" stroke-width="2.2"`);
-        if (Math.abs(d180(it.ang - a0)) > 1.2) { const lr = rGlyph + GS.bg - 1; h += `<line x1="${r1(xy(tickTo, a0)[0])}" y1="${r1(xy(tickTo, a0)[1])}" x2="${r1(xy(lr, it.ang)[0])}" y2="${r1(xy(lr, it.ang)[1])}" stroke="var(--w-line2)" stroke-width=".8"/>`; }
+        // выноска от засечки к значку: значок отъехал от своего градуса или стоит на внутренней дорожке (далеко от засечки)
+        if (Math.abs(d180(it.ang - a0)) > 1.2 || it.tr === 'i') { const lr = rr + GS.bg - 1; h += `<line x1="${r1(xy(tickTo, a0)[0])}" y1="${r1(xy(tickTo, a0)[1])}" x2="${r1(xy(lr, it.ang)[0])}" y2="${r1(xy(lr, it.ang)[1])}" stroke="var(--w-line2)" stroke-width=".8"/>`; }
         const [px, py] = xy(R.asp, a0);
         h += `<circle cx="${r1(px)}" cy="${r1(py)}" r="${out ? 2.3 : 2.7}" fill="${tickCol}"/>`;
         h += `<circle class="pl-bg" cx="${r1(gx)}" cy="${r1(gy)}" r="${GS.bg}" fill="${!bi ? 'var(--w-plbg)' : out ? 'var(--w-paper)' : 'var(--w-ring-in)'}" stroke="transparent"/>`;
         h += isTxt
           ? `<text x="${r1(gx)}" y="${r1(gy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${r1(13 * K)}" font-weight="800" fill="var(--w-ink)">${g}</text>`
           : `<text x="${r1(gx)}" y="${r1(gy + 0.5)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_G}" font-size="${gSize}" font-weight="700" fill="var(--w-ink)">${g}${VS}</text>`;
-        if (opts.degrees !== false) h += `<text x="${r1(dx)}" y="${r1(dy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${GS.deg}" font-weight="800" fill="${out ? 'var(--w-deg2)' : 'var(--w-deg)'}">${degTxt(p.lon)}${p.retro ? `<tspan fill="var(--w-hard)" font-size="${GS.deg - 2.5}" font-weight="800">R</tspan>` : ''}</text>`;
+        const dfs = sp.side ? sp.fs : GS.deg; // у значка на дорожке градус сбоку — чуть мельче (в тесноте — ещё мельче)
+        const dgTxt = `${degTxt(p.lon)}${p.retro ? `<tspan fill="var(--w-hard)" font-size="${r1(dfs - (sp.side ? 2 : 2.5))}" font-weight="800">R</tspan>` : ''}`;
+        // градус сбоку — отдельным слоем поверх всех значков кольца, с подложкой цвета фона
+        if (sp.side && opts.degrees !== false) top += `<text class="nw-dg side" x="${r1(dx)}" y="${r1(dy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${dfs}" font-weight="800" fill="${out ? 'var(--w-deg2)' : 'var(--w-deg)'}" stroke="${!bi ? 'var(--w-plbg)' : out ? 'var(--w-paper)' : 'var(--w-ring-in)'}" stroke-width="3" paint-order="stroke" stroke-linejoin="round" pointer-events="none" data-for="${cls}:${p.id}">${dgTxt}</text>`;
+        else if (opts.degrees !== false) h += `<text class="nw-dg" x="${r1(dx)}" y="${r1(dy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${dfs}" font-weight="800" fill="${out ? 'var(--w-deg2)' : 'var(--w-deg)'}">${degTxt(p.lon)}${p.retro ? `<tspan fill="var(--w-hard)" font-size="${r1(dfs - (sp.side ? 2 : 2.5))}" font-weight="800">R</tspan>` : ''}</text>`;
         else if (p.retro) h += `<text x="${r1(dx)}" y="${r1(dy)}" text-anchor="middle" dominant-baseline="central" font-family="${FONT_T}" font-size="${GS.deg - 2.5}" font-weight="800" fill="var(--w-hard)">R</text>`;
         h += '</g>';
       }
-      return h;
+      return h + top;
     }
     if (bi) {
       // внутренний круг — натал, внешний — вторая карта (транзиты, соляр, партнёр…); у каждого своя граница
-      s += ring(inItems, R.pl, R.plDeg, R.ring, R.ring - 8, 'in', opts.labels && opts.labels.in);
-      s += ring(outItems, R.opl, R.oplDeg, R.zodIn, R.zodIn - 8, 'out', opts.labels && opts.labels.out);
-    } else s += ring(inItems, R.pl, R.plDeg, R.zodIn, R.zodIn - 11, 'in', opts.labels && opts.labels.in);
+      s += ring(inItems, R.pl, R.plDeg, R.ring, R.ring - 8, 'in', opts.labels && opts.labels.in, stIn);
+      s += ring(outItems, R.opl, R.oplDeg, R.zodIn, R.zodIn - 8, 'out', opts.labels && opts.labels.out, stOut);
+    } else s += ring(inItems, R.pl, R.plDeg, R.zodIn, R.zodIn - 11, 'in', opts.labels && opts.labels.in, stIn);
     s += '</svg>';
     return s;
   }
@@ -437,5 +621,78 @@
     scope.addEventListener('pointerleave', clear);
   }
 
-  root.NWheel = { svg, bindTips, linkAspects, spread, spreadAround, place1D, fmtDeg, GLYPH, SIGN_G, ASP_G, NAMES, SIGNS, ASP_N };
+  /**
+   * Зум колеса на телефоне (17.10, Алина: «увеличь масштаб карты — с телефона плохо видно, даже в рабочем режиме»):
+   * два пальца — приблизить или отдалить (точка между пальцами остаётся на месте), приближенную карту двигают одним пальцем;
+   * кнопки «+ / − / 1:1» в углу. Колесо внутри host перерисовывается постоянно (стрелки, «Пуск») — масштаб живёт на самом host
+   * (переменные --zs, --zx, --zy), поэтому новая картинка сразу встаёт так же. Вызывать после каждой перерисовки: вернёт кнопки.
+   */
+  const ZMAX = 4;
+  function zoom(host) {
+    if (!host) return;
+    if (!host._zoom) {
+      const z = host._zoom = { s: 1, x: 0, y: 0 };
+      host.classList.add('nw-zoomable');
+      const apply = () => {
+        host.style.setProperty('--zs', z.s.toFixed(3)); host.style.setProperty('--zx', z.x.toFixed(1) + 'px'); host.style.setProperty('--zy', z.y.toFixed(1) + 'px');
+        host.classList.toggle('zoomed', z.s > 1.01);
+        const r = host.querySelector('[data-nwz="0"]'); if (r) r.hidden = z.s <= 1.01;
+      };
+      const clamp = () => { const w = host.clientWidth, h = host.clientHeight; z.s = Math.min(ZMAX, Math.max(1, z.s)); if (z.s <= 1.01) { z.s = 1; z.x = z.y = 0; } z.x = Math.min(0, Math.max(w * (1 - z.s), z.x)); z.y = Math.min(0, Math.max(h * (1 - z.s), z.y)); };
+      // ns — новый масштаб, (px, py) — точка внутри host, которая остаётся на месте
+      const zoomAt = (ns, px, py) => { const s0 = z.s; ns = Math.min(ZMAX, Math.max(1, ns)); z.x = px - (px - z.x) * ns / s0; z.y = py - (py - z.y) * ns / s0; z.s = ns; clamp(); apply(); };
+      z.zoomAt = zoomAt; z.reset = () => { z.s = 1; z.x = z.y = 0; apply(); };
+      const rel = (t) => { const r = host.getBoundingClientRect(); return [t.clientX - r.left, t.clientY - r.top]; };
+      let pinch = null, pan = null, moved = 0, quietTill = 0;
+      host.addEventListener('touchstart', (e) => {
+        moved = 0;
+        if (e.target.closest && e.target.closest('.nw-zc')) return;
+        if (e.touches.length === 2) {
+          const [a, b] = [rel(e.touches[0]), rel(e.touches[1])];
+          pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, s: z.s, mx: (a[0] + b[0]) / 2, my: (a[1] + b[1]) / 2, x: z.x, y: z.y };
+          pan = null; moved = 99; e.preventDefault();
+        } else if (e.touches.length === 1 && z.s > 1.01) { const a = rel(e.touches[0]); pan = { px: a[0], py: a[1], x: z.x, y: z.y }; moved = 0; }
+      }, { passive: false });
+      host.addEventListener('touchmove', (e) => {
+        if (pinch && e.touches.length >= 2) {
+          const [a, b] = [rel(e.touches[0]), rel(e.touches[1])];
+          const ns = Math.min(ZMAX, Math.max(1, pinch.s * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d)), mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+          z.x = mx - (pinch.mx - pinch.x) * ns / pinch.s; z.y = my - (pinch.my - pinch.y) * ns / pinch.s; z.s = ns;
+          clamp(); apply(); e.preventDefault();
+        } else if (pan && e.touches.length === 1) {
+          const a = rel(e.touches[0]); moved = Math.max(moved, Math.hypot(a[0] - pan.px, a[1] - pan.py));
+          z.x = pan.x + a[0] - pan.px; z.y = pan.y + a[1] - pan.py; clamp(); apply(); e.preventDefault();
+        }
+      }, { passive: false });
+      const end = (e) => {
+        if (moved > 8) quietTill = Date.now() + 400;
+        if (e.touches.length < 2) pinch = null;
+        if (e.touches.length === 1 && z.s > 1.01) { const a = rel(e.touches[0]); pan = { px: a[0], py: a[1], x: z.x, y: z.y }; } else if (!e.touches.length) pan = null;
+      };
+      host.addEventListener('touchend', end); host.addEventListener('touchcancel', end);
+      // карту двигали пальцем — отпускание не нажимает на планету или аспект под пальцем
+      host.addEventListener('click', (e) => { if (Date.now() < quietTill && !(e.target.closest && e.target.closest('.nw-zc'))) { quietTill = 0; e.stopPropagation(); e.preventDefault(); } }, true);
+      // Ctrl + колёсико (и щипок на тачпаде) — тоже зум
+      host.addEventListener('wheel', (e) => { if (!e.ctrlKey) return; e.preventDefault(); const [px, py] = rel(e); zoomAt(z.s * Math.exp(-e.deltaY / 240), px, py); }, { passive: false });
+      host.addEventListener('click', (e) => {
+        const b = e.target.closest && e.target.closest('[data-nwz]'); if (!b) return;
+        e.stopPropagation(); e.preventDefault();
+        const k = b.dataset.nwz, w = host.clientWidth, h = host.clientHeight;
+        if (k === '0') z.reset(); else zoomAt(k === '+' ? z.s * 1.5 : z.s / 1.5, w / 2, h / 2);
+      });
+      // поворот экрана и смена размера: приближенную карту держим в границах (колесо со страницы ушло — слушатель снимаем)
+      let rt = 0; const onResize = () => { clearTimeout(rt); rt = setTimeout(() => { if (!document.body.contains(host)) { window.removeEventListener('resize', onResize); return; } clamp(); apply(); }, 150); };
+      window.addEventListener('resize', onResize);
+      apply();
+    }
+    if (!host.querySelector('.nw-zc')) {
+      const ru = (root.NUI && root.NUI.lang ? root.NUI.lang() : document.documentElement.lang || 'ru').slice(0, 2) !== 'en';
+      const c = document.createElement('div');
+      c.className = 'nw-zc';
+      c.innerHTML = `<button type="button" data-nwz="+" aria-label="${ru ? 'Крупнее' : 'Zoom in'}">+</button><button type="button" data-nwz="-" aria-label="${ru ? 'Мельче' : 'Zoom out'}">−</button><button type="button" data-nwz="0" aria-label="${ru ? 'Вернуть масштаб' : 'Reset zoom'}"${host._zoom.s > 1.01 ? '' : ' hidden'}>1:1</button>`;
+      host.appendChild(c);
+    }
+  }
+
+  root.NWheel = { svg, bindTips, linkAspects, zoom, spread, spreadAround, place1D, fmtDeg, GLYPH, SIGN_G, ASP_G, NAMES, SIGNS, ASP_N };
 })(typeof window !== 'undefined' ? window : globalThis);

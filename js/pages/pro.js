@@ -26,6 +26,9 @@
   const MIN = 60000, HOUR = 3600000, DAY = 86400000;
   const WHEEL_SCALE = 1.15; // значки и подписи на колесе крупнее — видно издалека
   const WHEEL_SCALE_MAIN = 1.25; // «Карта» (одна большая): ещё крупнее — 16.10, Алина: «чтобы не присматриваться»
+  // телефон (17.10, Алина: «с телефона плохо видно, даже в рабочем режиме»): колесо шириной в экран, значки и подписи ещё крупнее
+  const isPhone = () => Math.min(window.innerWidth, window.innerHeight) < 560;
+  const wheelScale = (compact, bi) => (isPhone() ? (bi ? 1.15 : 1.2) : compact ? WHEEL_SCALE : WHEEL_SCALE_MAIN);
   let tab = 'chart';
   const specs = { main: null, left: null, right: null };
   let workSlot = null; // панель в «рабочем режиме» (на весь экран: колесо, динамика и таблица аспектов крупно)
@@ -539,7 +542,7 @@
     const ps = box.querySelector('[data-psub]');
     if (ps) { ps.textContent = sub; ps.title = r.canRot ? t('pro.rotHint', 'Нажми на свободное место внутри круга — главный АС поменяется') : ''; ps.hidden = !sub; }
     // show — точки внутреннего круга из «Что показывать» (внешний круг уже отобран в build)
-    q('wheel').innerHTML = (r.error ? `<p class="err">${esc(r.error)}</p>` : '') + root.NWheel.svg(r.inner, { outer: r.outer, aspects: r.aspects.map((x) => Object.assign({}, x)), lang: UI.lang(), labels: r.labels, label: r.title, scale: compact ? WHEEL_SCALE : WHEEL_SCALE_MAIN, cosmo: r.cosmo, cosmoIn: r.cosmoIn, cosmoOut: r.cosmoOut, rot: r.rotOut ? oAsc : undefined, show: v.pts });
+    q('wheel').innerHTML = (r.error ? `<p class="err">${esc(r.error)}</p>` : '') + root.NWheel.svg(r.inner, { outer: r.outer, aspects: r.aspects.map((x) => Object.assign({}, x)), lang: UI.lang(), labels: r.labels, label: r.title, scale: wheelScale(compact, !!r.outer), cosmo: r.cosmo, cosmoIn: r.cosmoIn, cosmoOut: r.cosmoOut, rot: r.rotOut ? oAsc : undefined, show: v.pts });
     q('info').innerHTML = r.info.length ? `<div class="facts" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">${r.info.map(([k, val]) => `<span class="chip static">${esc(k)}: <b>${esc(val)}</b></span>`).join('')}</div>` : '';
     // маленькие цифры у значков: у планет внутренней карты — какими её домами управляют; у внешней — в каком доме внутренней стоят (транзит — по какому идёт)
     const hc = r.cosmoIn ? null : r.innerChart.houses ? r.innerChart.houses.cusps : r.inner && r.inner.cusps ? r.inner.cusps : null;
@@ -574,6 +577,7 @@
       bn.innerHTML = `<div class="rect-banner">${icon('alert', 'sm')}<span>${t('rect.changed', 'Пробное время рождения: {d} {t} (в профиле — {p}).', { d: UI.fmtDMY(qq), t: UI.fmtHMS(qq, qq.s ? true : false), p: p.timeKnown !== false ? `${UI.pad(p.h)}:${UI.pad(p.mi)}` : t('rect.unknown', 'время не указано') })}</span><span class="spacer"></span><button class="btn sm" type="button" data-rreset>${t('rect.reset', 'Вернуть')}</button><button class="btn sm primary" type="button" data-rsave>${spec.a === 'custom' ? t('rect.apply', 'Записать в данные') : t('rect.save', 'Сохранить в профиль')}</button></div>`;
     } else bn.innerHTML = '';
     root.NWheel.bindTips(q('wheel')); root.NWheel.bindTips(q('grid'));
+    root.NWheel.zoom(q('wheel'));
     root.NWheel.linkAspects(box.querySelector('.pro-main'));
     return r;
   }
@@ -886,6 +890,20 @@
       const stick = work ? barH : stick0, gap = work ? 26 : 16; // в рабочем режиме ещё поля панели сверху и снизу
       panel.style.setProperty('--pro-stick', stick + 'px');
       if (!wb) return;
+      if (isPhone()) {
+        // телефон (17.10, Алина): стоя — колесо во всю ширину экрана (размер задаёт CSS); лёжа в рабочем режиме — во всю высоту
+        // под шапкой, а «Две карты» — обе рядом (у каждой своя колонка, шапка над колесом)
+        if (asp) asp.style.removeProperty('--ag');
+        panel.style.removeProperty('--wcol');
+        if (!work || window.innerWidth <= window.innerHeight) { wb.style.width = ''; return; }
+        const head = both ? card.querySelector('.ph-head') : null, headH = head ? head.getBoundingClientRect().height : 0;
+        const cw = card.clientWidth - (parseFloat(getComputedStyle(card).paddingLeft) || 0) - (parseFloat(getComputedStyle(card).paddingRight) || 0);
+        const hgt = window.innerHeight - (both ? headH + 18 : barH + 16);
+        const size = Math.round(Math.max(200, both ? Math.min(cw, hgt) : Math.min(hgt, window.innerWidth * 0.55)));
+        wb.style.width = size + 'px';
+        if (!both) panel.style.setProperty('--wcol', size + 'px'); // одна карта лёжа: слева колонка ровно под колесо, справа — таблица
+        return;
+      }
       if (window.innerWidth < 700) { wb.style.width = ''; if (asp) asp.style.removeProperty('--ag'); return; }
       let rest = card.getBoundingClientRect().height - wb.getBoundingClientRect().height;
       if (!work) {
@@ -917,12 +935,17 @@
     });
     // две карты рядом — колёса одного размера (по меньшему), чтобы их было удобно сравнивать
     const sw = document.querySelector('.split.work');
-    if (sw && window.innerWidth >= 700) {
+    if (sw && window.innerWidth >= 700 && (!isPhone() || window.innerWidth > window.innerHeight)) {
       const wbs = [...sw.querySelectorAll('.pro-panel.work [data-dyn="wheel"]')];
       const m = Math.min(...wbs.map((b) => parseFloat(b.style.width) || Infinity));
       if (isFinite(m)) wbs.forEach((b) => { b.style.width = m + 'px'; });
     }
-    if (!fitBound) { fitBound = true; let tm = 0; window.addEventListener('resize', () => { clearTimeout(tm); tm = setTimeout(fit, 120); }); }
+    if (!fitBound) {
+      fitBound = true; let tm = 0;
+      window.addEventListener('resize', () => { clearTimeout(tm); tm = setTimeout(fit, 120); });
+      // поворот телефона: размеры окна приходят не сразу — пересчитать ещё раз чуть позже
+      window.addEventListener('orientationchange', () => { setTimeout(fit, 150); setTimeout(fit, 500); });
+    }
   }
   /**
    * «Рабочий режим» (15.10, Алина): панель на весь экран — колесо с динамикой и таблица аспектов крупно, без шапки сайта и меню.
@@ -930,7 +953,7 @@
    * Браузер тоже переходит в полноэкранный режим (если разрешает); Esc или кнопка — обратно. slot = null — выйти.
    */
   let fsMine = false, workBound = false;
-  const workBtn = (on, short) => (on ? `${icon('close', 'sm')} ${short ? t('pro.workOffS', 'Выйти') : t('pro.workOff', 'Выйти из рабочего режима')} <kbd class="kb">Esc</kbd>` : `${icon('maximize', 'sm')} ${t('pro.workOn', 'Рабочий режим')}`);
+  const workBtn = (on, short) => (on ? `${icon('close', 'sm')} ${short || isPhone() ? t('pro.workOffS', 'Выйти') : t('pro.workOff', 'Выйти из рабочего режима')} <kbd class="kb">Esc</kbd>` : `${icon('maximize', 'sm')} ${t('pro.workOn', 'Рабочий режим')}`);
   let workBack = false; // рабочий режим открыт кнопкой со страницы «Карта» — при выходе вернуться туда
   function setWork(slot) {
     const prev = workSlot;
@@ -958,6 +981,8 @@
     }
     if (!slot && prev && workBack) { workBack = false; history.back(); return; }
     setTimeout(fit, 30); setTimeout(fit, 260); // после перехода в полноэкранный режим высота окна меняется
+    // две карты на телефоне стоя — друг под другом; подсказать, что лёжа они встанут рядом (17.10, Алина)
+    if (slot === 'split' && isPhone() && window.innerWidth < window.innerHeight) UI.toast(t('pro.rotateHint', 'Поверни телефон — карты встанут рядом'));
     if (!slot && prev) { const p = prev === 'split' ? document.querySelector('.split') : document.querySelector(`.pro-panel[data-panel="${prev}"]`); if (p) setTimeout(() => toChart(p), 280); }
   }
   /** Прокрутить к карте так, чтобы колесо, динамика и таблица оказались целиком под шапкой и вкладками. */

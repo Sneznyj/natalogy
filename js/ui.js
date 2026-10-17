@@ -463,8 +463,9 @@
       const d0 = api.get(), u = api.unit(), x0 = e.clientX, y0 = e.clientY;
       let gc = g, prev = Math.atan2(-(y0 - g.cy), x0 - g.cx), acc = 0, applied = 0;
       dragging = false;
-      try { host.setPointerCapture(e.pointerId); } catch (er) { /* */ }
+      // захват мыши — только когда колесо и правда крутят: иначе щелчок уходит на само колесо, а не на аспект или планету под курсором (17.10)
       const move = (ev) => {
+        if (!(ev.buttons & 1)) { up(); return; } // кнопку отпустили за пределами колеса, пока его ещё не начали крутить
         // колесо могло сдвинуться (перерисовка справа меняет высоту страницы) — центр берём заново, скачок угла не считаем
         const ng = geo() || gc, shifted = Math.abs(ng.cx - gc.cx) > 1 || Math.abs(ng.cy - gc.cy) > 1; gc = ng;
         const a = Math.atan2(-(ev.clientY - gc.cy), ev.clientX - gc.cx);
@@ -472,7 +473,7 @@
         prev = a;
         if (Math.hypot(ev.clientX - gc.cx, ev.clientY - gc.cy) < gc.r * 0.08) return; // у самого центра угол скачет
         acc += da;
-        if (!dragging) { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 5) return; dragging = true; document.body.classList.add('scrubbing'); }
+        if (!dragging) { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 5) return; dragging = true; document.body.classList.add('scrubbing'); try { host.setPointerCapture(ev.pointerId); } catch (er) { /* */ } }
         const n = Math.round(acc * 180 / Math.PI / SCRUB_DEG); // до ближайшего деления — туда и обратно по тому же пути приходим в ту же точку
         if (n !== applied) { const dir = n - applied; applied = n; api.go(addUnit(d0, u, n, api.tz)); scrubShow(host.querySelector('svg.nw') || gc.svg, api, dir); }
       };

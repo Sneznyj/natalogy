@@ -219,7 +219,7 @@
     card.querySelector('[data-acx]').addEventListener('click', closeCard);
     const more = card.querySelector('[data-acmore]');
     if (more) more.addEventListener('click', () => { const e = { T: info.b, N: info.a, type: info.type, orb: info.orb, applying: info.applying, at: info.at }; closeCard(); transit(e, { natal: info.chart, person: info.person }); });
-    const outside = (e) => { if (card && !card.contains(e.target) && !(e.target.closest && e.target.closest('td[data-ak], .nw-asp'))) closeCard(); };
+    const outside = (e) => { if (card && !card.contains(e.target) && !(e.target.closest && e.target.closest('td[data-ak], .nw-asp, [data-asprow]'))) closeCard(); };
     const onKey = (e) => { if (e.key === 'Escape' && card) { e.stopPropagation(); closeCard(); } };
     const onScroll = (e) => { if (card && !card.contains(e.target)) closeCard(); };
     document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', onKey, true); document.addEventListener('scroll', onScroll, { passive: true, capture: true });
@@ -228,5 +228,28 @@
   }
   function $$hide() { document.querySelectorAll('.nw-tip').forEach((x) => { x.hidden = true; }); }
 
-  root.NExplain = { transit, tone, short, phrase, rulesOf, natalHouse, transitHouse, houseLine, houseStory, aspectCard, aspectGives, closeCard, natureOf };
+  /**
+   * Нажатие на аспект там, где нет своей обработки (страница «Карта», «Пара», «Сегодня»; 17.10, Алина: «нет описания соединения
+   * при нажатии на аспект»): линия или значок аспекта на колесе (в том числе ☌ соединения), клетка таблицы или строка списка
+   * с data-ak / data-pa / data-pb → та же подсказка «что даёт», что в Профи. infoOf(a, b, el) → info для aspectCard (или null).
+   */
+  function bindAspects(scope, infoOf) {
+    if (!scope) return;
+    scope._aspInfo = infoOf;
+    if (scope._aspBound) return;
+    scope._aspBound = true;
+    const open = (el, x, y) => { const info = scope._aspInfo && scope._aspInfo(el.getAttribute('data-pa'), el.getAttribute('data-pb'), el); if (info) aspectCard(info, { x, y }); };
+    scope.addEventListener('click', (e) => {
+      const el = e.target.closest && e.target.closest('.nw-asp[data-ak], td[data-ak], [data-asprow][data-ak]');
+      if (!el || !scope.contains(el)) return;
+      open(el, e.clientX, e.clientY);
+    });
+    scope.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const el = e.target.closest && e.target.closest('[data-asprow][data-ak]'); if (!el) return;
+      e.preventDefault(); const r = el.getBoundingClientRect(); open(el, r.left + r.width / 2, r.bottom);
+    });
+  }
+
+  root.NExplain = { transit, tone, short, phrase, rulesOf, natalHouse, transitHouse, houseLine, houseStory, aspectCard, aspectGives, closeCard, natureOf, bindAspects };
 })(window);

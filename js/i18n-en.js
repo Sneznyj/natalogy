@@ -318,3 +318,5 @@ Object.assign(window.NI18N.en, {
   'horo.periods': 'Periods', 'horo.periodsT': 'Mercury and Venus retrogrades, New and Full Moons, eclipses — what they mean for your sign',
   'horo.pRange': 'Periods for the year ahead', 'horo.pIng2': '{p} {s} — a new sign', 'horo.pFilter': 'Which periods',
 });
+// 17.10.2026 (Алина): две карты на телефоне стоя — подсказка повернуть телефон
+Object.assign(window.NI18N.en, { 'pro.rotateHint': 'Turn your phone sideways — the two charts will sit side by side' });

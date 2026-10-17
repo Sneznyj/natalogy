@@ -19,7 +19,9 @@
     const aspects = (opts.aspects || chart.aspects.filter((a) => MAJOR.includes(a.type) && !['fortune', 'lilith'].includes(a.a) && !['fortune', 'lilith'].includes(a.b)))
       .map((a) => ({ a: a.a, b: a.b, type: a.type, nature: a.nature, orb: a.orb, strength: a.strength, fromA: a.fromA, fromB: a.fromB }));
     const c = { points: pts, cusps: chart.houses ? chart.houses.cusps : null, asc: chart.houses ? chart.houses.asc : 0, mc: chart.houses ? chart.houses.mc : null };
-    return W.svg(c, { aspects, lang: UI.lang(), label: opts.label, outer: opts.outer, labels: opts.labels, showOuter: opts.showOuter });
+    // на телефоне значки и подписи крупнее (17.10, Алина: «с телефона плохо видно»)
+    const scale = opts.scale || (Math.min(window.innerWidth, window.innerHeight) < 560 ? (opts.outer ? 1.15 : 1.2) : undefined);
+    return W.svg(c, { aspects, lang: UI.lang(), label: opts.label, outer: opts.outer, labels: opts.labels, showOuter: opts.showOuter, scale });
   }
 
   const hs = () => root.NStore.settings().houseSystem || 'placidus';
@@ -71,6 +73,16 @@
       <p class="tiny muted">${t('chart.note', 'Карта — не приговор, а инструкция к себе. Тексты — ориентир для самопознания, а не предсказание судьбы.')}</p>`;
     const hint = el.querySelector('#modeHint');
     let tb = null, portraitT = null;
+    // нажатие на аспект — на колесе (линия, значок, ☌ соединения) или в списке справа — подсказка «что даёт» (17.10, Алина);
+    // cur — что нарисовано сейчас: аспекты, карта с домами, тип и (у транзитов) долготы внешних планет
+    let cur = null;
+    root.NExplain.bindAspects(el.querySelector('.chart-layout'), (a, b) => {
+      if (!cur) return null;
+      const x = cur.list.find((y) => y.a === a && y.b === b) || cur.list.find((y) => y.a === b && y.b === a);
+      if (!x) return null;
+      const ob = cur.outer ? cur.outer.find((y) => y.id === x.b) : null;
+      return { a: x.a, b: x.b, type: x.type, orb: x.orb, applying: x.applying, kind: cur.kind, chart: cur.chart, bLon: ob ? ob.lon : null, labels: cur.labels, at: cur.at, person: p };
+    });
     const at = () => st.at || new Date();
     const setHint = () => { hint.textContent = { natal: t('chart.h.natal', 'Твоя карта рождения. Стрелками можно сдвигать время рождения — так проверяют точность (ректификация). В профиле ничего не меняется, пока не нажмёшь «Сохранить».'), transit: t('chart.h.transit2', 'Внутренний круг — карта рождения, внешний круг — планеты на выбранный момент. Двигай дату, часы, минуты и секунды — справа видно динамику и все транзиты; нажми на транзит — расшифровка.'), sky: t('chart.h.sky', 'Небо на выбранный момент для места, где ты сейчас ({c}) — как карта транзита в Sotis.', { c: here.name || here.tz }) }[st.mode]; };
     const drawWheel = () => {
@@ -83,6 +95,7 @@
         svg = wheelOf(natal, { label: t('chart.of', 'Карта: {n}', { n: p.name }) });
         rows = `<span class="label">${t('pos.natal', 'Положения в карте')}</span><div class="poslist">${posRows(natal.points.filter((x) => IDS.includes(x.id) || x.id === 'asc' || x.id === 'mc'))}</div>`;
         aspList = natal.aspects.filter((a) => MAJOR.includes(a.type) && !['fortune', 'lilith'].includes(a.a) && !['fortune', 'lilith'].includes(a.b)).sort((a, b) => a.orb - b.orb);
+        cur = { list: aspList, kind: 'natal', chart: natal, outer: null, labels: null, at: null };
         const q = st.over[p.id] ? UI.partsIn(st.over[p.id], p.place.tz) : null;
         info.innerHTML = `<span class="tag acc">${icon('user', 'xs')} ${esc(p.name)}</span><span class="tag plain">${q ? `${UI.fmtDMY(q)} ${UI.fmtHMS(q, q.s ? true : false)}` : `${UI.pad(p.d)}.${UI.pad(p.mo)}.${p.y}${p.timeKnown !== false ? ' ' + UI.pad(p.h) + ':' + UI.pad(p.mi) : ''}`} · ${esc(place)}</span><span class="tag plain">${esc((TX.houseSystems || {})[hs()] || hs())}</span>`;
       } else if (st.mode === 'transit') {
@@ -93,6 +106,7 @@
         aspList = AC.aspectsBetween(inPts, outer.points, { orbMult: 0.4 }).filter((a) => MAJOR.includes(a.type)).sort((a, b) => a.orb - b.orb);
         svg = wheelOf(natal, { outer, aspects: aspList.slice(0, 18).map((a) => Object.assign({}, a, { fromA: 'in', fromB: 'out' })), labels: { in: t('natal', 'натал'), out: t('transit', 'транзит') }, label: t('chart.trOf', 'Транзиты к карте: {n}', { n: p.name }) });
         trList = aspList;
+        cur = { list: aspList, kind: 'transit', chart: natal, outer: outer.points, labels: { in: t('natal', 'натал'), out: t('transit', 'транзит') }, at: mom };
         rows = dynPanel(p, natal, mom, aspList, outer);
         info.innerHTML = `<span class="tag acc">${icon('clock', 'xs')} ${esc(UI.fmtDay(mom, here.tz, { year: 'numeric', hour: '2-digit', second: true }))}</span><span class="tag plain">${esc(here.name || here.tz)}</span>${vocTag(mom, here.tz)}<span class="ring-key"><i class="rk-in"></i>${t('ring.in', 'внутри — натал')}<i class="rk-out"></i>${t('ring.out', 'снаружи — транзиты')}</span>`;
       } else {
@@ -100,22 +114,24 @@
         svg = wheelOf(sky, { show: SKY_IDS, label: t('chart.skyOf', 'Небо на момент') });
         rows = `<span class="label">${t('pos.sky', 'Положения на момент')}</span><div class="poslist">${posRows(sky.points.filter((x) => SKY_IDS.includes(x.id) || x.id === 'asc' || x.id === 'mc'), 'tr')}</div>`;
         aspList = sky.aspects.filter((a) => MAJOR.includes(a.type) && SKY_IDS.includes(a.a) && SKY_IDS.includes(a.b)).sort((a, b) => a.orb - b.orb);
+        cur = { list: sky.aspects.filter((a) => MAJOR.includes(a.type)), kind: 'natal', chart: sky, outer: null, labels: null, at: mom };
         info.innerHTML = `<span class="tag acc">${icon('clock', 'xs')} ${esc(UI.fmtDay(mom, here.tz, { year: 'numeric', hour: '2-digit', second: true }))}</span><span class="tag plain">${esc(here.name || here.tz)}</span>${vocTag(mom, here.tz)}`;
       }
       wBox.innerHTML = svg;
+      root.NWheel.zoom(wBox);
       if (trList) {
         pos.innerHTML = rows;
         bindDyn(el, p, natal, trList, mom);
         bindPlanets(el, p, natal);
-        root.NWheel.bindTips(wBox); root.NWheel.bindTips(pos);
+        root.NWheel.bindTips(wBox); root.NWheel.bindTips(pos); root.NWheel.linkAspects(el.querySelector('.chart-layout'));
         drawRect();
         return;
       }
-      const asp = aspList.slice(0, 14).map((a) => `<div class="pos" style="grid-template-columns:62px minmax(0,1fr) auto;cursor:default"><span class="g" style="font-weight:700;color:${a.nature === 'soft' ? 'var(--at-soft)' : a.nature === 'hard' ? 'var(--at-hard)' : 'var(--at-conj)'}">${pg(a.a)}${W.ASP_G[a.type]}${VS}${pg(a.b)}</span><span class="small">${esc((TX.P[a.a] || {}).name || a.a)} — ${esc((TX.P[a.b] || {}).name || a.b)} · ${esc(TX.ASP[a.type] ? TX.ASP[a.type].name : a.type)}</span><span class="dg">${a.orb.toFixed(1)}°${a.applying != null ? (a.applying ? ' ↗' : ' ↘') : ''}</span></div>`).join('');
+      const asp = aspList.slice(0, 14).map((a) => `<div class="pos" role="button" tabindex="0" data-asprow data-ak="${esc([a.a, a.b].sort().join('~'))}" data-pa="${esc(a.a)}" data-pb="${esc(a.b)}" style="grid-template-columns:62px minmax(0,1fr) auto"><span class="g" style="font-weight:700;color:${a.nature === 'soft' ? 'var(--at-soft)' : a.nature === 'hard' ? 'var(--at-hard)' : 'var(--at-conj)'}">${pg(a.a)}${W.ASP_G[a.type]}${VS}${pg(a.b)}</span><span class="small">${esc((TX.P[a.a] || {}).name || a.a)} — ${esc((TX.P[a.b] || {}).name || a.b)} · ${esc(TX.ASP[a.type] ? TX.ASP[a.type].name : a.type)}</span><span class="dg">${a.orb.toFixed(1)}°${a.applying != null ? (a.applying ? ' ↗' : ' ↘') : ''}</span></div>`).join('');
       pos.innerHTML = rows + `<details${st.mode === 'transit' ? ' open' : ''}><summary class="more" style="cursor:pointer">${st.mode === 'transit' ? t('pos.aspTr', 'Аспекты транзитов к карте ({n})', { n: aspList.length }) : t('pos.asp', 'Аспекты ({n})', { n: aspList.length })}</summary><div class="poslist" style="margin-top:6px">${asp || `<p class="muted small">${t('pos.noAsp', 'Точных аспектов нет')}</p>`}</div></details>
         ${st.mode === 'natal' ? elemBars(natal) : ''}`;
       bindPlanets(el, p, natal);
-      root.NWheel.bindTips(wBox); root.NWheel.bindTips(pos);
+      root.NWheel.bindTips(wBox); root.NWheel.bindTips(pos); root.NWheel.linkAspects(el.querySelector('.chart-layout'));
       if (st.mode === 'natal') { clearTimeout(portraitT); portraitT = setTimeout(() => drawPortrait(el, p, natal), st.over[p.id] ? 350 : 0); }
       drawRect();
     };
