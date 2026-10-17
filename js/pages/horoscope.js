@@ -382,7 +382,8 @@
           <button class="btn sm horo-share" type="button" data-share>${icon('share', 'sm')} ${esc(t('horo.share', 'Поделиться'))}</button></div>
         <div class="horo-body" id="horoBody" aria-live="polite"><p class="muted">${esc(t('horo.loading', 'Считаю…'))}</p></div>`;
       const body = card.querySelector('#horoBody');
-      const work = mode === 'week' ? weekView(si, o, tz) : mode === 'month' ? monthView(si, o.y, o.mo, tz) : mode === 'year' ? yearView(si, o.y, tz) : mode === 'periods' ? Promise.resolve(periodsView(si, tz, st.pf)) : dayView(si, o, tz);
+      const shut = (mode === 'year' || mode === 'periods') && root.NPlans && !root.NPlans.can('horoLong'); // год и периоды — тариф «Плюс»
+      const work = shut ? Promise.resolve(root.NPlans.lockHTML('horoLong', { compact: true })) : mode === 'week' ? weekView(si, o, tz) : mode === 'month' ? monthView(si, o.y, o.mo, tz) : mode === 'year' ? yearView(si, o.y, tz) : mode === 'periods' ? Promise.resolve(periodsView(si, tz, st.pf)) : dayView(si, o, tz);
       const [html] = await Promise.all([work, magic ? conjure(body, si) : null]);
       if (my !== token) return;
       body.innerHTML = html; body.classList.remove('fade-in'); void body.offsetWidth; body.classList.add('fade-in');

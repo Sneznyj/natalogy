@@ -18,12 +18,12 @@
 <main class="doc">
   <a class="brand" href="./"><span class="brand-mark" aria-hidden="true"></span>Saliastro</a>
   <h1>Политика конфиденциальности</h1>
-  <p class="muted">Редакция от 12 октября 2026 года. English version below.</p>
+  <p class="muted">Редакция от 17 октября 2026 года. English version below.</p>
 
   <h2>Коротко</h2>
   <ul>
     <li>Без входа данные рождения, карты и настройки хранятся <b>только на вашем устройстве</b> (в браузере или приложении). Мы их не видим.</li>
-    <li>Аккаунт — по желанию. Если вы войдёте (Google, Яндекс ID, VK ID, Telegram или почта и пароль), карточки и настройки копируются на наш сервер <b>в зашифрованном виде</b>, чтобы не пропасть и быть на всех ваших устройствах.</li>
+    <li>Аккаунт — по желанию. Если вы войдёте (ключ доступа, Google, Яндекс ID, VK ID, Telegram, Apple, код на почту или почта и пароль), карточки и настройки копируются на наш сервер <b>в зашифрованном виде</b>, чтобы не пропасть и быть на всех ваших устройствах.</li>
     <li>На наш сервер уходит только вопрос к ИИ-помощнику — и только после вашего согласия: текст вопроса и рассчитанные положения планет, дата и время рождения. Без имени и города.</li>
     <li>Мы не продаём данные, не показываем рекламу и не используем трекеры.</li>
   </ul>
@@ -36,6 +36,9 @@
     <li><b>На устройстве</b>: имя (как вы его ввели), дата, время и город рождения, ваши люди, сохранённые карты, настройки. Это нужно, чтобы считать карты и календарь. Удалить всё можно в «Настройки → Удалить все данные».</li>
     <li><b>Вопросы к ИИ</b> (по согласию): текст вопроса, рассчитанные положения планет и аспекты, дата и время рождения, пол для обращения, часовой пояс, обезличенный идентификатор устройства для подсчёта лимита. Сервер передаёт это в Anthropic (модель Claude) и возвращает ответ. Тексты вопросов и ответов мы не храним; храним только счётчик вопросов за сутки по обезличенному идентификатору — до 2 суток.</li>
     <li><b>Аккаунт</b> (если вы вошли): идентификатор у выбранного сервиса входа, имя, адрес почты и ссылка на аватар (то, что сервис передаёт с вашего разрешения), хэш пароля (если вход по почте; сам пароль на сервер не уходит), время входа. Карточки людей, сохранённые карты и настройки хранятся на сервере, зашифрованные ключом AES-256; для защиты от подбора пароля используется обезличенный хэш IP-адреса. Удалить аккаунт со всеми данными можно в «Настройки → Аккаунт → Удалить аккаунт».</li>
+    <li><b>Ключ доступа</b> (если вы его добавили): открытая часть ключа и его идентификатор, название устройства («iPhone · Safari»), даты создания и последнего входа. Отпечаток пальца, лицо и сам секретный ключ остаются на вашем устройстве и к нам не попадают.</li>
+    <li><b>Код на почту</b>: адрес почты и одноразовый код в виде хэша — 10 минут. Письмо отправляет сервис рассылки Resend.</li>
+    <li><b>Оплата тарифа</b>: тариф, срок, статус подписки, почта, которую вы указали в кассе, и номера платежей у кассы. Номер карты и другие платёжные данные вводятся на странице lava.top или Gumroad и к нам не попадают. Нужно, чтобы включать и продлевать тариф; хранится, пока действует аккаунт, и столько, сколько требует налоговый учёт.</li>
     <li><b>Поиск города</b>: введённое название отправляется в бесплатный геокодер Open-Meteo, чтобы найти координаты и часовой пояс.</li>
     <li><b>Шрифты и карта мира</b> загружаются с Google Fonts и jsDelivr. Эти сервисы видят ваш IP-адрес, как при любой загрузке файла из сети.</li>
   </ul>
@@ -44,7 +47,7 @@
   <p>Согласие (вопросы к ИИ), исполнение договора (работа сервиса), законный интерес (защита от злоупотреблений: лимиты запросов). Согласие на ИИ можно отозвать в настройках в любой момент.</p>
 
   <h2>Передача за границу</h2>
-  <p>Anthropic PBC (США) обрабатывает запросы к ИИ по своим коммерческим условиям: данные API не используются для обучения моделей. Cloudflare (США) обслуживает наш сервер, в том числе базу аккаунтов (Cloudflare D1, данные карточек зашифрованы). Google, Яндекс, VK и Telegram обрабатывают вход по своим правилам — мы получаем от них только то, что перечислено выше.</p>
+  <p>Anthropic PBC (США) обрабатывает запросы к ИИ по своим коммерческим условиям: данные API не используются для обучения моделей. Cloudflare (США) обслуживает наш сервер, в том числе базу аккаунтов (Cloudflare D1, данные карточек зашифрованы). Google, Яндекс, VK, Telegram и Apple обрабатывают вход по своим правилам — мы получаем от них только то, что перечислено выше. Платежи обрабатывают lava.top (Кипр) и Gumroad (США) по своим правилам; письма с кодом отправляет Resend (США).</p>
 
   <h2>Ваши права</h2>
   <p>Вы можете узнать, какие данные обрабатываются, исправить или удалить их, отозвать согласие и пожаловаться в надзорный орган своей страны. Поскольку данные хранятся на вашем устройстве, большую часть прав вы реализуете сами: изменить карту, сделать резервную копию или удалить всё.</p>
@@ -61,14 +64,14 @@
     <p class="muted">Effective 12 October 2026.</p>
     <ul>
       <li>Without signing in, birth data, charts and settings are stored <b>only on your device</b>. We can’t see them.</li>
-      <li>An account is optional. If you sign in (Google, Yandex ID, VK ID, Telegram or email and password), your charts and settings are copied to our server <b>encrypted</b>, so they don’t get lost and appear on all your devices.</li>
+      <li>An account is optional. If you sign in (passkey, Google, Yandex ID, VK ID, Telegram, Apple, email code or email and password), your charts and settings are copied to our server <b>encrypted</b>, so they don’t get lost and appear on all your devices.</li>
       <li>Only questions to the AI assistant reach our server — and only with your consent: the question text and calculated planet positions, birth date and time. No name or city.</li>
       <li>We don’t sell data, show ads or use trackers.</li>
     </ul>
     <p><b>Controller</b>: <span class="ph">[sole proprietor — name, Georgian registration number]</span>, Georgia. Contact: <span class="ph">[email]</span>.</p>
-    <p><b>AI questions</b> (by consent) are forwarded to Anthropic (Claude) and the answer is returned. We don’t store question or answer texts; we keep only a daily question counter per anonymous device ID for up to 2 days. <b>Account</b> (if you sign in): your ID at the chosen sign-in service, name, email and avatar link (what the service shares with your permission), a password hash for email sign-in (the password itself never reaches the server), sign-in times; your charts and settings are stored encrypted (AES-256); an anonymised IP hash is used against password guessing. You can delete the account with all data in Settings → Account. City search sends the typed name to the Open-Meteo geocoder. Fonts and the world map load from Google Fonts and jsDelivr.</p>
+    <p><b>AI questions</b> (by consent) are forwarded to Anthropic (Claude) and the answer is returned. We don’t store question or answer texts; we keep only a daily question counter per anonymous device ID for up to 2 days. <b>Account</b> (if you sign in): your ID at the chosen sign-in service, name, email and avatar link (what the service shares with your permission), a password hash for email sign-in (the password itself never reaches the server), sign-in times; your charts and settings are stored encrypted (AES-256); an anonymised IP hash is used against password guessing. You can delete the account with all data in Settings → Account. <b>Passkeys</b>: we store the public key, its ID, the device name and dates; your fingerprint, face and private key never leave your device. <b>Email codes</b>: a hashed one-time code for 10 minutes, sent via Resend. <b>Paid plans</b>: plan, period, subscription status, the email you gave at checkout and the payment IDs; card details are entered on lava.top or Gumroad and never reach us. City search sends the typed name to the Open-Meteo geocoder. Fonts and the world map load from Google Fonts and jsDelivr.</p>
     <p><b>Legal bases</b>: consent (AI questions), contract (running the service), legitimate interest (abuse protection). Withdraw consent anytime in Settings.</p>
-    <p><b>International transfers</b>: Anthropic PBC (USA) — API data is not used to train models; Cloudflare (USA) hosts our server and the account database (Cloudflare D1; chart data is encrypted). Google, Yandex, VK and Telegram handle sign-in under their own terms.</p>
+    <p><b>International transfers</b>: Anthropic PBC (USA) — API data is not used to train models; Cloudflare (USA) hosts our server and the account database (Cloudflare D1; chart data is encrypted). Google, Yandex, VK, Telegram and Apple handle sign-in under their own terms; lava.top (Cyprus) and Gumroad (USA) process payments; Resend (USA) sends sign-in codes.</p>
     <p><b>Your rights</b>: access, correction, deletion, withdrawal of consent, and complaint to your local authority. Most of them you exercise directly in the app. The service is for people aged 16+.</p>
   </div>
   <p><a href="app.html">← Saliastro</a></p>

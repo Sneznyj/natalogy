@@ -17,9 +17,18 @@ window.NCONFIG = {
     subdomains: 'abc',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
   },
-  // Ректификация — VIP-раздел в меню. locked: true — показывать «Доступно в VIP» вместо инструмента; url — куда вести за VIP; note — строка под заголовком
-  rectVip: { locked: false, url: '', note: 'Сейчас доступ открыт на время теста.' },
-  pro: { paid: false, priceMonth: '$7.99', priceYear: '$49' }, // платная подписка — после выхода Венеры из тени (15.12.2026)
+  // Тарифы (js/plans.js, 17.10.2026): Бесплатно → Плюс → Профи → VIP (VIP — с ректификацией). Цены: [в месяц, в год].
+  // enforce: false — бета, всё открыто (купить уже можно); true — платные разделы закрываются по тарифу (план — с 15.12.2026, выход Венеры из тени).
+  // Цены должны совпадать с ценами в кассах: lava.top (рубли) и Gumroad (доллары).
+  plans: {
+    enforce: false,
+    betaUntil: '2026-12-15',
+    prices: {
+      RUB: { plus: [390, 2990], pro: [990, 7490], vip: [2990, 22900] },
+      USD: { plus: [5.99, 39], pro: [14.99, 99], vip: [39, 290] },
+    },
+    freeAccountPeople: 3,          // карточек в бесплатном аккаунте (без входа — account.guestLimit)
+  },
   // Аккаунты (необязательный вход): сервер server/account-worker. guestLimit — сколько карточек можно сохранить без входа.
   // Пусто в api — кнопки «Войти» нет, всё только на устройстве.
   account: { api: 'https://natalogy-account.sneznyjpavel.workers.dev', guestLimit: 1 }, // адрес сервера прежний: на него настроены входы Google, Яндекс, VK, Telegram

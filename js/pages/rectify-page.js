@@ -210,7 +210,7 @@
   function vipPage(el, params) {
     const p = (params.id && root.NStore.person(params.id)) || root.NStore.active();
     if (!p) { location.hash = '#onboard'; return; }
-    const cfg = (root.NCONFIG || {}).rectVip || {};
+    const P = root.NPlans, open = !P || P.can('rectify'), beta = P && !P.enforce();
     el.innerHTML = `<section class="vip-hero">
         <div class="vip-mark" aria-hidden="true">${icon('crown', 'lg')}</div>
         <div class="stack s6" style="min-width:0">
@@ -218,14 +218,11 @@
           <h1>${t('vip.h1', 'Ректификация — точное время рождения')}</h1>
           <p>${t('vip.lead', 'Самая ценная информация в астрологии: от минуты рождения зависят Асцендент, MC, дома и точность всех прогнозов. Программа сверяет время рождения с событиями твоей жизни и находит, при каком времени они объясняются лучше всего.')}</p>
           <div class="tags"><span class="tag gold">${icon('target', 'xs')} ${t('vip.f1', 'Асцендент и дома — до минуты')}</span><span class="tag gold">${icon('route', 'xs')} ${t('vip.f2', 'дуги, транзиты, прогрессии, затмения')}</span><span class="tag gold">${icon('shield', 'xs')} ${t('vip.f3', 'проверка на случайность')}</span></div>
-          ${cfg.note ? `<p class="tiny vip-note">${esc(t('vip.note', cfg.note))}</p>` : ''}
+          ${beta ? `<p class="tiny vip-note">${esc(t('vip.beta', 'Сейчас бета — ректификация открыта всем. Потом она будет в тарифе VIP.'))} <a href="#plans?want=vip">${esc(t('vip.plans', 'Тарифы'))} →</a></p>` : ''}
         </div></section>
       <div id="vipBody"></div>`;
     const body = el.querySelector('#vipBody');
-    if (cfg.locked) {
-      body.innerHTML = `<div class="card pad-lg stack vip-lock">${icon('lock', 'lg')}<h2>${t('vip.lockT', 'Доступно в VIP')}</h2><p class="muted">${t('vip.lockP', 'Подключи VIP, чтобы уточнить время рождения по событиям жизни.')}</p>${cfg.url ? `<a class="btn primary" href="${esc(cfg.url)}" target="_blank" rel="noopener">${icon('crown', 'sm')} ${t('vip.get', 'Получить VIP')}</a>` : ''}</div>`;
-      return;
-    }
+    if (!open) { body.innerHTML = P.lockHTML('rectify'); return; }
     render(body, p, params);
   }
 

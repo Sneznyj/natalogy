@@ -81,6 +81,14 @@
       if (k === 0) { state.y = now.y; state.mo = now.mo; state.sel = now; } else { let m = state.mo + k, yy = state.y; if (m < 1) { m = 12; yy--; } if (m > 12) { m = 1; yy++; } state.y = yy; state.mo = m; state.sel = same({ y: yy, mo: m, d: now.d }, now) ? now : { y: yy, mo: m, d: 1 }; }
       drawBody(ctx); drawBackground(ctx);
     }));
+    // бесплатно — прошлый, этот и следующий месяц; дальше — тариф «Плюс»
+    const off = (y - now.y) * 12 + (mo - now.mo);
+    if ((off > 1 || off < -1) && root.NPlans && !root.NPlans.can('calYear')) {
+      box.querySelector('#cal').outerHTML = root.NPlans.lockHTML('calYear', { compact: true });
+      ['#dpanel', '#btyBox', '#heatBox'].forEach((s) => { const x = box.querySelector(s); if (x) x.remove(); });
+      const g = box.querySelector('.grid2'); if (g) g.remove();
+      return;
+    }
     const list = await root.NCompute.month(p, y, mo, here.tz);
     if (state.y !== y || state.mo !== mo || state.view !== 'month') return;
     const cal = box.querySelector('#cal'); if (!cal) return;

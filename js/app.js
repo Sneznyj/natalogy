@@ -1,4 +1,5 @@
-/* Каркас приложения: шапка, навигация, маршруты (#horoscope, #today, #calendar, #chart, #pair, #ask, #numerology, #sky, #pro, #rectify, #people, #settings, #onboard), тема. */
+/* Каркас приложения: шапка, навигация, маршруты (#horoscope, #today, #calendar, #chart, #pair, #ask, #numerology, #sky, #pro, #rectify, #plans, #people, #settings, #onboard), тема.
+   Платные разделы (js/plans.js): закрытый целиком раздел показывает замок вместо страницы (NPlans.canPage / paywall). */
 (function (root) {
   'use strict';
   const UI = root.NUI;
@@ -14,7 +15,9 @@
     ['numerology', t('nav.num', 'Нумерология'), 'numbers', ''],
     ['sky', t('nav.sky', 'Небо и Луна'), 'sky', ''],
   ];
-  const EXTRA = () => [['rectify', t('nav.rect', 'Ректификация'), 'crown', true], ['pro', t('nav.pro', 'Профи'), 'pro'], ['people', t('nav.people', 'Люди'), 'users'], ['settings', t('nav.settings', 'Настройки'), 'settings']];
+  const EXTRA = () => [['rectify', t('nav.rect', 'Ректификация'), 'crown', true], ['pro', t('nav.pro', 'Профи'), 'pro'], ['plans', t('nav.plans', 'Тарифы'), 'diamond', 'plans'], ['people', t('nav.people', 'Люди'), 'users'], ['settings', t('nav.settings', 'Настройки'), 'settings']];
+  // замок в меню у раздела, закрытого тарифом (ректификация помечена VIP и так)
+  const locked = (k) => !!(root.NPlans && !root.NPlans.canPage(k));
 
   function applyTheme() {
     const th = root.NStore.settings().theme;
@@ -43,7 +46,7 @@
         <button class="iconbtn theme-tg" type="button" data-theme-tg aria-label="${t('theme.toggle', 'Сменить тему')}" title="${t('theme.toggle', 'Сменить тему')}">${icon(UI.isDark() ? 'sun' : 'moon')}</button>
         <a class="iconbtn set-lnk" href="#settings" aria-label="${t('nav.settings', 'Настройки')}">${icon('settings')}</a>
       </div></header>
-      <nav class="nav" aria-label="${t('nav', 'Разделы')}"><div class="nav-in">${NAV().map(([k, n, ic, cls]) => `<a href="#${k}" data-nav="${k}" class="${cls.split(' ').filter(Boolean).map((c) => 'nav-' + c).join(' ')}">${icon(ic)}<span>${esc(n)}</span>${cls.includes('hot') ? `<b class="hot-badge" aria-hidden="true">★</b>` : ''}</a>`).join('')}${EXTRA().map(([k, n, ic, vip]) => `<a href="#${k}" data-nav="${k}" class="nav-extra${vip ? ' nav-vip' : ''}">${icon(ic)}<span>${esc(n)}</span>${vip ? '<b class="vip-badge">VIP</b>' : ''}</a>`).join('')}<button class="nav-more" type="button" data-more>${icon('more')}<span>${t('nav.more', 'Ещё')}</span></button></div></nav>
+      <nav class="nav" aria-label="${t('nav', 'Разделы')}"><div class="nav-in">${NAV().map(([k, n, ic, cls]) => `<a href="#${k}" data-nav="${k}" class="${cls.split(' ').filter(Boolean).map((c) => 'nav-' + c).join(' ')}">${icon(ic)}<span>${esc(n)}</span>${cls.includes('hot') ? `<b class="hot-badge" aria-hidden="true">★</b>` : ''}</a>`).join('')}${EXTRA().map(([k, n, ic, vip]) => `<a href="#${k}" data-nav="${k}" class="nav-extra${vip === true ? ' nav-vip' : vip === 'plans' ? ' nav-plans' : ''}">${icon(ic)}<span>${esc(n)}</span>${vip === true ? '<b class="vip-badge">VIP</b>' : locked(k) ? `<b class="nav-lock" title="${esc(t('pl.lockedA', 'по подписке'))}">${icon('lock', 'xs')}</b>` : ''}</a>`).join('')}<button class="nav-more" type="button" data-more>${icon('more')}<span>${t('nav.more', 'Ещё')}</span></button></div></nav>
       <main class="main" id="main" tabindex="-1"></main></div>`;
     const who = app.querySelector('[data-who]');
     if (who) who.addEventListener('click', openWho);
@@ -73,7 +76,7 @@
   /** «Ещё» на телефоне: все разделы, которых нет в нижней панели. */
   function openMore() {
     const items = NAV().filter(([, , , c]) => !c.includes('m')).map(([k, n, ic]) => [k, n, ic, false]).concat(EXTRA());
-    const body = UI.sheet(`<div class="more-grid">${items.map(([k, n, ic, vip]) => `<a class="more-it${vip ? ' vip' : ''}" href="#${k}"><span class="ic">${icon(ic)}</span><b>${esc(n)}</b>${vip ? '<span class="vip-badge">VIP</span>' : ''}</a>`).join('')}</div>`, { title: t('nav.more', 'Ещё') });
+    const body = UI.sheet(`<div class="more-grid">${items.map(([k, n, ic, vip]) => `<a class="more-it${vip === true ? ' vip' : vip === 'plans' ? ' plans' : ''}" href="#${k}"><span class="ic">${icon(ic)}</span><b>${esc(n)}</b>${vip === true ? '<span class="vip-badge">VIP</span>' : locked(k) ? `<span class="nav-lock">${icon('lock', 'xs')}</span>` : ''}</a>`).join('')}</div>`, { title: t('nav.more', 'Ещё') });
     body.querySelectorAll('a').forEach((a) => a.addEventListener('click', UI.closeSheet));
   }
 
@@ -99,7 +102,7 @@
     UI.closeSheet();
     if (root.NExplain) root.NExplain.closeCard();
     window.scrollTo(0, 0);
-    try { await P.render(v, params); } catch (e) { console.error(e); v.innerHTML = `<div class="empty"><h3>${t('err.page', 'Что-то пошло не так')}</h3><p class="muted small">${esc(e.message)}</p><a class="btn" href="#today">${t('nav.today', 'Сегодня')}</a></div>`; }
+    try { if (root.NPlans && !root.NPlans.canPage(page)) root.NPlans.paywall(v, page); else await P.render(v, params); } catch (e) { console.error(e); v.innerHTML = `<div class="empty"><h3>${t('err.page', 'Что-то пошло не так')}</h3><p class="muted small">${esc(e.message)}</p><a class="btn" href="#today">${t('nav.today', 'Сегодня')}</a></div>`; }
     root.NWheel.bindTips(v);
     document.title = `${root.NCONFIG.brand} · ${(NAV().concat(EXTRA()).find(([k]) => k === page) || [0, t('onb.short', 'Начало')])[1]}`;
   }

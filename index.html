@@ -88,10 +88,23 @@
 @media (max-width:820px){.ai-flow{grid-template-columns:1fr}}
 .ai-flow .card{display:grid;gap:8px;align-content:start}
 .ai-flow .n{font:600 26px var(--f-hand);color:var(--gold)}
-.plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:880px}
-@media (max-width:720px){.plans{grid-template-columns:1fr}}
-.plan{display:grid;gap:12px;align-content:start}
+.plans{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;padding-top:8px}
+@media (max-width:1100px){.plans{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.plans{grid-template-columns:1fr}}
+.plan{position:relative;display:flex;flex-direction:column;gap:10px}
+.plan ul.yes{flex:1;align-content:start}
+.plan .btn{justify-content:center}
+.plan.plus{border-top:4px solid var(--mint)}
 .plan.pro{border-color:var(--lav);box-shadow:inset 0 0 0 1px var(--lav),var(--shadow)}
+.plan.vip{background:radial-gradient(420px 200px at 100% 0%,rgba(233,196,106,.28),transparent 70%),linear-gradient(160deg,#1F1636,#2D2150);color:#F5F0FF;border-color:rgba(233,196,106,.55)}
+.plan.vip small,.plan.vip .muted{color:#BDB2DA}
+.plan.vip ul.yes li::before{color:#F2C14E}
+.plan .rib{position:absolute;top:-11px;right:14px;font:800 11px/1 var(--f-ui);letter-spacing:.06em;text-transform:uppercase;padding:6px 10px;border-radius:999px;background:linear-gradient(135deg,#9479D6,#5B3A9E);color:#fff}
+.plan.vip .rib{background:linear-gradient(135deg,#E9C46A,#B8860B);color:#2A1C00}
+.plan .pname{font:600 26px/1.1 var(--f-display)}
+.plan.vip .pname{color:#F6D98E}
+.btn.vipgo{background:linear-gradient(135deg,#E9C46A,#B8860B);border-color:transparent;color:#2A1C00}
+.price-more{margin-top:14px}
 .price{font:600 34px/1.1 var(--f-display)}
 .price small{display:block;font:400 14px/1.4 var(--f-ui);color:var(--muted);margin-top:6px}
 ul.yes{list-style:none;margin:0;padding:0;display:grid;gap:7px}
@@ -131,7 +144,7 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
       <p class="sub" data-i="hero.sub">Нажми кнопку — и увидишь баллы своих дней от 1 до 10: когда легче с любовью, деньгами, работой и запусками. Без астрологических терминов.</p>
       <div class="cta"><a class="btn primary" href="app.html#calendar" data-i="cta.cal">Мой календарь</a><a class="btn" href="#demo" data-i="cta.demo">Попробовать без регистрации</a></div>
       <div class="welcome" id="welcome"><span class="av" id="wAv">?</span><span id="wTxt"></span><span class="spacer"></span><a class="btn sm primary" href="app.html#today" data-i="w.today">Мой день</a><a class="btn sm" href="app.html#calendar" data-i="w.cal">Календарь</a></div>
-      <p class="note"><svg class="ico sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"/><path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg><span data-i="hero.note">Без регистрации: данные остаются на устройстве. Захочешь — войди через Google, Яндекс, VK, Telegram или почту, и карточки сохранятся в аккаунте. Бесплатно в бета-версии.</span></p>
+      <p class="note"><svg class="ico sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z"/><path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg><span data-i="hero.note">Без регистрации: данные остаются на устройстве. Захочешь — войди по отпечатку или Face ID, через Google, Яндекс, VK, Telegram, Apple или почту, и карточки сохранятся в аккаунте. Бесплатно в бета-версии.</span></p>
     </div>
     <div class="sky"><div class="wheel-card"><div class="sky-cap"><span class="tag acc" data-i="sky.now">Небо прямо сейчас</span><span id="skyTime" class="mono"></span></div><div class="wheel-box" id="skyWheel"></div>
       <div class="sky-cap"><span class="hint-click" data-i="sky.hint">Наведи на планету — подсказка</span><a class="more" href="app.html#chart?mode=sky" data-i="sky.open">Листать время</a></div></div></div>
@@ -194,11 +207,15 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
 
   <section class="sec lw" id="price">
     <span class="eyebrow" data-i="price.eyebrow">Цены</span>
-    <h2 data-i="price.h2">Сейчас всё бесплатно</h2>
+    <h2 data-i="price.h2">Бесплатно — главное. Глубже — по подписке</h2>
+    <p class="muted" data-i="price.beta" id="priceBeta">Сейчас бета: до 15.12.2026 все тарифы открыты бесплатно.</p>
     <div class="plans">
-      <div class="card plan"><span class="tag ok" style="justify-self:start" data-i="plan.free">Бесплатно</span><div class="price">$0<small data-i="plan.freeS">Навсегда для основного</small></div><ul class="yes"><li data-i="pf.1">Сегодня и личный календарь с баллами</li><li data-i="pf.2">Натальная карта простым языком</li><li data-i="pf.3">Совместимость пары</li><li data-i="pf.4">ИИ: несколько вопросов в день</li><li data-i="pf.5">Работает без интернета</li></ul><a class="btn" href="app.html#today" data-i="plan.go">Начать</a></div>
-      <div class="card plan pro"><span class="tag acc" style="justify-self:start" data-i="plan.pro">Pro · скоро</span><div class="price"><span data-i="plan.proP">В бете — бесплатно</span><small data-i="plan.proS">Подписка появится в декабре. Условия и автопродление — на отдельной странице, отмена в один клик.</small></div><ul class="yes"><li data-i="pp.1">Все профи-инструменты</li><li data-i="pp.2">Больше вопросов ИИ</li><li data-i="pp.3">Прогноз на год: соляр, дирекции, фирдарии</li><li data-i="pp.4">Астрокартография с городами</li></ul><a class="btn primary" href="app.html#pro" data-i="plan.goPro">Открыть профи-режим</a></div>
+      <div class="card plan"><span class="pname" data-i="plan.free">Бесплатно</span><div class="price" data-pp="free">0<small data-i="plan.freeS">навсегда, без карты</small></div><ul class="yes"><li data-i="pf.1">Гороскоп, «Сегодня» и календарь на месяц</li><li data-i="pf.2">Натальная карта простым языком</li><li data-i="pf.3">Нумерология и Луна</li></ul><a class="btn" href="app.html#today" data-i="plan.go">Начать</a></div>
+      <div class="card plan plus"><span class="pname" data-i="plan.plus">Плюс</span><div class="price" data-pp="plus">—<small data-i="plan.perM">в месяц при оплате за год</small></div><ul class="yes"><li data-i="px.1">Календарь на год вперёд</li><li data-i="px.2">Совместимость пары</li><li data-i="px.3">Вся нумерология, гороскоп на год</li></ul><a class="btn primary" href="app.html#plans?want=plus" data-i="plan.goPlus">Выбрать «Плюс»</a></div>
+      <div class="card plan pro"><span class="rib" data-i="plan.pop">Популярный</span><span class="pname" data-i="plan.pro">Профи</span><div class="price" data-pp="pro">—<small data-i="plan.perM">в месяц при оплате за год</small></div><ul class="yes"><li data-i="pp.1">9 типов карт, две карты рядом</li><li data-i="pp.2">Транзиты, соляр, дирекции, фирдарии</li><li data-i="pp.3">Астрокартография с городами</li></ul><a class="btn primary" href="app.html#plans?want=pro" data-i="plan.goPro">Выбрать «Профи»</a></div>
+      <div class="card plan vip"><span class="rib" data-i="plan.top">Максимум</span><span class="pname">VIP</span><div class="price" data-pp="vip">—<small data-i="plan.perM">в месяц при оплате за год</small></div><ul class="yes"><li data-i="pv.1">Ректификация: точное время рождения</li><li data-i="pv.2">Всё из «Профи»</li><li data-i="pv.3">Новые инструменты — первыми</li></ul><a class="btn vipgo" href="app.html#plans?want=vip" data-i="plan.goVip">Выбрать VIP</a></div>
     </div>
+    <p class="price-more"><a href="app.html#plans" data-i="price.all">Сравнить все тарифы и цены →</a></p>
   </section>
 
   <section class="sec lw">
@@ -242,7 +259,7 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
   const EN = {
     'nav.horo': '★ Horoscope', 'cta.login': 'Sign in', 'horo.eyebrow': 'Horoscope', 'horo.h2': 'Today’s horoscope — <em>for every sign</em>', 'horo.lead': 'The number is the day’s overall score from 1 to 10. Tap your sign: today, tomorrow, week, month and year, best hours and what’s happening in the sky.', 'l.horo': 'Horoscope', 'l.num': 'Numerology', 'l.sky': 'Sky & Moon',
     'nav.cal': 'Calendar', 'nav.chart': 'My chart', 'nav.pro': 'For pros', 'nav.price': 'Pricing', 'cta.open': 'Open the app', 'hero.eyebrow': 'Personal astrology calendar', 'hero.h1': 'Your chart is not a verdict. It’s <em>a guide to yourself</em>.',
-    'hero.sub': 'Press a button and see your days scored from 1 to 10: when love, money, work and launches come easier. No astrology jargon.', 'cta.cal': 'My calendar', 'cta.demo': 'Try it without signing up', 'hero.note': 'No sign-up needed: your data stays on your device. If you like, sign in with Google, Yandex, VK, Telegram or email to keep your charts in an account. Free during the beta.', 'sky.now': 'The sky right now', 'sky.hint': 'Hover a planet for a hint', 'sky.open': 'Scroll through time',
+    'hero.sub': 'Press a button and see your days scored from 1 to 10: when love, money, work and launches come easier. No astrology jargon.', 'cta.cal': 'My calendar', 'cta.demo': 'Try it without signing up', 'hero.note': 'No sign-up needed: your data stays on your device. If you like, sign in with a fingerprint or Face ID, Google, Yandex, VK, Telegram, Apple or email to keep your charts in an account. Free during the beta.', 'sky.now': 'The sky right now', 'sky.hint': 'Hover a planet for a hint', 'sky.open': 'Scroll through time',
     'w.today': 'My day', 'w.cal': 'Calendar', open: 'Open',
     'how.eyebrow': 'How it works', 'how.h2': 'Less fog. <em>More clarity</em> about yourself.', 'how.lead': 'The app calculates your chart and the planets’ movement day by day, then translates it into plain language: what will come easily today and where it’s better to wait. Each card below opens a section of the app.',
     'f1.t': 'Today', 'f1.p': 'Seven life areas scored 1–10, events by the hour, the Moon and the best hours to start.', 'f2.t': 'Calendar', 'f2.p': 'Month and week with scores: pick an activity — a date, a contract, a purchase — and see the best days at once.',
@@ -255,8 +272,10 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
     'pro.eyebrow': 'For those who know astrology', 'pro.h2': 'Pro mode: a full astro workbench in your phone', 'pro.lead': 'Two charts side by side, overlays, an aspect grid with cusps, stepping through days and hours, toggles for points and aspects, saved charts. Tap a tool to open it in the app.',
     'pro.acc': 'Calculations match Swiss Ephemeris to arc seconds; Chiron uses JPL tables. Everything runs on your device — fast and offline.',
     'ai.eyebrow': 'AI assistant', 'ai.h2': 'AI that explains instead of making things up', 'ai.1t': 'The app calculates', 'ai.1p': 'Planet positions, transits and day scores — with exact formulas, not a neural network.', 'ai.2t': 'The AI gets only facts', 'ai.2p': 'No name or city. Only the calculated data and your question.', 'ai.3t': 'An answer with a chart', 'ai.3p': 'Short, to the point, with steps — plus a month of scores so you see when is better. A few questions a day are free.', 'ai.go': 'Ask a question',
-    'price.eyebrow': 'Pricing', 'price.h2': 'Everything is free right now', 'plan.free': 'Free', 'plan.freeS': 'Forever for the essentials', 'pf.1': 'Today and the personal scored calendar', 'pf.2': 'Birth chart in plain language', 'pf.3': 'Couple compatibility', 'pf.4': 'AI: a few questions a day', 'pf.5': 'Works offline', 'plan.go': 'Start',
-    'plan.pro': 'Pro · soon', 'plan.proP': 'Free during the beta', 'plan.proS': 'The subscription arrives in December. Terms and auto-renewal on a separate page; cancel in one click.', 'pp.1': 'All pro tools', 'pp.2': 'More AI questions', 'pp.3': 'Year forecast: solar return, directions, firdaria', 'pp.4': 'Astrocartography with cities', 'plan.goPro': 'Open pro mode',
+    'price.eyebrow': 'Pricing', 'price.h2': 'The essentials are free. Go deeper with a plan', 'price.beta': 'Beta: all plans are free until December 15, 2026.', 'plan.free': 'Free', 'plan.freeS': 'forever, no card', 'pf.1': 'Horoscope, Today and a month of calendar', 'pf.2': 'Birth chart in plain language', 'pf.3': 'Numerology and the Moon', 'plan.go': 'Start',
+    'plan.plus': 'Plus', 'plan.perM': 'a month, billed yearly', 'px.1': 'Calendar a year ahead', 'px.2': 'Couple compatibility', 'px.3': 'All of numerology, yearly horoscope', 'plan.goPlus': 'Choose Plus', 'plan.pop': 'Popular', 'plan.top': 'The most',
+    'pv.1': 'Rectification: your exact birth time', 'pv.2': 'Everything in Pro', 'pv.3': 'New tools first', 'plan.goVip': 'Choose VIP', 'price.all': 'Compare all plans and prices →',
+    'plan.pro': 'Pro', 'pp.1': '9 chart types, two charts side by side', 'pp.2': 'Transits, solar returns, directions, firdaria', 'pp.3': 'Astrocartography with cities', 'plan.goPro': 'Choose Pro',
     'faq.eyebrow': 'Questions', 'faq.h2': 'FAQ', q1: 'Is this fortune telling?', a1: 'No. It’s a tool for self-reflection and planning: astrology as a language of cycles. We don’t predict fate, illness or events — we show which days suit different things better.',
     q6: 'What do the 1–10 scores mean?', a6: 'They add up the day’s influences on an area: transits to your chart, the Moon, retrograde planets and eclipses. 9–10 great, 7–8 good, 5–6 steady, 3–4 careful, 1–2 hard. Hover a day in the calendar to see what made the score.',
     q2: 'What if I don’t know my birth time?', a2: 'That’s fine: the calendar and most of the chart still work. Houses, the Ascendant and some tips won’t be calculated. In “My chart” you can step through times and watch the chart change.', q3: 'Where is my data stored?', a3: 'Without signing in — only on your device. If you sign in, your charts are copied to the server encrypted and appear on your other devices. Only a question to the AI goes to the server — with calculated planet positions, without your name or city, and only after you agree.',
@@ -267,6 +286,20 @@ ul.yes li::before{content:"✓";color:var(--mint);font-weight:800}
   const lang = UI.lang();
   document.documentElement.lang = lang;
   if (lang === 'en') { document.querySelectorAll('[data-i]').forEach((el) => { const v = EN[el.dataset.i]; if (v == null) return; if (el.hasAttribute('data-html')) el.innerHTML = v; else el.textContent = v; }); document.title = 'Saliastro — your chart as a guide to yourself'; }
+  // цены тарифов — из NCONFIG.plans (те же, что на странице тарифов в приложении)
+  (function prices() {
+    const P = (window.NCONFIG && window.NCONFIG.plans) || {}, cur = lang === 'en' ? 'USD' : 'RUB', pr = (P.prices || {})[cur] || {};
+    const fmt = (v) => (cur === 'RUB' ? String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') + '\u00a0₽' : '$' + (Math.round(v * 100) / 100));
+    document.querySelectorAll('[data-pp]').forEach((el) => {
+      const k = el.dataset.pp, small = el.querySelector('small');
+      const v = k === 'free' ? 0 : pr[k] ? (cur === 'RUB' ? Math.round(pr[k][1] / 12) : pr[k][1] / 12) : null;
+      if (v == null) return;
+      el.textContent = (k === 'free' ? '' : (lang === 'en' ? 'from ' : 'от ')) + fmt(v);
+      if (small) el.appendChild(small);
+    });
+    const b = document.getElementById('priceBeta');
+    if (b && (P.enforce || !P.betaUntil)) b.remove();
+  })();
   const sw = document.getElementById('langsw'); sw.textContent = lang === 'en' ? 'RU' : 'EN';
   sw.addEventListener('click', () => { window.NStore.set('lang', lang === 'en' ? 'ru' : 'en'); location.reload(); });
   // уже есть карта — приветствие и ссылки сразу в кабинет

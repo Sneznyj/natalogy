@@ -142,6 +142,7 @@
     const draw = () => {
       const x = input(root.NStore.active());
       if (!x) { body.innerHTML = `<div class="empty"><h3>${esc(t('num.enter', 'Введи дату рождения'))}</h3><p class="muted">${esc(t('num.enterP', 'Имя — по желанию: без него посчитаю числа по дате.'))}</p></div>`; return; }
+      if (st.tab !== 'main' && root.NPlans && !root.NPlans.can('numFull')) { body.innerHTML = root.NPlans.lockHTML('numFull', { compact: true }); return; } // кроме главных чисел — «Плюс»
       if (st.tab === 'main') { const r = mainView(x); calcs = r.calcs; body.innerHTML = r.html; }
       else if (st.tab === 'square') body.innerHTML = squareView(x);
       else if (st.tab === 'matrix') body.innerHTML = root.NNumX.matrixView(x);
